@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多文件知识库测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            height: 80vh;
+        }
+        .chat-area {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .knowledge-panel {
+            width: 300px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .file-list {
+            margin-top: 15px;
+        }
+        .file-item {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            position: relative;
+            background: #f9f9f9;
+        }
+        .file-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+        }
+        .file-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .file-preview {
+            font-size: 11px;
+            background: #f0f0f0;
+            padding: 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+            background: #f0f8ff;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background: #e3f2fd;
+            margin-left: 50px;
+        }
+        .ai-message {
+            background: #f1f8e9;
+            margin-right: 50px;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .input-area button {
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .stats {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: right;
+        }
+        .clear-all {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>多文件知识库功能测试</h1>
+    <div class="container">
+        <div class="chat-area">
+            <h3>聊天区域</h3>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai-message">
+                    <strong>AI助手:</strong> 你好！我是您的财务与审计助手。您可以上传最多5个知识库文档，我会依据这些内容回答您的问题。
+                </div>
+            </div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="询问关于审计规范或财务数据的问题...">
+                <button onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+
+        <div class="knowledge-panel">
+            <h3>知识库</h3>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <p>📁 点击添加文件</p>
+                <p style="font-size: 12px; color: #666;">支持 Excel, PDF, Word, CSV, TXT (最多5个)</p>
+            </div>
+            <input type="file" id="fileInput" multiple accept=".txt,.md,.json,.xml,.csv,.xlsx,.xls,.docx,.pdf" style="display: none;" onchange="handleFileSelect(event)">
+
+            <div class="file-list" id="fileList">
+                <!-- 文件列表将在这里显示 -->
+            </div>
+
+            <div class="stats" id="stats">
+                总计 0 字符
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let knowledgeFiles = [];
+        const MAX_FILES = 5;
+        const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (!files) return;
+
+            // 检查文件数量限制
+            if (knowledgeFiles.length + files.length > MAX_FILES) {
+                alert(`最多只能上传${MAX_FILES}个文件。当前有${knowledgeFiles.length}个文件，选择${files.length}个文件，总数${knowledgeFiles.length + files.length}个文件超过限制。`);
+                return;
+            }
+
+            // 处理每个文件
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+
+                // 检查文件大小
+                if (file.size > MAX_SIZE) {
+                    alert(`文件 ${file.name} 大小超过10MB限制。`);
+                    continue;
+                }
+
+                // 检查重复文件名
+                if (knowledgeFiles.some(f => f.name === file.name)) {
+                    alert(`文件 "${file.name}" 已经上传过了。`);
+                    continue;
+                }
+
+                // 模拟文件内容读取（实际应用中需要根据文件类型进行解析）
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    const fileType = getFileType(file.name);
+
+                    knowledgeFiles.push({
+                        id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
+                        name: file.name,
+                        content: content.substring(0, 500), // 截取前500字符作为预览
+                        type: fileType,
+                        size: file.size,
+                        uploadTime: new Date()
+                    });
+
+                    updateFileList();
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function getFileType(fileName) {
+            const extension = fileName.split('.').pop()?.toLowerCase();
+            if (['xlsx', 'xls', 'csv'].includes(extension || '')) return 'excel';
+            if (extension === 'docx') return 'word';
+            if (extension === 'pdf') return 'pdf';
+            return 'text';
+        }
+
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            const stats = document.getElementById('stats');
+
+            if (knowledgeFiles.length === 0) {
+                fileList.innerHTML = '<p style="text-align: center; color: #999;">暂无文件</p>';
+                stats.textContent = '总计 0 字符';
+                return;
+            }
+
+            let html = '';
+            if (knowledgeFiles.length > 1) {
+                html += '<button class="clear-all" onclick="clearAllFiles()">清空全部</button>';
+            }
+
+            html += `<p style="font-size: 12px; margin-bottom: 10px;">知识库文件 (${knowledgeFiles.length}/${MAX_FILES})</p>`;
+
+            knowledgeFiles.forEach(file => {
+                html += `
+                    <div class="file-item">
+                        <button class="remove-btn" onclick="removeFile('${file.id}')">删除</button>
+                        <h4 title="${file.name}">${file.name}</h4>
+                        <div class="file-meta">
+                            <span>${file.type}</span> |
+                            <span>${(file.size / 1024).toFixed(1)}KB</span> |
+                            <span>${new Date(file.uploadTime).toLocaleTimeString()}</span>
+                        </div>
+                        <div class="file-preview">
+                            ${file.content.substring(0, 150)}...
+                        </div>
+                    </div>
+                `;
+            });
+
+            fileList.innerHTML = html;
+
+            // 更新统计信息
+            const totalChars = knowledgeFiles.reduce((sum, file) => sum + file.content.length, 0);
+            stats.textContent = `总计 ${totalChars.toLocaleString()} 字符`;
+        }
+
+        function removeFile(fileId) {
+            knowledgeFiles = knowledgeFiles.filter(f => f.id !== fileId);
+            updateFileList();
+        }
+
+        function clearAllFiles() {
+            if (confirm('确定要清空所有文件吗？')) {
+                knowledgeFiles = [];
+                updateFileList();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const chatMessages = document.getElementById('chatMessages');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // 添加用户消息
+            const userMsgHtml = `
+                <div class="message user-message">
+                    <strong>用户:</strong> ${message}
+                </div>
+            `;
+            chatMessages.innerHTML += userMsgHtml;
+
+            // 模拟AI响应
+            let aiResponse = '我收到了您的问题：' + message;
+            if (knowledgeFiles.length > 0) {
+                aiResponse += `\n\n基于您上传的 ${knowledgeFiles.length} 个知识库文件，我可以为您提供更准确的回答。`;
+                aiResponse += `\n\n知识库文件包括：${knowledgeFiles.map(f => f.name).join(', ')}`;
+            } else {
+                aiResponse += '\n\n请先上传一些知识库文件以便我更好地回答您的问题。';
+            }
+
+            setTimeout(() => {
+                const aiMsgHtml = `
+                    <div class="message ai-message">
+                        <strong>AI助手:</strong> ${aiResponse}
+                    </div>
+                `;
+                chatMessages.innerHTML += aiMsgHtml;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1000);
+
+            input.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 初始化
+        updateFileList();
+
+        // 支持回车发送
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
