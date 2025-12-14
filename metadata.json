@@ -1,0 +1,5 @@
+{
+  "name": "ExcelMind AI",
+  "description": "一款基于智谱AI的智能Excel处理工具。支持自然语言操作、公式生成、批量处理以及财务/审计专用的知识库问答。",
+  "requestFramePermissions": []
+}
