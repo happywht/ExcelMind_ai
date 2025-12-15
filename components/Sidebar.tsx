@@ -56,8 +56,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
 
       <div className="p-4 border-t border-slate-800">
         <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400">
-          <p className="mb-1 font-semibold text-slate-300">小技巧:</p>
-          在智能处理中试试“筛选收入大于 5000 的行”。
+          <p className="mb-1 font-semibold text-slate-300">使用帮助:</p>
+          如果使用碰到问题，请咨询老王。
         </div>
       </div>
     </div>

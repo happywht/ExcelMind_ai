@@ -23,10 +23,22 @@
    - 点击 "Create repository"
 
 4. **推送现有代码**:
+
+   由于 GitHub 已禁用密码认证，需要使用 Personal Access Token:
+
+   **步骤 A: 创建 Personal Access Token**
+   - 访问: https://github.com/settings/tokens
+   - 点击 "Generate new token" -> "Generate new token (classic)"
+   - 勾选 "repo" 权限
+   - 生成 token 并复制（注意：token 只显示一次）
+
+   **步骤 B: 推送代码**
    ```bash
    cd "D:\家庭\青聪赋能\excelmind-ai"
    git push -u origin master
    ```
+   - 当提示输入用户名时，输入: `776815438@qq.com`
+   - 当提示输入密码时，输入: `你的Personal Access Token`
 
 ### 方法 2: 使用 GitHub CLI（需要先登录）
 
