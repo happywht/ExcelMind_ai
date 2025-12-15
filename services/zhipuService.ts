@@ -272,7 +272,7 @@ export const generateDataProcessingCode = async (
 
       **重要输出要求**:
       - 必须输出纯净的JSON格式，不要包含任何Markdown标记
-      - 不要使用 ```json 或 ``` 标记
+      - 不要使用反引号json或反引号标记
       - 直接输出JSON对象，格式如下：
 
       {"explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。", "code": "你的 JavaScript 代码字符串"}
