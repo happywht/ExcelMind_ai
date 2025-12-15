@@ -269,6 +269,9 @@ export const generateDataProcessingCode = async (
       - 代码必须以 \`return files;\` 结尾
       - 如果创建新文件，格式必须为: \`files['新文件名.xlsx'] = newData;\`
       - 确保处理后的数据是数组格式
+      - **重要**: 不要使用反引号 (\`) 或模板字符串语法
+      - 使用普通引号 ("" 或 '') 而非模板字符串
+      - 避免在字符串中使用未转义的特殊字符
 
       **重要输出要求**:
       - 必须输出纯净的JSON格式，不要包含任何Markdown标记

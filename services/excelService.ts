@@ -52,24 +52,47 @@ export const executeTransformation = async (
   datasets: { [fileName: string]: any[] }
 ): Promise<{ [fileName: string]: any[] }> => {
   return new Promise((resolve, reject) => {
-    // 1. Create the worker script content
+    // 1. Clean and validate the code before creating worker
+    const cleanCode = code
+      .replace(/`/g, '\\`')  // 转义反引号
+      .replace(/\\n/g, '\n')  // 处理换行符
+      .trim();
+
+    // 2. Basic syntax validation
+    try {
+      new Function(cleanCode);
+    } catch (syntaxError) {
+      reject(new Error(`代码语法错误: ${syntaxError.message}`));
+      return;
+    }
+
+    // 3. Create the worker script content
     const workerScript = `
       self.onmessage = function(e) {
         const { code, datasets } = e.data;
         try {
           // Deep clone the data to simulate a fresh environment and prevent reference leaks
-          // structuredClone is available in modern browsers/workers
           const files = structuredClone(datasets);
 
-          // Wrap the user's code in a function with better error handling
-          // The code is expected to be a function body that manipulates 'files' and returns it.
+          // Validate that we have files object
+          if (!files || typeof files !== 'object') {
+            throw new Error('Invalid files data provided to worker');
+          }
+
+          // Create transformation function with proper error handling
           const transformFn = new Function('files', \`
             try {
+              // 用户代码开始
               ${code}
-              // 确保始终返回files对象
-              return files || {};
+              // 用户代码结束
+
+              // 确保返回files对象
+              if (!files) {
+                throw new Error('代码未返回files对象');
+              }
+              return files;
             } catch (e) {
-              throw new Error('Code execution error: ' + e.message);
+              throw new Error('执行错误: ' + e.message + ' (行号: ' + (e.lineNumber || '未知') + ')');
             }
           \`);
 
