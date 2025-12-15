@@ -270,11 +270,12 @@ export const generateDataProcessingCode = async (
       - 如果创建新文件，格式必须为: \`files['新文件名.xlsx'] = newData;\`
       - 确保处理后的数据是数组格式
 
-      **输出格式 (JSON)**:
-      {
-        "explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。",
-        "code": "你的 JavaScript 代码字符串"
-      }
+      **重要输出要求**:
+      - 必须输出纯净的JSON格式，不要包含任何Markdown标记
+      - 不要使用 ```json 或 ``` 标记
+      - 直接输出JSON对象，格式如下：
+
+      {"explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。", "code": "你的 JavaScript 代码字符串"}
     `;
 
     const response = await client.messages.create({
@@ -289,16 +290,76 @@ export const generateDataProcessingCode = async (
     const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
     if (!text) throw new Error("No response from AI");
 
-    // 尝试解析JSON响应
+    // 清理和解析JSON响应
     let result: AIProcessResult;
     try {
-      result = JSON.parse(text);
+      // 1. 移除可能的代码块标记
+      let cleanText = text.trim();
+
+      // 2. 处理 ```json ... ``` 格式
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+      }
+      // 3. 处理 ``` ... ``` 格式
+      else if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```\s*/, '').replace(/```\s*$/, '');
+      }
+
+      // 4. 查找JSON对象开始和结束位置
+      const jsonStart = cleanText.indexOf('{');
+      const jsonEnd = cleanText.lastIndexOf('}');
+
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+
+      // 5. 解析JSON
+      result = JSON.parse(cleanText);
+
     } catch (parseError) {
-      // 如果解析失败，创建一个基本响应
-      result = {
-        explanation: "AI 响应格式解析失败，原始响应：" + text,
-        code: "// AI 响应解析失败，请重试"
-      };
+      console.warn('JSON解析失败，尝试从文本中提取内容:', parseError);
+
+      // 尝试手动解析
+      try {
+        let explanation = '';
+        let code = '';
+
+        // 提取 explanation
+        const expMatch = text.match(/"explanation"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+        if (expMatch) {
+          explanation = expMatch[1].replace(/\\"/g, '"');
+        } else {
+          // 如果找不到格式化的explanation，使用前几行作为解释
+          const lines = text.split('\n').filter(line => line.trim());
+          explanation = lines.slice(0, 3).join(' ').substring(0, 200);
+        }
+
+        // 提取 code
+        const codeMatch = text.match(/"code"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+        if (codeMatch) {
+          code = codeMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+        } else {
+          // 如果找不到格式化的code，尝试提取代码块
+          const codeBlockMatch = text.match(/```(?:javascript|js)?\s*\n([\s\S]*?)\n```/);
+          if (codeBlockMatch) {
+            code = codeBlockMatch[1];
+          } else {
+            code = "// AI 响应解析失败，请重试";
+          }
+        }
+
+        result = {
+          explanation: explanation || "AI 响应格式解析失败，原始响应：" + text.substring(0, 200) + "...",
+          code: code
+        };
+
+      } catch (manualParseError) {
+        // 如果手动解析也失败，创建基本响应
+        result = {
+          explanation: "AI 响应格式解析失败，原始响应：" + text.substring(0, 200) + "...",
+          code: "// AI 响应解析失败，请重试"
+        };
+      }
     }
 
     return result;
