@@ -3,6 +3,7 @@ export enum AppView {
   SMART_OPS = 'SMART_OPS',
   FORMULA = 'FORMULA',
   KNOWLEDGE_CHAT = 'KNOWLEDGE_CHAT',
+  DOCUMENT_SPACE = 'DOCUMENT_SPACE', // 新增：文档空间
 }
 
 export interface ChatMessage {

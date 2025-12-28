@@ -1,10 +1,11 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  FileSpreadsheet, 
-  FunctionSquare, 
-  MessageSquareText, 
-  Bot 
+import {
+  LayoutDashboard,
+  FileSpreadsheet,
+  FunctionSquare,
+  MessageSquareText,
+  Bot,
+  FileEdit
 } from 'lucide-react';
 import { AppView } from '../types';
 
@@ -19,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
     { id: AppView.SMART_OPS, label: '智能处理', icon: FileSpreadsheet },
     { id: AppView.FORMULA, label: '公式生成器', icon: FunctionSquare },
     { id: AppView.KNOWLEDGE_CHAT, label: '审计助手', icon: MessageSquareText },
+    { id: AppView.DOCUMENT_SPACE, label: '文档空间', icon: FileEdit },
   ];
 
   return (
