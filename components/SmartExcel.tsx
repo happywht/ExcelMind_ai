@@ -50,7 +50,9 @@ export const SmartExcel: React.FC = () => {
         const data = f.sheets[f.currentSheetName] || [];
         const headers = data.length > 0 ? Object.keys(data[0]) : [];
         const sampleRows = data.slice(0, 5); // Take top 5 rows as samples
-        return { fileName: f.fileName, headers, sampleRows };
+        // 添加元数据信息，包括注释和标注
+        const metadata = f.metadata ? f.metadata[f.currentSheetName] : undefined;
+        return { fileName: f.fileName, headers, sampleRows, metadata };
       });
 
       // 2. Generate Code Plan (The "Think" phase)

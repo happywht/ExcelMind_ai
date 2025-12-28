@@ -16,6 +16,14 @@ export interface ExcelData {
   fileName: string;
   sheets: { [sheetName: string]: any[] }; // Array of objects
   currentSheetName: string;
+  metadata?: {
+    [sheetName: string]: {
+      comments: { [cellAddress: string]: string }; // 单元格注释
+      notes?: { [cellAddress: string]: string }; // 单元格标注
+      rowCount: number;
+      columnCount: number;
+    }
+  };
 }
 
 export interface ProcessingLog {

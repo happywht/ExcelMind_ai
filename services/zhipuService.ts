@@ -221,21 +221,49 @@ export const chatWithKnowledgeBase = async (
  */
 export const generateDataProcessingCode = async (
   userPrompt: string,
-  filesPreview: { fileName: string; headers: string[]; sampleRows: any[] }[]
+  filesPreview: { fileName: string; headers: string[]; sampleRows: any[]; metadata?: any }[]
 ): Promise<AIProcessResult> => {
   try {
     // Construct a rich observation context
-    const fileObservationStr = filesPreview.map(f =>
-      `--- FILE: "${f.fileName}" ---
-       HEADERS: ${JSON.stringify(f.headers)}
-       SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS):
-       ${JSON.stringify(f.sampleRows)}
-       `
-    ).join('\n\n');
+    const fileObservationStr = filesPreview.map(f => {
+      let context = `--- FILE: "${f.fileName}" ---\n`;
+      context += `HEADERS: ${JSON.stringify(f.headers)}\n`;
+      context += `SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS):\n${JSON.stringify(f.sampleRows)}\n`;
+
+      // 添加元数据信息（注释和标注）- 这些在审计中很重要！
+      if (f.metadata && f.metadata.comments && Object.keys(f.metadata.comments).length > 0) {
+        const commentEntries = Object.entries(f.metadata.comments);
+        context += `\n📝 单元格注释 (${commentEntries.length}个) - 重要审计信息:\n`;
+        commentEntries.slice(0, 10).forEach(([cell, text]) => {
+          context += `  ${cell}: ${text}\n`;
+        });
+        if (commentEntries.length > 10) {
+          context += `  ... 还有 ${commentEntries.length - 10} 个注释\n`;
+        }
+      }
+
+      if (f.metadata && f.metadata.notes && Object.keys(f.metadata.notes).length > 0) {
+        const noteEntries = Object.entries(f.metadata.notes);
+        context += `\n📌 单元格标注 (${noteEntries.length}个):\n`;
+        noteEntries.slice(0, 10).forEach(([cell, text]) => {
+          context += `  ${cell}: ${text}\n`;
+        });
+        if (noteEntries.length > 10) {
+          context += `  ... 还有 ${noteEntries.length - 10} 个标注\n`;
+        }
+      }
+
+      return context;
+    }).join('\n\n');
 
     const systemInstruction = `
-      你是一个高级数据处理智能体 (Data Engineer Agent)。你的运行环境是浏览器的 Web Worker (JavaScript)。
+      你是一个高级财务审计数据处理智能体。你的运行环境是浏览器的 Web Worker (JavaScript)。
       你需要执行 [Observe - Think - Action] 的循环来处理用户任务。
+
+      **特别注意**: 单元格注释和标注是审计工作的重要信息源！
+      - 注释可能包含：审批意见、数据来源、异常说明、计算依据等
+      - 标注可能包含：重要提醒、风险提示、合规说明等
+      - 在处理数据时，务必考虑这些元数据信息
 
       **Phase 1: OBSERVE (观察)**
       你拥有以下文件的样本数据。请仔细阅读样本数据的内容，而不仅仅是列头。

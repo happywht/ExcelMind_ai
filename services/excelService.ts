@@ -8,22 +8,72 @@ export const readExcelFile = async (file: File): Promise<ExcelData> => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        
+
         const sheets: { [key: string]: any[] } = {};
+        const metadata: { [sheetName: string]: {
+          comments: { [cellAddress: string]: string };
+          notes?: { [cellAddress: string]: string };
+          rowCount: number;
+          columnCount: number;
+        }} = {};
         let firstSheetName = '';
 
         workbook.SheetNames.forEach((name, index) => {
           if (index === 0) firstSheetName = name;
           const worksheet = workbook.Sheets[name];
+
+          // 读取主要数据
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
           sheets[name] = jsonData;
+
+          // 提取元数据：注释和标注
+          const comments: { [cellAddress: string]: string } = {};
+          const notes: { [cellAddress: string]: string } = {};
+
+          // 遍历工作表中的所有单元格
+          for (const cellAddress in worksheet) {
+            if (cellAddress.startsWith('!')) continue; // 跳过元数据字段
+
+            const cell = worksheet[cellAddress];
+
+            // 提取单元格注释
+            if (cell.c) {
+              // cell.c 是注释对象数组
+              cell.c.forEach((comment: any) => {
+                if (comment.a && comment.t) {
+                  // comment.a 是作者，comment.t 是文本
+                  const commentText = comment.t;
+                  const author = comment.a || '';
+                  comments[cellAddress] = author ? `[${author}]: ${commentText}` : commentText;
+                }
+              });
+            }
+
+            // 提取单元格标注 (Note)
+            if (cell.n) {
+              notes[cellAddress] = cell.n;
+            }
+          }
+
+          // 计算行列数
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+          const rowCount = range.e.r + 1; // 结束行号 + 1
+          const columnCount = range.e.c + 1; // 结束列号 + 1
+
+          metadata[name] = {
+            comments,
+            notes,
+            rowCount,
+            columnCount
+          };
         });
 
         resolve({
           id: file.name + '-' + Date.now(),
           fileName: file.name,
           sheets,
-          currentSheetName: firstSheetName
+          currentSheetName: firstSheetName,
+          metadata
         });
       } catch (err) {
         reject(err);
