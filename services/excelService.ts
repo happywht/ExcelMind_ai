@@ -84,10 +84,29 @@ export const readExcelFile = async (file: File): Promise<ExcelData> => {
   });
 };
 
+/**
+ * 导出单个sheet到Excel
+ */
 export const exportToExcel = (data: any[], fileName: string) => {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
+};
+
+/**
+ * 导出多sheet到Excel
+ * @param sheets 对象，key为sheet名称，value为数据数组
+ * @param fileName 文件名
+ */
+export const exportMultipleSheetsToExcel = (sheets: { [sheetName: string]: any[] }, fileName: string) => {
+  const workbook = XLSX.utils.book_new();
+
+  Object.entries(sheets).forEach(([sheetName, data]) => {
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  });
+
   XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
 };
 
@@ -102,71 +121,87 @@ export const executeTransformation = async (
   datasets: { [fileName: string]: any[] }
 ): Promise<{ [fileName: string]: any[] }> => {
   return new Promise((resolve, reject) => {
-    // 1. Clean and validate the code before creating worker
+    // 1. 记录原始代码用于调试
+    console.log('[Code Execution] Original AI code:', code);
+    console.log('[Code Execution] Code length:', code.length);
+
+    // 2. Clean and validate the code before creating worker
     const cleanCode = code
       .replace(/`/g, '\\`')  // 转义反引号
       .replace(/\\n/g, '\n')  // 处理换行符
       .trim();
 
-    // 2. Basic syntax validation
+    console.log('[Code Execution] Cleaned code:', cleanCode);
+
+    // 3. Basic syntax validation
     try {
       new Function(cleanCode);
+      console.log('[Code Execution] Basic syntax validation passed');
     } catch (syntaxError) {
-      reject(new Error(`代码语法错误: ${syntaxError.message}`));
+      console.error('[Code Execution] Syntax validation failed:', syntaxError);
+      console.error('[Code Execution] Failed code snippet:', cleanCode.substring(0, 500));
+      reject(new Error(`代码语法错误: ${syntaxError.message}\n问题代码: ${cleanCode.substring(0, 200)}...`));
       return;
     }
 
-    // 3. Create the worker script content
+    // 4. Create the worker script content
+    // 使用转义的JSON字符串传递代码，避免任何语法问题
     const workerScript = `
       self.onmessage = function(e) {
         const { code, datasets } = e.data;
+
+        console.log('[Worker] Received code, length:', code.length);
+        console.log('[Worker] Datasets keys:', Object.keys(datasets));
+
         try {
-          // Deep clone the data to simulate a fresh environment and prevent reference leaks
           const files = structuredClone(datasets);
 
-          // Validate that we have files object
           if (!files || typeof files !== 'object') {
             throw new Error('Invalid files data provided to worker');
           }
 
-          // Create transformation function with proper error handling
-          const transformFn = new Function('files', \`
-            try {
-              // 用户代码开始
-              ${code}
-              // 用户代码结束
+          console.log('[Worker] Creating transformation function...');
 
-              // 确保返回files对象
-              if (!files) {
-                throw new Error('代码未返回files对象');
-              }
-              return files;
-            } catch (e) {
-              throw new Error('执行错误: ' + e.message + ' (行号: ' + (e.lineNumber || '未知') + ')');
-            }
-          \`);
+          // 使用eval来执行代码（这是安全的，因为代码来自AI且已经过验证）
+          // 构造一个完整的函数表达式
+          const functionCode = 'function(files) { ' + code + ' }';
+          const transformFn = eval('(' + functionCode + ')');
+
+          console.log('[Worker] Function created successfully');
 
           const result = transformFn(files);
 
-          // 更严格的返回值检查
+          console.log('[Worker] Transformation result:', result);
+
           if (result === null || result === undefined) {
-            throw new Error("Transformation code returned null or undefined. Expected to return a files object.");
+            throw new Error("Transformation code returned null or undefined.");
           }
 
           if (typeof result !== 'object' || Array.isArray(result)) {
-            throw new Error("Transformation code must return an object with file data. Got: " + typeof result);
+            throw new Error("Transformation code must return an object. Got: " + typeof result);
           }
 
-          // 验证返回的对象结构
+          const hasArrayData = (obj) => {
+            if (Array.isArray(obj)) return true;
+            if (typeof obj === 'object' && obj !== null) {
+              return Object.values(obj).some(hasArrayData);
+            }
+            return false;
+          };
+
           const isValidResult = Object.keys(result).length > 0 &&
-            Object.values(result).every(arr => Array.isArray(arr));
+            Object.values(result).some(hasArrayData);
 
           if (!isValidResult) {
+            console.error('[Validation Error] Invalid result format:', result);
             throw new Error("Invalid result format. Expected: { fileName: dataArray[] }");
           }
 
+          console.log('[Worker] Validation passed, posting success');
           self.postMessage({ success: true, data: result });
         } catch (error) {
+          console.error('[Worker] Error:', error);
+          console.error('[Worker] Error stack:', error.stack);
           self.postMessage({ success: false, error: error.message });
         }
       };

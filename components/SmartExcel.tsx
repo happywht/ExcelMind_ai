@@ -1,23 +1,37 @@
-import React, { useState, useRef } from 'react';
-import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square } from 'lucide-react';
-import { readExcelFile, exportToExcel, executeTransformation } from '../services/excelService';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download } from 'lucide-react';
+import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel, executeTransformation } from '../services/excelService';
 import { generateDataProcessingCode } from '../services/zhipuService';
 import { ExcelData, ProcessingLog } from '../types';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import { SAMPLING_CONFIG } from '../config/samplingConfig';
 
 export const SmartExcel: React.FC = () => {
   const [filesData, setFilesData] = useState<ExcelData[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [activeSheetName, setActiveSheetName] = useState<string>('');
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
-  
+
   const [command, setCommand] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 当activeFileId改变时，设置activeSheetName为该文件的第一个sheet
+  useEffect(() => {
+    if (activeFileId) {
+      const activeFile = filesData.find(f => f.id === activeFileId);
+      if (activeFile && !activeSheetName) {
+        setActiveSheetName(activeFile.currentSheetName);
+      }
+    } else {
+      setActiveSheetName('');
+    }
+  }, [activeFileId, filesData]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -33,6 +47,7 @@ export const SmartExcel: React.FC = () => {
       setFilesData(prev => [...prev, ...newFiles]);
       if (!activeFileId && newFiles.length > 0) {
         setActiveFileId(newFiles[0].id);
+        setActiveSheetName(newFiles[0].currentSheetName);
       }
     }
   };
@@ -40,36 +55,80 @@ export const SmartExcel: React.FC = () => {
   const handleRun = async () => {
     if (filesData.length === 0 || !command.trim()) return;
     setIsProcessing(true);
-    setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'pending', message: '正在启动智能分析循环 (Observe-Think-Action)...' }, ...prev]);
+    setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'pending', message: '正在启动智能分析循环 (Observe-Think-Action)...' }, ...prev]);
     setLastGeneratedCode('');
 
     try {
       // 1. Prepare Metadata with Samples (The "Observe" phase context)
-      // We send headers AND the first 5 rows of data so the AI can infer column meanings by content.
+      // We send headers AND sample rows so the AI can infer column meanings by content.
+      // ENHANCED: Now supports multi-sheet data transmission
       const filesPreview = filesData.map(f => {
-        const data = f.sheets[f.currentSheetName] || [];
-        const headers = data.length > 0 ? Object.keys(data[0]) : [];
-        const sampleRows = data.slice(0, 5); // Take top 5 rows as samples
-        // 添加元数据信息，包括注释和标注
-        const metadata = f.metadata ? f.metadata[f.currentSheetName] : undefined;
-        return { fileName: f.fileName, headers, sampleRows, metadata };
+        // 收集所有sheets的信息
+        const sheetsInfo: Record<string, {
+          headers: string[];
+          sampleRows: any[];
+          rowCount: number;
+          metadata?: any;
+        }> = {};
+
+        Object.entries(f.sheets).forEach(([sheetName, data]) => {
+          const headers = data.length > 0 ? Object.keys(data[0]) : [];
+          const sampleRows = data.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
+          const metadata = f.metadata ? f.metadata[sheetName] : undefined;
+
+          sheetsInfo[sheetName] = {
+            headers,
+            sampleRows,
+            rowCount: data.length,
+            metadata
+          };
+        });
+
+        // 当前sheet的详细信息（向后兼容）
+        const currentData = f.sheets[f.currentSheetName] || [];
+        const currentHeaders = currentData.length > 0 ? Object.keys(currentData[0]) : [];
+        const currentSampleRows = currentData.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
+        const currentMetadata = f.metadata ? f.metadata[f.currentSheetName] : undefined;
+
+        return {
+          fileName: f.fileName,
+          currentSheetName: f.currentSheetName,
+          // 当前sheet详细信息（向后兼容）
+          headers: currentHeaders,
+          sampleRows: currentSampleRows,
+          metadata: currentMetadata,
+          // 所有sheets信息（新增）
+          sheets: sheetsInfo,
+          sheetNames: Object.keys(f.sheets)
+        };
       });
 
       // 2. Generate Code Plan (The "Think" phase)
-      setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'pending', message: 'AI 正在观察样本数据并规划逻辑...' }, ...prev]);
+      setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'pending', message: 'AI 正在观察样本数据并规划逻辑...' }, ...prev]);
       
       const { code, explanation } = await generateDataProcessingCode(command, filesPreview);
       setLastGeneratedCode(code);
       
       setLogs(prev => [
-        { id: Date.now().toString(), fileName: 'AI', status: 'success', message: `逻辑规划: ${explanation}` },
+        { id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'AI', status: 'success', message: `逻辑规划: ${explanation}` },
         ...prev
       ]);
 
       // 3. Prepare Data Map for Execution
-      const datasets: { [fileName: string]: any[] } = {};
+      // ENHANCED: Now supports multi-sheet data structure
+      const datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } } = {};
       filesData.forEach(f => {
-        datasets[f.fileName] = f.sheets[f.currentSheetName] || [];
+        const sheetNames = Object.keys(f.sheets);
+        if (sheetNames.length === 1) {
+          // 单sheet：使用数组格式（向后兼容）
+          datasets[f.fileName] = f.sheets[f.currentSheetName] || [];
+        } else {
+          // 多sheet：使用对象格式，包含所有sheets
+          datasets[f.fileName] = {};
+          sheetNames.forEach(sheetName => {
+            (datasets[f.fileName] as { [sheetName: string]: any[] })[sheetName] = f.sheets[sheetName];
+          });
+        }
       });
 
       // 4. Execute Code (The "Action" phase)
@@ -89,7 +148,34 @@ export const SmartExcel: React.FC = () => {
       let processedFiles = 0;
 
       Object.entries(resultDatasets).forEach(([fileName, data]) => {
-        if (Array.isArray(data)) {
+        // 处理多sheet结果（对象格式）
+        if (typeof data === 'object' && !Array.isArray(data)) {
+          const sheetsData = data as { [sheetName: string]: any[] };
+          const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+
+          if (existingIndex >= 0) {
+            // 更新现有文件的所有sheets
+            const f = updatedFilesData[existingIndex];
+            Object.entries(sheetsData).forEach(([sheetName, sheetData]) => {
+              if (Array.isArray(sheetData)) {
+                f.sheets[sheetName] = sheetData;
+              }
+            });
+            processedFiles++;
+          } else {
+            // 创建新的多sheet文件
+            const firstSheetName = Object.keys(sheetsData)[0];
+            updatedFilesData.push({
+              id: fileName + '-' + Date.now(),
+              fileName: fileName,
+              sheets: sheetsData,
+              currentSheetName: firstSheetName
+            });
+            processedFiles++;
+          }
+        }
+        // 处理单sheet结果（数组格式）- 向后兼容
+        else if (Array.isArray(data)) {
           const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
           if (existingIndex >= 0) {
             const f = updatedFilesData[existingIndex];
@@ -105,7 +191,7 @@ export const SmartExcel: React.FC = () => {
             processedFiles++;
           }
         } else {
-          console.warn('跳过非数组数据:', fileName, typeof data);
+          console.warn('跳过无效数据:', fileName, typeof data);
         }
       });
 
@@ -115,14 +201,14 @@ export const SmartExcel: React.FC = () => {
 
       setFilesData(updatedFilesData);
       setLogs(prev => [{
-        id: Date.now().toString(),
+        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         fileName: 'System',
         status: 'success',
         message: `执行完成。处理了 ${processedFiles} 个文件。`
       }, ...prev]);
 
     } catch (e: any) {
-      setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'error', message: e.message }]);
+      setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'error', message: e.message }]);
     } finally {
       setIsProcessing(false);
     }
@@ -136,7 +222,16 @@ export const SmartExcel: React.FC = () => {
       next.delete(id);
       return next;
     });
-    if (activeFileId === id) setActiveFileId(null);
+    if (activeFileId === id) {
+      setActiveFileId(null);
+      setActiveSheetName('');
+    }
+  };
+
+  // 下载单个文件（所有sheets）
+  const downloadSingleFile = (file: ExcelData, e: React.MouseEvent) => {
+    e.stopPropagation();
+    exportMultipleSheetsToExcel(file.sheets, file.fileName);
   };
 
   const toggleSelection = (id: string, e: React.MouseEvent) => {
@@ -166,17 +261,19 @@ export const SmartExcel: React.FC = () => {
 
     filesData.forEach(file => {
       if (selectedFileIds.has(file.id)) {
-        const data = file.sheets[file.currentSheetName];
-        const worksheet = XLSX.utils.json_to_sheet(data);
+        // 为每个sheet创建worksheet
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-        
+        Object.entries(file.sheets).forEach(([sheetName, data]) => {
+          const worksheet = XLSX.utils.json_to_sheet(data);
+          XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        });
+
         // Generate buffer
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        
+
         let fileName = file.fileName;
         if (!fileName.endsWith('.xlsx')) fileName += '.xlsx';
-        
+
         zip.file(fileName, excelBuffer);
         count++;
       }
@@ -191,17 +288,17 @@ export const SmartExcel: React.FC = () => {
         a.download = `excelmind_batch_export_${Date.now()}.zip`;
         a.click();
         window.URL.revokeObjectURL(url);
-        setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'success', message: `成功打包并下载 ${count} 个文件。` }, ...prev]);
+        setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'success', message: `成功打包并下载 ${count} 个文件。` }, ...prev]);
       } catch (e) {
         console.error(e);
-        setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'error', message: '打包失败。' }, ...prev]);
+        setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'error', message: '打包失败。' }, ...prev]);
       }
     }
     setIsProcessing(false);
   };
 
   const activeFile = filesData.find(f => f.id === activeFileId);
-  const activeSheetData = activeFile ? activeFile.sheets[activeFile.currentSheetName] : null;
+  const activeSheetData = activeFile && activeSheetName ? activeFile.sheets[activeSheetName] : null;
 
   return (
     <div className="h-full flex flex-col bg-slate-50">
@@ -289,12 +386,25 @@ export const SmartExcel: React.FC = () => {
                        </div>
                        <div className="truncate">
                          <p className={`text-sm font-medium truncate ${activeFileId === f.id ? 'text-slate-800' : 'text-slate-600'}`}>{f.fileName}</p>
-                         <p className="text-xs text-slate-400">{f.sheets[f.currentSheetName]?.length || 0} 行</p>
+                         <p className="text-xs text-slate-400">{Object.keys(f.sheets).length} 个工作表</p>
                        </div>
                      </div>
-                     <button onClick={(e) => removeFile(f.id, e)} className="text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                       <Trash2 className="w-4 h-4" />
-                     </button>
+                     <div className="flex items-center gap-1">
+                       <button
+                         onClick={(e) => downloadSingleFile(f, e)}
+                         className="text-slate-300 hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                         title="下载文件"
+                       >
+                         <Download className="w-4 h-4" />
+                       </button>
+                       <button
+                         onClick={(e) => removeFile(f.id, e)}
+                         className="text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                         title="删除文件"
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </button>
+                     </div>
                    </li>
                  ))}
                </ul>
@@ -365,13 +475,28 @@ export const SmartExcel: React.FC = () => {
                <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white">
                  <div className="flex items-center gap-2">
                    <h3 className="font-bold text-slate-700">{activeFile.fileName}</h3>
-                   <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{activeFile.currentSheetName}</span>
+                   {Object.keys(activeFile.sheets).length > 1 && (
+                     <select
+                       value={activeSheetName}
+                       onChange={(e) => setActiveSheetName(e.target.value)}
+                       className="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
+                     >
+                       {Object.keys(activeFile.sheets).map(sheetName => (
+                         <option key={sheetName} value={sheetName}>{sheetName}</option>
+                       ))}
+                     </select>
+                   )}
+                   {Object.keys(activeFile.sheets).length === 1 && (
+                     <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{activeSheetName}</span>
+                   )}
+                   <span className="text-xs text-slate-400">({activeSheetData.length} 行)</span>
                  </div>
-                 <button 
-                   onClick={() => exportToExcel(activeSheetData, activeFile.fileName)}
+                 <button
+                   onClick={() => exportMultipleSheetsToExcel(activeFile.sheets, activeFile.fileName)}
                    className="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
+                   title="导出所有工作表"
                  >
-                   <FileDown className="w-3.5 h-3.5" /> 导出文件
+                   <FileDown className="w-3.5 h-3.5" /> 导出文件 {Object.keys(activeFile.sheets).length > 1 && `(${Object.keys(activeFile.sheets).length}个工作表)`}
                  </button>
                </div>
 

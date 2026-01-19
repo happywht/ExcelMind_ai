@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AIProcessResult } from '../types';
+import { SAMPLING_CONFIG } from '../config/samplingConfig';
 
 // 配置智谱AI
 const client = new Anthropic({
@@ -216,40 +217,147 @@ export const chatWithKnowledgeBase = async (
 };
 
 /**
+ * 清理AI生成的代码，移除常见语法错误
+ * 主要处理：
+ * 1. TypeScript类型注解 (例如: const x: string = "...")
+ * 2. 带类型的解构 (例如: const {a, b}: SomeType = obj)
+ * 3. 类型导入语句
+ * 4. 其他不兼容Function构造器的语法
+ *
+ * ⚠️ 重要：保持正则表达式简单且安全，避免过度匹配导致代码损坏
+ */
+const sanitizeGeneratedCode = (code: string): string => {
+  let sanitized = code;
+
+  // 1. 移除类型导入语句
+  sanitized = sanitized.replace(/import\s+.*\s+from\s+['"][^'"]+['"];?\s*\n?/g, '');
+
+  // 2. 移除 interface/type 声明
+  sanitized = sanitized.replace(/(?:interface|type)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*{[^}]*};?\s*\n?/g, '');
+
+  // 3. 移除变量声明中的类型注解 - 只处理简单情况
+  // 匹配: const/let/var name: Type = value
+  // ⚠️ 保守匹配，避免误伤对象属性
+  sanitized = sanitized.replace(
+    /(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:\s*[a-zA-Z_$][a-zA-Z0-9_$<>[\]\s,]*\s*=/g,
+    '$1 $2 ='
+  );
+
+  // 4. 移除解构中的类型注解 - 保守匹配
+  sanitized = sanitized.replace(
+    /(const|let|var)\s+(\{[^}]+\}|\[[^\]]+\])\s*:\s*[a-zA-Z_$][a-zA-Z0-9_$<>[\]\s,]*\s*=/g,
+    '$1 $2 ='
+  );
+
+  // 5. 移除泛型语法 - 只处理明确的情况
+  // 匹配: Type<Args> 但避免匹配比较运算符 <
+  sanitized = sanitized.replace(
+    /\b([A-Z][a-zA-Z0-9_]*)<[^>{}]+>\s*(?=[=([])/g,
+    '$1'
+  );
+
+  return sanitized;
+};
+
+/**
  * Generates JavaScript code to transform the dataset based on user prompt.
  * Now supports 'Observe-Think-Action' loop by receiving sample data.
+ * ENHANCED: Now supports multi-sheet data processing
  */
 export const generateDataProcessingCode = async (
   userPrompt: string,
-  filesPreview: { fileName: string; headers: string[]; sampleRows: any[]; metadata?: any }[]
+  filesPreview: ({ fileName: string; headers: string[]; sampleRows: any[]; metadata?: any } & {
+    currentSheetName?: string;
+    sheets?: { [sheetName: string]: {
+      headers: string[];
+      sampleRows: any[];
+      rowCount: number;
+      metadata?: any;
+    }};
+  })[]
 ): Promise<AIProcessResult> => {
   try {
     // Construct a rich observation context
     const fileObservationStr = filesPreview.map(f => {
       let context = `--- FILE: "${f.fileName}" ---\n`;
-      context += `HEADERS: ${JSON.stringify(f.headers)}\n`;
-      context += `SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS):\n${JSON.stringify(f.sampleRows)}\n`;
 
-      // 添加元数据信息（注释和标注）- 这些在审计中很重要！
-      if (f.metadata && f.metadata.comments && Object.keys(f.metadata.comments).length > 0) {
-        const commentEntries = Object.entries(f.metadata.comments);
-        context += `\n📝 单元格注释 (${commentEntries.length}个) - 重要审计信息:\n`;
-        commentEntries.slice(0, 10).forEach(([cell, text]) => {
-          context += `  ${cell}: ${text}\n`;
+      // 检查是否有多sheet信息
+      if (f.sheets && Object.keys(f.sheets).length > 1) {
+        context += `📊 MULTIPLE SHEETS DETECTED (${Object.keys(f.sheets).length} sheets):\n`;
+
+        // 列出所有sheets的基本信息
+        Object.entries(f.sheets).forEach(([sheetName, sheetInfo]) => {
+          const isCurrentSheet = sheetName === f.currentSheetName;
+          context += `  ${isCurrentSheet ? '→' : ' '} Sheet "${sheetName}": ${sheetInfo.rowCount} rows, columns: ${sheetInfo.headers.join(', ')}\n`;
         });
-        if (commentEntries.length > 10) {
-          context += `  ... 还有 ${commentEntries.length - 10} 个注释\n`;
+
+        context += `\n`;
+
+        // 显示当前活动sheet的详细数据
+        const currentSheetInfo = f.sheets[f.currentSheetName || ''];
+        if (currentSheetInfo) {
+          context += `📄 CURRENT SHEET: "${f.currentSheetName}"\n`;
+          context += `HEADERS: ${JSON.stringify(currentSheetInfo.headers)}\n`;
+          context += `SAMPLE DATA (Top 5 rows):\n${JSON.stringify(currentSheetInfo.sampleRows)}\n\n`;
+
+          // 添加元数据信息（注释和标注）
+          if (currentSheetInfo.metadata && currentSheetInfo.metadata.comments && Object.keys(currentSheetInfo.metadata.comments).length > 0) {
+            const commentEntries = Object.entries(currentSheetInfo.metadata.comments);
+            context += `📝 单元格注释 (${commentEntries.length}个) - 重要审计信息:\n`;
+            commentEntries.slice(0, SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT).forEach(([cell, text]) => {
+              context += `  ${cell}: ${text}\n`;
+            });
+            if (commentEntries.length > SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT) {
+              context += `  ... 还有 ${commentEntries.length - SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT} 个注释\n`;
+            }
+          }
+
+          if (currentSheetInfo.metadata && currentSheetInfo.metadata.notes && Object.keys(currentSheetInfo.metadata.notes).length > 0) {
+            const noteEntries = Object.entries(currentSheetInfo.metadata.notes);
+            context += `\n📌 单元格标注 (${noteEntries.length}个):\n`;
+            noteEntries.slice(0, SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT).forEach(([cell, text]) => {
+              context += `  ${cell}: ${text}\n`;
+            });
+            if (noteEntries.length > SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT) {
+              context += `  ... 还有 ${noteEntries.length - SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT} 个标注\n`;
+            }
+          }
         }
-      }
 
-      if (f.metadata && f.metadata.notes && Object.keys(f.metadata.notes).length > 0) {
-        const noteEntries = Object.entries(f.metadata.notes);
-        context += `\n📌 单元格标注 (${noteEntries.length}个):\n`;
-        noteEntries.slice(0, 10).forEach(([cell, text]) => {
-          context += `  ${cell}: ${text}\n`;
+        // 显示其他sheets的样本数据
+        Object.entries(f.sheets).forEach(([sheetName, sheetInfo]) => {
+          if (sheetName !== f.currentSheetName) {
+            context += `\n📄 SHEET: "${sheetName}"\n`;
+            context += `HEADERS: ${JSON.stringify(sheetInfo.headers)}\n`;
+            context += `SAMPLE DATA (Top 5 rows):\n${JSON.stringify(sheetInfo.sampleRows)}\n`;
+          }
         });
-        if (noteEntries.length > 10) {
-          context += `  ... 还有 ${noteEntries.length - 10} 个标注\n`;
+      } else {
+        // 单sheet模式（向后兼容）
+        context += `HEADERS: ${JSON.stringify(f.headers)}\n`;
+        context += `SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS):\n${JSON.stringify(f.sampleRows)}\n`;
+
+        // 添加元数据信息（注释和标注）
+        if (f.metadata && f.metadata.comments && Object.keys(f.metadata.comments).length > 0) {
+          const commentEntries = Object.entries(f.metadata.comments);
+          context += `\n📝 单元格注释 (${commentEntries.length}个) - 重要审计信息:\n`;
+          commentEntries.slice(0, SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT).forEach(([cell, text]) => {
+            context += `  ${cell}: ${text}\n`;
+          });
+          if (commentEntries.length > SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT) {
+            context += `  ... 还有 ${commentEntries.length - SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT} 个注释\n`;
+          }
+        }
+
+        if (f.metadata && f.metadata.notes && Object.keys(f.metadata.notes).length > 0) {
+          const noteEntries = Object.entries(f.metadata.notes);
+          context += `\n📌 单元格标注 (${noteEntries.length}个):\n`;
+          noteEntries.slice(0, SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT).forEach(([cell, text]) => {
+            context += `  ${cell}: ${text}\n`;
+          });
+          if (noteEntries.length > SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT) {
+            context += `  ... 还有 ${noteEntries.length - SAMPLING_CONFIG.METADATA_EXTRACTION.DISPLAY_LIMIT} 个标注\n`;
+          }
         }
       }
 
@@ -265,6 +373,14 @@ export const generateDataProcessingCode = async (
       - 标注可能包含：重要提醒、风险提示、合规说明等
       - 在处理数据时，务必考虑这些元数据信息
 
+      **🆕 多Sheet支持**:
+      - 现在支持处理Excel文件中的多个sheets
+      - 当文件包含多个sheets时，\`files\` 变量的值将是对象而非数组
+      - 格式: \`files['文件名.xlsx'] = { "Sheet1": [...], "Sheet2": [...], ... }\`
+      - 当文件只有一个sheet时，格式保持不变: \`files['文件名.xlsx'] = [...]\`
+      - 你可以访问特定sheet的数据: \`files['文件名.xlsx']['Sheet2']\`
+      - 如果需要跨sheet操作，可以这样: \`const sheet1 = files['文件名.xlsx']['Sheet1'];\`
+
       **Phase 1: OBSERVE (观察)**
       你拥有以下文件的样本数据。请仔细阅读样本数据的内容，而不仅仅是列头。
       ${fileObservationStr}
@@ -276,30 +392,52 @@ export const generateDataProcessingCode = async (
          - *必须* 根据样本数据的内容来推断。例如：如果用户说"排除名单"，请在文件样本中寻找包含人名的那一列（可能是 "name", "姓名", "employee_id" 等）。
          - 如果需要跨文件匹配（例如 "File A 中的人名不在 File B 中"），请确保你找到了两个文件中内容格式一致的列（例如都是 "张三" 格式，而不是一个 "张三" 一个 "ID:123"）。
       3. 规划数据转换逻辑。
+      4. **多Sheet场景**: 如果用户提到"使用Sheet2"或"从另一个sheet"，注意识别和处理。
 
       **Phase 3: ACTION (行动/代码生成)**
       生成一段 JavaScript 代码来执行任务。
 
       **输入数据结构**:
-      变量 \`files\` 是一个对象。 Key 是文件名，Value 是数据数组。
-      例如: \`files['data.xlsx']\` 是一个对象数组。
+      变量 \`files\` 是一个对象。 Key 是文件名，Value 根据sheet数量而定：
+      - 单sheet: Value 是对象数组，例如 \`files['data.xlsx']\` 是一个对象数组
+      - 多sheet: Value 是包含所有sheets的对象，例如 \`files['data.xlsx'] = { "Sheet1": [...], "Sheet2": [...] }\`
 
       **代码编写规则**:
-      1. **Robust Matching**: 字符串比较时，建议使用 \`.toString().trim()\`, 甚至在必要时匹配前需要归一化。
-      2. **Direct Manipulation**: 直接修改 \`files\` 对象或添加新的 Key (新文件)。
-      3. **MUST RETURN**: 代码的最后一句必须是 \`return files;\`，确保返回修改后的数据。
-      4. **No External Libs**: 只能使用原生 JS (ES6+)。
-      5. **Safety**: 代码只包含函数体，不要包含 \`function() {}\` 包裹。
-      6. **Error Handling**: 在可能出错的地方使用 try-catch，但仍然要 return files。
-      7. **变量声明**: 使用 let/const 而不是 var。
+      1. **ONLY PLAIN JAVASCRIPT**: 严禁使用TypeScript语法！不要添加类型注解（: string, : number等）！
+      2. **Robust Matching**: 字符串比较时，建议使用 \`.toString().trim()\`, 甚至在必要时匹配前需要归一化。
+      3. **Direct Manipulation**: 直接修改 \`files\` 对象或添加新的 Key (新文件)。
+      4. **MUST RETURN**: 代码的最后一句必须是 \`return files;\`，确保返回修改后的数据。
+      5. **No External Libs**: 只能使用原生 JS (ES6+)。
+      6. **Safety**: 代码只包含函数体，不要包含 \`function() {}\` 包裹。
+      7. **Error Handling**: 在可能出错的地方使用 try-catch，但仍然要 return files。
+      8. **变量声明**: 使用 let/const 而不是 var。
+      9. **NO TYPES**: 不要使用任何TypeScript特性，包括：类型注解、interface、type、泛型< T >等。
+      10. **NO IMPORTS**: 不要使用import语句，所有功能必须用原生JS实现。
 
       **强制要求**:
       - 代码必须以 \`return files;\` 结尾
       - 如果创建新文件，格式必须为: \`files['新文件名.xlsx'] = newData;\`
-      - 确保处理后的数据是数组格式
+      - 确保处理后的数据是数组格式或对象格式（多sheet时）
       - **重要**: 不要使用反引号 (\`) 或模板字符串语法
       - 使用普通引号 ("" 或 '') 而非模板字符串
       - 避免在字符串中使用未转义的特殊字符
+
+      **多Sheet操作示例**:
+      // 访问特定sheet
+      const data = files['文件.xlsx']['Sheet2'];
+
+      // 跨sheet关联
+      const sheet1 = files['文件.xlsx']['Sheet1'];
+      const sheet2 = files['文件.xlsx']['Sheet2'];
+
+      // 更新特定sheet
+      files['文件.xlsx']['Sheet1'] = newData;
+
+      // 创建多sheet结果
+      files['结果.xlsx'] = {
+        '汇总': summaryData,
+        '明细': detailData
+      };
 
       **重要输出要求**:
       - 必须输出纯净的JSON格式，不要包含任何Markdown标记
@@ -308,6 +446,10 @@ export const generateDataProcessingCode = async (
 
       {"explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。", "code": "你的 JavaScript 代码字符串"}
     `;
+
+    console.log('[AI Service] Sending request to AI...');
+    console.log('[AI Service] User prompt:', userPrompt);
+    console.log('[AI Service] Files count:', filesPreview.length);
 
     const response = await client.messages.create({
       model: "glm-4.6",
@@ -320,6 +462,9 @@ export const generateDataProcessingCode = async (
 
     const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
     if (!text) throw new Error("No response from AI");
+
+    console.log('[AI Service] Raw AI response length:', text.length);
+    console.log('[AI Service] Raw AI response:', text);
 
     // 清理和解析JSON响应
     let result: AIProcessResult;
@@ -346,6 +491,15 @@ export const generateDataProcessingCode = async (
 
       // 5. 解析JSON
       result = JSON.parse(cleanText);
+
+      console.log('[AI Service] Parsed result explanation:', result.explanation);
+      console.log('[AI Service] Parsed result code length:', result.code?.length || 0);
+      console.log('[AI Service] Parsed result code (BEFORE cleanup):', result.code);
+
+      // 6. 清理代码中的语法问题
+      result.code = sanitizeGeneratedCode(result.code);
+
+      console.log('[AI Service] Parsed result code (AFTER cleanup):', result.code);
 
     } catch (parseError) {
       console.warn('JSON解析失败，尝试从文本中提取内容:', parseError);
@@ -378,6 +532,10 @@ export const generateDataProcessingCode = async (
             code = "// AI 响应解析失败，请重试";
           }
         }
+
+        // 清理代码中的语法问题
+        code = sanitizeGeneratedCode(code);
+        console.log('[AI Service] Manual parse - sanitized code:', code);
 
         result = {
           explanation: explanation || "AI 响应格式解析失败，原始响应：" + text.substring(0, 200) + "...",
