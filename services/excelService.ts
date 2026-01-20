@@ -10,12 +10,14 @@ export const readExcelFile = async (file: File): Promise<ExcelData> => {
         const workbook = XLSX.read(data, { type: 'binary' });
 
         const sheets: { [key: string]: any[] } = {};
-        const metadata: { [sheetName: string]: {
-          comments: { [cellAddress: string]: string };
-          notes?: { [cellAddress: string]: string };
-          rowCount: number;
-          columnCount: number;
-        }} = {};
+        const metadata: {
+          [sheetName: string]: {
+            comments: { [cellAddress: string]: string };
+            notes?: { [cellAddress: string]: string };
+            rowCount: number;
+            columnCount: number;
+          }
+        } = {};
         let firstSheetName = '';
 
         workbook.SheetNames.forEach((name, index) => {
@@ -118,7 +120,8 @@ export const exportMultipleSheetsToExcel = (sheets: { [sheetName: string]: any[]
  */
 export const executeTransformation = async (
   code: string,
-  datasets: { [fileName: string]: any[] }
+  datasets: { [fileName: string]: any[] },
+  timeoutMs: number = 30000 // Default 30 seconds
 ): Promise<{ [fileName: string]: any[] }> => {
   return new Promise((resolve, reject) => {
     // 1. 记录原始代码用于调试
@@ -212,19 +215,19 @@ export const executeTransformation = async (
     const workerUrl = URL.createObjectURL(blob);
     const worker = new Worker(workerUrl);
 
-    // 3. Set a timeout to prevent infinite loops (e.g., 30 seconds)
+    // 3. Set a timeout to prevent infinite loops
     const timeoutId = setTimeout(() => {
       worker.terminate();
       URL.revokeObjectURL(workerUrl);
-      reject(new Error("Execution timed out (30s limit). logic is too complex or has infinite loop."));
-    }, 30000);
+      reject(new Error(`Execution timed out (${timeoutMs}ms limit). logic is too complex or has infinite loop.`));
+    }, timeoutMs);
 
     // 4. Handle messages from the worker
     worker.onmessage = (e) => {
       clearTimeout(timeoutId);
       worker.terminate();
       URL.revokeObjectURL(workerUrl); // Clean up
-      
+
       if (e.data.success) {
         resolve(e.data.data);
       } else {

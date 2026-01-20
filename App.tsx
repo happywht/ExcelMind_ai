@@ -3,7 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { FormulaGen } from './components/FormulaGen';
 import { SmartExcel } from './components/SmartExcel';
 import { KnowledgeChat } from './components/KnowledgeChat';
-import { DocumentSpace } from './components/DocumentSpace';
+import { DocumentSpace } from './components/DocumentSpace/index';
 import { AppView } from './types';
 import { Activity, Zap, ShieldCheck, FileEdit } from 'lucide-react';
 

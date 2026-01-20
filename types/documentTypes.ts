@@ -26,13 +26,42 @@ export interface FieldMapping {
 }
 
 /**
- * AI生成的映射方案
+ * Sheet信息接口
+ * 用于描述Excel文件中单个Sheet的数据结构
+ */
+export interface SheetInfo {
+  sheetName: string;              // Sheet名称
+  headers: string[];              // 表头字段列表
+  rowCount: number;               // 数据行数
+  sampleData: Record<string, any>[];  // 示例数据（前5行）
+}
+
+/**
+ * 跨Sheet映射接口
+ * 用于支持从其他Sheet中查找关联数据
+ */
+export interface CrossSheetMapping {
+  placeholder: string;           // 模板占位符，如 "{{部门名称}}"
+  sourceSheet: string;           // 来源sheet名称
+  sourceColumn: string;          // 来源列名
+  lookupKey: string;            // 关联字段（在主sheet和来源sheet中都要有）
+  relationshipType?: 'oneToOne' | 'manyToOne';  // 关系类型
+  transform?: string;           // 可选的数据转换代码
+}
+
+/**
+ * AI生成的映射方案（扩展版）
+ * 支持多Sheet数据源和跨Sheet映射功能
  */
 export interface MappingScheme {
   explanation: string; // AI的映射思路说明
   filterCondition: string | null; // 筛选条件的JavaScript代码
-  mappings: FieldMapping[]; // 字段映射关系数组
+  primarySheet: string; // 主数据sheet（用于批量生成）
+  mappings: FieldMapping[]; // 主sheet的字段映射关系
+  crossSheetMappings?: CrossSheetMapping[];  // 跨sheet映射（可选）
   unmappedPlaceholders: string[]; // 未能映射的占位符
+  allSheetsInfo?: SheetInfo[];   // 所有可用sheet的信息（可选）
+  confidence?: number;           // 映射方案的置信度（可选）
 }
 
 /**
@@ -82,4 +111,42 @@ export interface TemplateParseResult {
   textContent: string;
   hasConditionalBlocks: boolean;
   hasLoops: boolean;
+}
+
+/**
+ * 生成的文档信息
+ */
+export interface GeneratedDocument {
+  blob: Blob;           // 文档Blob对象
+  fileName: string;     // 文件名
+  dataIndex: number;    // 在数据源中的索引
+  recordData?: any;     // 原始数据记录
+}
+
+/**
+ * 文档生成模式
+ */
+export type GenerationMode = 'individual' | 'aggregate';
+
+/**
+ * 聚合操作类型
+ */
+export type AggregateOperation = 'sum' | 'avg' | 'count' | 'max' | 'min' | 'first' | 'last' | 'join';
+
+/**
+ * 聚合规则
+ */
+export interface AggregateRule {
+  field: string;              // 要聚合的字段名
+  operation: AggregateOperation; // 聚合操作
+  alias?: string;             // 结果字段别名（可选）
+  delimiter?: string;         // 当operation为join时的分隔符
+}
+
+/**
+ * 聚合配置
+ */
+export interface AggregateConfig {
+  rules: AggregateRule[];     // 聚合规则列表
+  groupBy?: string[];         // 分组字段（可选，用于分组聚合）
 }
