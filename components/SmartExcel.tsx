@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download, AlertCircle, CheckCircle, Zap } from 'lucide-react';
 import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel, executeTransformation } from '../services/excelService';
 import { generateDataProcessingCode } from '../services/zhipuService';
 import { ExcelData, ProcessingLog } from '../types';
+import { AgenticOrchestrator } from '../services/agentic';
+import type { MultiStepTask, TaskResult, TaskStatus, LogEntry as AgenticLogEntry } from '../types/agenticTypes';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { SAMPLING_CONFIG } from '../config/samplingConfig';
@@ -19,7 +21,85 @@ export const SmartExcel: React.FC = () => {
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
 
+  // 多步分析系统状态
+  const [taskState, setTaskState] = useState<MultiStepTask | null>(null);
+  const [agenticLogs, setAgenticLogs] = useState<AgenticLogEntry[]>([]);
+  const [useAgenticMode, setUseAgenticMode] = useState(true); // 默认使用多步分析模式
+  const [orchestrator, setOrchestrator] = useState<AgenticOrchestrator | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // 进度监控回调
+  const handleProgressUpdate = useCallback((state: MultiStepTask) => {
+    setTaskState(state);
+
+    // 将 Agentic 日志转换为 ProcessingLog 格式
+    const orchestratorInstance = orchestrator;
+    if (orchestratorInstance) {
+      const latestLogs = orchestratorInstance.getLogs().slice(-5); // 获取最新的5条日志
+      latestLogs.forEach(log => {
+        const statusMap: Record<string, 'success' | 'error' | 'pending'> = {
+          'info': 'pending',
+          'warn': 'pending',
+          'error': 'error',
+          'debug': 'pending'
+        };
+        setLogs(prev => [{
+          id: `${log.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
+          fileName: 'Agentic',
+          status: statusMap[log.level] || 'pending',
+          message: `[${state.progress.currentPhase}] ${log.message}`
+        }, ...prev]);
+      });
+    }
+
+    // 更新进度日志
+    if (state.progress.percentage > 0) {
+      setLogs(prev => [{
+        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        fileName: 'System',
+        status: 'pending',
+        message: `进度: ${state.progress.percentage}% - ${state.progress.message}`
+      }, ...prev]);
+    }
+  }, [orchestrator]);
+
+  // 任务状态显示文本映射
+  const statusTextMap: Record<TaskStatus, string> = useMemo(() => ({
+    idle: '空闲',
+    observing: '观察数据...',
+    thinking: 'AI思考中...',
+    acting: '执行转换...',
+    evaluating: '评估结果...',
+    repairing: '修复错误...',
+    completed: '已完成',
+    failed: '失败',
+    cancelled: '已取消'
+  }), []);
+
+  // 格式化质量分数
+  const formatQualityScore = useCallback((score: number): string => {
+    return `${Math.round(score * 100)}%`;
+  }, []);
+
+  // 取消执行
+  const cancelExecution = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (orchestrator) {
+      orchestrator.cancelTask();
+    }
+    setIsProcessing(false);
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'error',
+      message: '用户取消了执行'
+    }, ...prev]);
+  }, [orchestrator]);
 
   // 当activeFileId改变时，设置activeSheetName为该文件的第一个sheet
   useEffect(() => {
@@ -56,163 +136,298 @@ export const SmartExcel: React.FC = () => {
     if (filesData.length === 0 || !command.trim()) return;
 
     setIsProcessing(true);
-    setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'pending', message: '正在启动智能分析循环 (Observe-Think-Action)...' }, ...prev]);
     setLastGeneratedCode('');
+    setTaskState(null);
 
     try {
-      // 1. Prepare Metadata with Samples (The "Observe" phase context)
-      // We send headers AND sample rows so the AI can infer column meanings by content.
-      // ENHANCED: Now supports multi-sheet data transmission
-      const filesPreview = filesData.map(f => {
-        // 收集所有sheets的信息
-        const sheetsInfo: Record<string, {
-          headers: string[];
-          sampleRows: any[];
-          rowCount: number;
-          metadata?: any;
-        }> = {};
+      // 准备数据文件信息
+      const dataFiles = filesData.map(f => ({
+        id: f.id,
+        fileName: f.fileName,
+        sheets: f.sheets,
+        currentSheetName: f.currentSheetName,
+        metadata: f.metadata
+      }));
 
-        Object.entries(f.sheets).forEach(([sheetName, data]) => {
-          const headers = data.length > 0 ? Object.keys(data[0]) : [];
-          const sampleRows = data.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
-          const metadata = f.metadata ? f.metadata[sheetName] : undefined;
+      if (useAgenticMode) {
+        // 使用多步分析系统
+        setLogs(prev => [{
+          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          fileName: 'System',
+          status: 'pending',
+          message: '启动多步分析系统 (Observe-Think-Act-Evaluate)...'
+        }, ...prev]);
 
-          sheetsInfo[sheetName] = {
-            headers,
-            sampleRows,
-            rowCount: data.length,
-            metadata
-          };
+        // 创建新的编排器实例
+        const newOrchestrator = new AgenticOrchestrator({
+          maxRetries: 3,
+          qualityThreshold: 0.7,
+          enableAutoRepair: true,
+          logLevel: 'info'
         });
+        setOrchestrator(newOrchestrator);
 
-        // 当前sheet的详细信息（向后兼容）
-        const currentData = f.sheets[f.currentSheetName] || [];
-        const currentHeaders = currentData.length > 0 ? Object.keys(currentData[0]) : [];
-        const currentSampleRows = currentData.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
-        const currentMetadata = f.metadata ? f.metadata[f.currentSheetName] : undefined;
+        // 注册进度回调
+        newOrchestrator.updateProgress(handleProgressUpdate);
 
-        return {
-          fileName: f.fileName,
-          currentSheetName: f.currentSheetName,
-          // 当前sheet详细信息（向后兼容）
-          headers: currentHeaders,
-          sampleRows: currentSampleRows,
-          metadata: currentMetadata,
-          // 所有sheets信息（新增）
-          sheets: sheetsInfo,
-          sheetNames: Object.keys(f.sheets)
+        // 执行多步分析
+        const result: TaskResult = await newOrchestrator.executeTask(command, dataFiles);
+
+        // 处理结果
+        if (result.success && result.data) {
+          // 更新文件数据
+          const updatedFilesData = [...filesData];
+          let processedFiles = 0;
+
+          Object.entries(result.data).forEach(([fileName, data]) => {
+            // 处理多sheet结果（对象格式）
+            if (typeof data === 'object' && !Array.isArray(data)) {
+              const sheetsData = data as { [sheetName: string]: any[] };
+              const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+
+              if (existingIndex >= 0) {
+                const f = updatedFilesData[existingIndex];
+                Object.entries(sheetsData).forEach(([sheetName, sheetData]) => {
+                  if (Array.isArray(sheetData)) {
+                    f.sheets[sheetName] = sheetData;
+                  }
+                });
+                processedFiles++;
+              } else {
+                const firstSheetName = Object.keys(sheetsData)[0];
+                updatedFilesData.push({
+                  id: fileName + '-' + Date.now(),
+                  fileName: fileName,
+                  sheets: sheetsData,
+                  currentSheetName: firstSheetName
+                });
+                processedFiles++;
+              }
+            }
+            // 处理单sheet结果（数组格式）
+            else if (Array.isArray(data)) {
+              const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+              if (existingIndex >= 0) {
+                const f = updatedFilesData[existingIndex];
+                f.sheets[f.currentSheetName] = data;
+                processedFiles++;
+              } else {
+                updatedFilesData.push({
+                  id: fileName + '-' + Date.now(),
+                  fileName: fileName,
+                  sheets: { 'Sheet1': data },
+                  currentSheetName: 'Sheet1'
+                });
+                processedFiles++;
+              }
+            }
+          });
+
+          setFilesData(updatedFilesData);
+
+          // 显示质量报告
+          if (result.qualityReport) {
+            const qualityScore = formatQualityScore(result.qualityReport.overallQuality);
+            setLogs(prev => [{
+              id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              fileName: 'System',
+              status: 'success',
+              message: `执行完成！质量评分: ${qualityScore}，处理了 ${processedFiles} 个文件，耗时 ${Math.round(result.executionSummary.totalTime / 1000)}s`
+            }, ...prev]);
+          } else {
+            setLogs(prev => [{
+              id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              fileName: 'System',
+              status: 'success',
+              message: `执行完成。处理了 ${processedFiles} 个文件。`
+            }, ...prev]);
+          }
+        } else {
+          throw new Error('多步分析失败，尝试降级到单步执行');
+        }
+      } else {
+        // 降级到单步执行模式（原有逻辑）
+        await handleLegacyExecution(dataFiles);
+      }
+    } catch (e: any) {
+      // 如果多步分析失败，尝试降级到单步执行
+      if (useAgenticMode) {
+        setLogs(prev => [{
+          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          fileName: 'System',
+          status: 'error',
+          message: `多步分析失败: ${e.message}，降级到单步执行...`
+        }, ...prev]);
+
+        try {
+          const dataFiles = filesData.map(f => ({
+            id: f.id,
+            fileName: f.fileName,
+            sheets: f.sheets,
+            currentSheetName: f.currentSheetName,
+            metadata: f.metadata
+          }));
+          await handleLegacyExecution(dataFiles);
+        } catch (legacyError: any) {
+          setLogs(prev => [{
+            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            fileName: 'System',
+            status: 'error',
+            message: `执行失败: ${legacyError.message}`
+          }, ...prev]);
+        }
+      } else {
+        setLogs(prev => [{
+          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          fileName: 'System',
+          status: 'error',
+          message: e.message
+        }, ...prev]);
+      }
+    } finally {
+      setIsProcessing(false);
+      setOrchestrator(null);
+    }
+  };
+
+  // 原有的单步执行逻辑（降级方案）
+  const handleLegacyExecution = async (dataFiles: any[]) => {
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'pending',
+      message: '使用单步执行模式...'
+    }, ...prev]);
+
+    // 准备文件预览
+    const filesPreview = dataFiles.map(f => {
+      const sheetsInfo: Record<string, {
+        headers: string[];
+        sampleRows: any[];
+        rowCount: number;
+        metadata?: any;
+      }> = {};
+
+      Object.entries(f.sheets || {}).forEach(([sheetName, data]: [string, any]) => {
+        const headers = data.length > 0 ? Object.keys(data[0]) : [];
+        const sampleRows = data.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
+        const metadata = f.metadata ? f.metadata[sheetName] : undefined;
+
+        sheetsInfo[sheetName] = {
+          headers,
+          sampleRows,
+          rowCount: data.length,
+          metadata
         };
       });
 
-      // 2. Generate Code Plan (The "Think" phase)
-      setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'pending', message: 'AI 正在观察样本数据并规划逻辑...' }, ...prev]);
-      
-      const { code, explanation } = await generateDataProcessingCode(command, filesPreview);
-      setLastGeneratedCode(code);
-      
-      setLogs(prev => [
-        { id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'AI', status: 'success', message: `逻辑规划: ${explanation}` },
-        ...prev
-      ]);
+      const currentData = (f.sheets || {})[f.currentSheetName || ''] || [];
+      const currentHeaders = currentData.length > 0 ? Object.keys(currentData[0]) : [];
+      const currentSampleRows = currentData.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
+      const currentMetadata = f.metadata ? f.metadata[f.currentSheetName || ''] : undefined;
 
-      // 3. Prepare Data Map for Execution
-      // ENHANCED: Now supports multi-sheet data structure
-      const datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } } = {};
-      filesData.forEach(f => {
-        const sheetNames = Object.keys(f.sheets);
-        if (sheetNames.length === 1) {
-          // 单sheet：使用数组格式（向后兼容）
-          datasets[f.fileName] = f.sheets[f.currentSheetName] || [];
-        } else {
-          // 多sheet：使用对象格式，包含所有sheets
-          datasets[f.fileName] = {};
-          sheetNames.forEach(sheetName => {
-            (datasets[f.fileName] as { [sheetName: string]: any[] })[sheetName] = f.sheets[sheetName];
-          });
-        }
-      });
+      return {
+        fileName: f.fileName,
+        currentSheetName: f.currentSheetName,
+        headers: currentHeaders,
+        sampleRows: currentSampleRows,
+        metadata: currentMetadata,
+        sheets: sheetsInfo,
+        sheetNames: Object.keys(f.sheets || {})
+      };
+    });
 
-      // 4. Execute Code (The "Action" phase)
-      console.log('执行AI生成的代码，代码长度:', code.length);
-      console.log('输入数据集:', Object.keys(datasets));
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'pending',
+      message: 'AI 正在观察样本数据并规划逻辑...'
+    }, ...prev]);
 
-      const resultDatasets = await executeTransformation(code, datasets);
+    const { code, explanation } = await generateDataProcessingCode(command, filesPreview);
+    setLastGeneratedCode(code);
 
-      console.log('AI处理结果:', Object.keys(resultDatasets), '数据量:', Object.values(resultDatasets).map(arr => arr.length));
+    setLogs(prev => [
+      { id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'AI', status: 'success', message: `逻辑规划: ${explanation}` },
+      ...prev
+    ]);
 
-      // 验证结果数据
-      if (!resultDatasets || typeof resultDatasets !== 'object') {
-        throw new Error('AI返回的数据格式错误');
+    // 准备数据集
+    const datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } } = {};
+    filesData.forEach(f => {
+      const sheetNames = Object.keys(f.sheets);
+      if (sheetNames.length === 1) {
+        datasets[f.fileName] = f.sheets[f.currentSheetName] || [];
+      } else {
+        datasets[f.fileName] = {};
+        sheetNames.forEach(sheetName => {
+          (datasets[f.fileName] as { [sheetName: string]: any[] })[sheetName] = f.sheets[sheetName];
+        });
       }
+    });
 
-      const updatedFilesData = [...filesData];
-      let processedFiles = 0;
+    console.log('执行AI生成的代码，代码长度:', code.length);
+    const resultDatasets = await executeTransformation(code, datasets as { [fileName: string]: any[] });
 
-      Object.entries(resultDatasets).forEach(([fileName, data]) => {
-        // 处理多sheet结果（对象格式）
-        if (typeof data === 'object' && !Array.isArray(data)) {
-          const sheetsData = data as { [sheetName: string]: any[] };
-          const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
-
-          if (existingIndex >= 0) {
-            // 更新现有文件的所有sheets
-            const f = updatedFilesData[existingIndex];
-            Object.entries(sheetsData).forEach(([sheetName, sheetData]) => {
-              if (Array.isArray(sheetData)) {
-                f.sheets[sheetName] = sheetData;
-              }
-            });
-            processedFiles++;
-          } else {
-            // 创建新的多sheet文件
-            const firstSheetName = Object.keys(sheetsData)[0];
-            updatedFilesData.push({
-              id: fileName + '-' + Date.now(),
-              fileName: fileName,
-              sheets: sheetsData,
-              currentSheetName: firstSheetName
-            });
-            processedFiles++;
-          }
-        }
-        // 处理单sheet结果（数组格式）- 向后兼容
-        else if (Array.isArray(data)) {
-          const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
-          if (existingIndex >= 0) {
-            const f = updatedFilesData[existingIndex];
-            f.sheets[f.currentSheetName] = data;
-            processedFiles++;
-          } else {
-            updatedFilesData.push({
-              id: fileName + '-' + Date.now(),
-              fileName: fileName,
-              sheets: { 'Sheet1': data },
-              currentSheetName: 'Sheet1'
-            });
-            processedFiles++;
-          }
-        } else {
-          console.warn('跳过无效数据:', fileName, typeof data);
-        }
-      });
-
-      if (processedFiles === 0) {
-        throw new Error('没有成功处理任何文件数据');
-      }
-
-      setFilesData(updatedFilesData);
-      setLogs(prev => [{
-        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        fileName: 'System',
-        status: 'success',
-        message: `执行完成。处理了 ${processedFiles} 个文件。`
-      }, ...prev]);
-
-    } catch (e: any) {
-      setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'error', message: e.message }]);
-    } finally {
-      setIsProcessing(false);
+    if (!resultDatasets || typeof resultDatasets !== 'object') {
+      throw new Error('AI返回的数据格式错误');
     }
+
+    const updatedFilesData = [...filesData];
+    let processedFiles = 0;
+
+    Object.entries(resultDatasets).forEach(([fileName, data]) => {
+      if (typeof data === 'object' && !Array.isArray(data)) {
+        const sheetsData = data as { [sheetName: string]: any[] };
+        const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+
+        if (existingIndex >= 0) {
+          const f = updatedFilesData[existingIndex];
+          Object.entries(sheetsData).forEach(([sheetName, sheetData]) => {
+            if (Array.isArray(sheetData)) {
+              f.sheets[sheetName] = sheetData;
+            }
+          });
+          processedFiles++;
+        } else {
+          const firstSheetName = Object.keys(sheetsData)[0];
+          updatedFilesData.push({
+            id: fileName + '-' + Date.now(),
+            fileName: fileName,
+            sheets: sheetsData,
+            currentSheetName: firstSheetName
+          });
+          processedFiles++;
+        }
+      } else if (Array.isArray(data)) {
+        const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+        if (existingIndex >= 0) {
+          const f = updatedFilesData[existingIndex];
+          f.sheets[f.currentSheetName] = data;
+          processedFiles++;
+        } else {
+          updatedFilesData.push({
+            id: fileName + '-' + Date.now(),
+            fileName: fileName,
+            sheets: { 'Sheet1': data },
+            currentSheetName: 'Sheet1'
+          });
+          processedFiles++;
+        }
+      }
+    });
+
+    if (processedFiles === 0) {
+      throw new Error('没有成功处理任何文件数据');
+    }
+
+    setFilesData(updatedFilesData);
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'success',
+      message: `执行完成。处理了 ${processedFiles} 个文件。`
+    }, ...prev]);
   };
 
   const removeFile = (id: string, e: React.MouseEvent) => {
@@ -414,15 +629,107 @@ export const SmartExcel: React.FC = () => {
 
           {/* AI Command Area */}
           <div className="p-4 bg-slate-50 border-t border-slate-200">
-            <label className="block text-sm font-bold text-slate-700 mb-2 flex justify-between">
-              AI 指令
-              <button
-                onClick={() => setShowCode(!showCode)}
-                className="text-xs font-normal text-slate-400 hover:text-emerald-600 flex items-center gap-1"
-              >
-                <Code className="w-3 h-3" /> {showCode ? '隐藏代码' : '查看代码'}
-              </button>
-            </label>
+            {/* 多步分析状态显示 */}
+            {taskState && isProcessing && (
+              <div className="mb-3 p-3 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl border border-emerald-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-emerald-700">多步分析系统</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-600">
+                      {taskState.progress.percentage}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* 进度条 */}
+                <div className="w-full bg-slate-200 rounded-full h-2 mb-2">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${taskState.progress.percentage}%` }}
+                  />
+                </div>
+
+                {/* 当前阶段 */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-700">
+                    {statusTextMap[taskState.status as TaskStatus] || taskState.status}
+                  </span>
+                  {taskState.qualityReport && (
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className={`w-3 h-3 ${taskState.qualityReport.overallQuality >= 0.8 ? 'text-green-500' : 'text-yellow-500'}`} />
+                      <span className="font-semibold text-slate-600">
+                        质量: {formatQualityScore(taskState.qualityReport.overallQuality)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* OTAE 步骤指示器 */}
+                <div className="mt-2 flex items-center gap-1 text-xs">
+                  {[
+                    { key: 'observing', label: '观察', icon: '👁️' },
+                    { key: 'thinking', label: '思考', icon: '🧠' },
+                    { key: 'acting', label: '执行', icon: '⚡' },
+                    { key: 'evaluating', label: '评估', icon: '✅' }
+                  ].map((step) => {
+                    const isActive = taskState.status === step.key;
+                    const isCompleted = ['observing', 'thinking'].includes(step.key) &&
+                                        ['acting', 'evaluating', 'completed'].includes(taskState.status);
+
+                    return (
+                      <div
+                        key={step.key}
+                        className={`flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg transition-all ${
+                          isActive ? 'bg-emerald-500 text-white font-bold' :
+                          isCompleted ? 'bg-emerald-100 text-emerald-700' :
+                          'bg-slate-100 text-slate-400'
+                        }`}
+                      >
+                        <span>{step.icon}</span>
+                        <span className="hidden sm:inline">{step.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 错误重试信息 */}
+                {taskState.status === 'repairing' && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
+                    <AlertCircle className="w-3 h-3" />
+                    <span className="font-medium">检测到错误，正在自动修复...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 模式切换和工具栏 */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-slate-700">AI 指令</span>
+              <div className="flex items-center gap-2">
+                {/* 模式切换 */}
+                <button
+                  onClick={() => setUseAgenticMode(!useAgenticMode)}
+                  className={`text-xs px-2 py-1 rounded-lg font-medium transition-all flex items-center gap-1 ${
+                    useAgenticMode
+                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}
+                  title={useAgenticMode ? '多步分析模式：支持自我修复和质量评估' : '单步执行模式：快速执行'}
+                >
+                  <Zap className="w-3 h-3" />
+                  {useAgenticMode ? '智能模式' : '快速模式'}
+                </button>
+                <button
+                  onClick={() => setShowCode(!showCode)}
+                  className="text-xs font-normal text-slate-400 hover:text-emerald-600 flex items-center gap-1"
+                >
+                  <Code className="w-3 h-3" /> {showCode ? '隐藏代码' : '查看代码'}
+                </button>
+              </div>
+            </div>
 
             {showCode && lastGeneratedCode && (
               <div className="mb-3 p-2 bg-slate-900 text-green-400 text-xs font-mono rounded-lg max-h-32 overflow-y-auto">
@@ -436,19 +743,52 @@ export const SmartExcel: React.FC = () => {
               placeholder="描述您的跨文件需求... &#10;例如：'对比表A和表B，找出金额不一致的行，存为新文件差异表'"
               className="w-full h-24 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 resize-none bg-white text-sm shadow-sm"
             />
-            
-            <button
-              onClick={handleRun}
-              disabled={isProcessing || !command || filesData.length === 0}
-              className={`mt-3 w-full py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all text-sm ${
-                isProcessing || !command || filesData.length === 0
-                  ? 'bg-slate-300 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-emerald-900/20'
-              }`}
-            >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              执行智能处理
-            </button>
+
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleRun}
+                disabled={isProcessing || !command || filesData.length === 0}
+                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all text-sm ${
+                  isProcessing || !command || filesData.length === 0
+                    ? 'bg-slate-300 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-emerald-900/20'
+                }`}
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                执行智能处理
+              </button>
+
+              {isProcessing && (
+                <button
+                  onClick={cancelExecution}
+                  className="px-4 py-2.5 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 transition-all font-bold text-sm flex items-center gap-2"
+                  title="取消执行"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  取消
+                </button>
+              )}
+            </div>
+
+            {/* 执行统计信息 */}
+            {taskState && !isProcessing && taskState.status === 'completed' && (
+              <div className="mt-3 p-3 bg-green-50 rounded-xl border border-green-200">
+                <div className="flex items-center gap-2 text-green-700 font-bold text-sm mb-2">
+                  <CheckCircle className="w-4 h-4" />
+                  执行完成
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                  {taskState.result?.executionSummary && (
+                    <>
+                      <div>总步骤: {taskState.result.executionSummary.totalSteps}</div>
+                      <div>成功: {taskState.result.executionSummary.successfulSteps}</div>
+                      <div>耗时: {Math.round(taskState.result.executionSummary.totalTime / 1000)}s</div>
+                      <div>失败: {taskState.result.executionSummary.failedSteps}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Logs */}

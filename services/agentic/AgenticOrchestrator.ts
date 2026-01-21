@@ -1,0 +1,1351 @@
+/**
+ * 多步分析和自我修复系统 - 核心编排器
+ *
+ * 基于 Observe-Think-Act-Evaluate 循环实现智能任务编排
+ * 遵循 SOLID 原则，提供可扩展、可维护的架构
+ *
+ * @author Backend Developer
+ * @version 1.0.0
+ */
+
+import {
+  MultiStepTask,
+  TaskStatus,
+  TaskContext,
+  TaskResult,
+  ExecutionPlan,
+  AnalysisStep,
+  TaskError,
+  ErrorCategory,
+  ObservationResult,
+  ThinkingResult,
+  StepResult,
+  EvaluationResult,
+  RepairResult,
+  QualityReport,
+  DataFileInfo,
+  ProgressCallback,
+  OrchestratorConfig,
+  LogEntry,
+  AIAnalysisRequest,
+  AIAnalysisResponse
+} from '../../types/agenticTypes';
+
+import { generateDataProcessingCode } from '../zhipuService';
+import { executeTransformation } from '../excelService';
+
+/**
+ * 默认配置
+ */
+const DEFAULT_CONFIG: OrchestratorConfig = {
+  maxRetries: 3,
+  timeoutPerStep: 30000, // 30秒
+  totalTimeout: 300000, // 5分钟
+  qualityThreshold: 0.8,
+  enableAutoRepair: true,
+  enableCaching: true,
+  logLevel: 'info',
+  aiModel: 'glm-4.6',
+  maxTokens: 4096
+};
+
+/**
+ * AgenticOrchestrator - 多步分析核心编排器
+ *
+ * 职责：
+ * 1. 管理 Observe-Think-Act-Evaluate 循环
+ * 2. 协调 AI 服务和代码执行
+ * 3. 错误检测和自动修复
+ * 4. 质量评估和优化建议
+ */
+export class AgenticOrchestrator {
+  private config: OrchestratorConfig;
+  private currentTask: MultiStepTask | null = null;
+  private progressCallbacks: ProgressCallback[] = [];
+  private logs: LogEntry[] = [];
+  private sessionId: string;
+
+  constructor(config?: Partial<OrchestratorConfig>) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.sessionId = this.generateId();
+    this.log('info', 'AgenticOrchestrator initialized', { config: this.config });
+  }
+
+  /**
+   * 主入口：执行完整的多步分析任务
+   *
+   * @param userPrompt 用户的自然语言指令
+   * @param dataFiles 数据文件列表
+   * @returns 任务执行结果
+   */
+  public async executeTask(
+    userPrompt: string,
+    dataFiles: DataFileInfo[]
+  ): Promise<TaskResult> {
+    const taskId = this.generateId();
+    const startTime = Date.now();
+
+    this.log('info', 'Starting task execution', {
+      taskId,
+      prompt: userPrompt,
+      fileCount: dataFiles.length
+    });
+
+    // 初始化任务
+    this.currentTask = this.initializeTask(taskId, userPrompt, dataFiles);
+    this.notifyProgress();
+
+    try {
+      // 设置总超时
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Total timeout exceeded')), this.config.totalTimeout);
+      });
+
+      // 执行任务
+      const result = await Promise.race([
+        this.executeTaskFlow(),
+        timeoutPromise
+      ]);
+
+      this.log('info', 'Task completed successfully', {
+        taskId,
+        duration: Date.now() - startTime
+      });
+
+      return result;
+
+    } catch (error) {
+      this.log('error', 'Task execution failed', {
+        taskId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+
+      return this.handleTaskFailure(error as Error);
+    }
+  }
+
+  /**
+   * 执行任务流程（OTAE循环）
+   */
+  private async executeTaskFlow(): Promise<TaskResult> {
+    if (!this.currentTask) {
+      throw new Error('No active task');
+    }
+
+    // 步骤1: Observe（观察）
+    const observation = await this.observeStep();
+    if (!observation.success) {
+      throw new Error('Observation step failed');
+    }
+
+    // 步骤2: Think（思考）
+    const thinking = await this.thinkStep(observation);
+    if (!thinking.success) {
+      throw new Error('Thinking step failed');
+    }
+
+    // 步骤3: Act（执行）
+    const actionResult = await this.actStep(thinking.plan);
+    if (!actionResult.success) {
+      // 尝试修复
+      if (this.config.enableAutoRepair) {
+        const repairResult = await this.handleError(actionResult.error!);
+        if (!repairResult.canContinue) {
+          throw new Error('Failed to repair execution error');
+        }
+      } else {
+        throw new Error(actionResult.error?.message || 'Execution failed');
+      }
+    }
+
+    // 步骤4: Evaluate（评估）
+    const evaluation = await this.evaluateStep(actionResult);
+
+    // 根据评估结果决定下一步
+    if (evaluation.nextAction === 'retry') {
+      // 重试当前步骤
+      return this.executeTaskFlow();
+    } else if (evaluation.nextAction === 'repair') {
+      // 尝试修复
+      if (this.config.enableAutoRepair) {
+        const repairResult = await this.handleError(
+          this.createErrorFromEvaluation(evaluation)
+        );
+        if (repairResult.canContinue) {
+          return this.executeTaskFlow();
+        }
+      }
+    }
+
+    // 生成最终结果
+    return this.generateFinalResult(actionResult, evaluation);
+  }
+
+  /**
+   * Observe步骤：观察和理解数据
+   *
+   * 职责：
+   * 1. 分析数据结构
+   * 2. 检测数据质量问题
+   * 3. 识别模式和异常
+   * 4. 提取元数据（注释、标注）
+   */
+  private async observeStep(): Promise<ObservationResult> {
+    this.updateTaskStatus(TaskStatus.OBSERVING);
+    this.log('info', 'Starting observation step');
+
+    const startTime = Date.now();
+    const stepId = this.generateId();
+
+    try {
+      if (!this.currentTask) {
+        throw new Error('No active task');
+      }
+
+      const observations: ObservationResult['observations'] = {
+        dataStructure: {
+          files: [],
+          sheets: {},
+          totalRows: 0,
+          totalColumns: 0
+        },
+        dataQuality: {
+          missingValues: 0,
+          duplicateRows: 0,
+          inconsistentTypes: 0
+        },
+        metadata: {
+          hasComments: false,
+          hasNotes: false,
+          commentCount: 0,
+          noteCount: 0
+        },
+        patterns: []
+      };
+
+      const issues: string[] = [];
+      const warnings: string[] = [];
+
+      // 分析每个文件
+      for (const file of this.currentTask.context.dataFiles) {
+        observations.dataStructure.files.push(file.fileName);
+
+        // 分析sheets
+        if (file.sheets) {
+          observations.dataStructure.sheets[file.fileName] = Object.keys(file.sheets);
+
+          for (const [sheetName, data] of Object.entries(file.sheets)) {
+            if (Array.isArray(data) && data.length > 0) {
+              const sample = data.slice(0, 100); // 采样前100行
+              observations.dataStructure.totalRows += data.length;
+
+              // 分析列
+              const columns = Object.keys(sample[0] || {});
+              observations.dataStructure.totalColumns += columns.length;
+
+              // 检测数据质量问题
+              for (const row of sample) {
+                for (const [col, value] of Object.entries(row)) {
+                  if (value === null || value === undefined || value === '') {
+                    observations.dataQuality.missingValues++;
+                  }
+                }
+              }
+
+              // 检测模式
+              const patterns = this.detectDataPatterns(sample);
+              observations.patterns.push(...patterns);
+            }
+          }
+        }
+
+        // 分析元数据
+        if (file.metadata) {
+          for (const [sheetName, meta] of Object.entries(file.metadata)) {
+            const commentCount = Object.keys(meta.comments || {}).length;
+            const noteCount = Object.keys(meta.notes || {}).length;
+
+            observations.metadata.commentCount += commentCount;
+            observations.metadata.noteCount += noteCount;
+
+            if (commentCount > 0) observations.metadata.hasComments = true;
+            if (noteCount > 0) observations.metadata.hasNotes = true;
+          }
+        }
+      }
+
+      // 生成警告
+      if (observations.dataQuality.missingValues > 0) {
+        warnings.push(`发现 ${observations.dataQuality.missingValues} 个缺失值`);
+      }
+
+      if (observations.metadata.hasComments) {
+        this.log('info', `Found ${observations.metadata.commentCount} comments in data`);
+      }
+
+      if (observations.metadata.hasNotes) {
+        this.log('info', `Found ${observations.metadata.noteCount} notes in data`);
+      }
+
+      const duration = Date.now() - startTime;
+      this.log('info', 'Observation completed', { duration });
+
+      return {
+        success: true,
+        observations,
+        issues,
+        warnings
+      };
+
+    } catch (error) {
+      this.log('error', 'Observation failed', { error });
+      return {
+        success: false,
+        observations: {
+          dataStructure: { files: [], sheets: {}, totalRows: 0, totalColumns: 0 },
+          dataQuality: { missingValues: 0, duplicateRows: 0, inconsistentTypes: 0 },
+          metadata: { hasComments: false, hasNotes: false, commentCount: 0, noteCount: 0 },
+          patterns: []
+        },
+        issues: [error instanceof Error ? error.message : String(error)],
+        warnings: []
+      };
+    }
+  }
+
+  /**
+   * Think步骤：思考和规划
+   *
+   * 职责：
+   * 1. 理解用户意图
+   * 2. 分析观察结果
+   * 3. 制定执行计划
+   * 4. 识别潜在风险
+   */
+  private async thinkStep(observation: ObservationResult): Promise<ThinkingResult> {
+    this.updateTaskStatus(TaskStatus.THINKING);
+    this.log('info', 'Starting thinking step');
+
+    const startTime = Date.now();
+
+    try {
+      if (!this.currentTask) {
+        throw new Error('No active task');
+      }
+
+      // 构建AI请求
+      const aiRequest = this.buildThinkingRequest(observation);
+
+      // 调用AI服务
+      const aiResponse = await this.callAIService(aiRequest);
+
+      if (!aiResponse.success) {
+        throw new Error(aiResponse.error?.message || 'AI service call failed');
+      }
+
+      // 解析AI响应，生成执行计划
+      const plan = this.parseExecutionPlan(aiResponse.content);
+
+      const duration = Date.now() - startTime;
+      this.log('info', 'Thinking completed', { duration, steps: plan.steps.length });
+
+      return {
+        success: true,
+        plan,
+        reasoning: aiResponse.reasoning || 'Plan generated based on user intent and data observation',
+        assumptions: [],
+        risks: [],
+        alternatives: [],
+        confidence: aiResponse.confidence || 0.8
+      };
+
+    } catch (error) {
+      this.log('error', 'Thinking failed', { error });
+
+      // 降级：生成简单计划
+      return {
+        success: true,
+        plan: this.generateFallbackPlan(),
+        reasoning: 'Using fallback plan due to AI failure',
+        assumptions: [],
+        risks: ['AI planning failed, using basic strategy'],
+        alternatives: [],
+        confidence: 0.5
+      };
+    }
+  }
+
+  /**
+   * Act步骤：执行计划
+   *
+   * 职责：
+   * 1. 获取数据处理的代码（通过AI）
+   * 2. 执行代码
+   * 3. 收集结果
+   * 4. 处理错误
+   */
+  private async actStep(plan: ExecutionPlan): Promise<StepResult> {
+    this.updateTaskStatus(TaskStatus.ACTING);
+    this.log('info', 'Starting act step');
+
+    const startTime = Date.now();
+    const stepId = this.generateId();
+
+    try {
+      if (!this.currentTask) {
+        throw new Error('No active task');
+      }
+
+      // 准备数据预览
+      const filesPreview = this.currentTask.context.dataFiles.map(file => ({
+        fileName: file.fileName,
+        sheets: file.sheets,
+        currentSheetName: file.currentSheetName,
+        headers: this.extractHeaders(file),
+        sampleRows: this.extractSampleRows(file),
+        metadata: file.metadata
+      }));
+
+      // 调用AI生成代码
+      this.log('info', 'Requesting code generation from AI');
+      const codeGenerationResult = await generateDataProcessingCode(
+        this.currentTask.context.userInput,
+        filesPreview
+      );
+
+      if (!codeGenerationResult.code) {
+        throw new Error('Failed to generate processing code');
+      }
+
+      this.log('info', 'Code generated successfully', {
+        codeLength: codeGenerationResult.code.length
+      });
+
+      // 准备数据集
+      const datasets: { [fileName: string]: any[] } = {};
+      for (const file of this.currentTask.context.dataFiles) {
+        if (file.sheets) {
+          datasets[file.fileName] = file.sheets;
+        }
+      }
+
+      // 执行代码
+      this.log('info', 'Executing generated code');
+      const executionResult = await executeTransformation(
+        codeGenerationResult.code,
+        datasets,
+        this.config.timeoutPerStep
+      );
+
+      if (!executionResult) {
+        throw new Error('Code execution failed');
+      }
+
+      const duration = Date.now() - startTime;
+      this.log('info', 'Act step completed', {
+        duration,
+        outputFiles: Object.keys(executionResult)
+      });
+
+      return {
+        stepId,
+        success: true,
+        output: executionResult,
+        executionTime: duration
+      };
+
+    } catch (error) {
+      this.log('error', 'Act step failed', { error });
+
+      return {
+        stepId,
+        success: false,
+        error: this.createError(
+          ErrorCategory.CODE_EXECUTION_ERROR,
+          'ACT_EXECUTION_FAILED',
+          error instanceof Error ? error.message : String(error)
+        ),
+        executionTime: Date.now() - startTime
+      };
+    }
+  }
+
+  /**
+   * Evaluate步骤：评估结果质量
+   *
+   * 职责：
+   * 1. 验证输出数据
+   * 2. 检查数据质量
+   * 3. 生成质量报告
+   * 4. 提供优化建议
+   */
+  private async evaluateStep(stepResult: StepResult): Promise<EvaluationResult> {
+    this.updateTaskStatus(TaskStatus.EVALUATING);
+    this.log('info', 'Starting evaluation step');
+
+    const startTime = Date.now();
+
+    try {
+      const feedback: EvaluationResult['feedback'] = {
+        stepId: stepResult.stepId,
+        success: stepResult.success,
+        quality: 0,
+        issues: [],
+        suggestions: [],
+        outputQuality: {
+          completeness: 0,
+          accuracy: 0,
+          consistency: 0
+        }
+      };
+
+      const issues = {
+        critical: [] as string[],
+        warning: [] as string[],
+        info: [] as string[]
+      };
+
+      // 基本验证
+      if (!stepResult.success) {
+        issues.critical.push('Execution step failed');
+        feedback.quality = 0;
+
+        return {
+          success: false,
+          passed: false,
+          feedback,
+          nextAction: 'fail',
+          qualityScore: 0,
+          issues
+        };
+      }
+
+      // 数据质量评估
+      if (stepResult.output) {
+        const qualityMetrics = this.assessOutputQuality(stepResult.output);
+        feedback.outputQuality = qualityMetrics;
+        feedback.quality = (qualityMetrics.completeness + qualityMetrics.accuracy + qualityMetrics.consistency) / 3;
+      }
+
+      // 检查质量问题
+      if (feedback.outputQuality.completeness < 0.5) {
+        issues.warning.push('Output data may be incomplete');
+      }
+
+      if (feedback.outputQuality.accuracy < 0.8) {
+        issues.warning.push('Output data accuracy may be low');
+      }
+
+      // 判断是否通过
+      const passed = feedback.quality >= this.config.qualityThreshold;
+      const qualityScore = feedback.quality;
+
+      // 决定下一步行动
+      let nextAction: EvaluationResult['nextAction'];
+      if (passed) {
+        nextAction = 'complete';
+      } else if (feedback.quality >= 0.5) {
+        nextAction = 'continue';
+      } else {
+        nextAction = 'repair';
+      }
+
+      const duration = Date.now() - startTime;
+      this.log('info', 'Evaluation completed', {
+        duration,
+        qualityScore,
+        passed,
+        nextAction
+      });
+
+      return {
+        success: true,
+        passed,
+        feedback,
+        nextAction,
+        qualityScore,
+        issues
+      };
+
+    } catch (error) {
+      this.log('error', 'Evaluation failed', { error });
+
+      return {
+        success: false,
+        passed: false,
+        feedback: {
+          stepId: stepResult.stepId,
+          success: false,
+          quality: 0,
+          issues: [error instanceof Error ? error.message : String(error)],
+          suggestions: [],
+          outputQuality: { completeness: 0, accuracy: 0, consistency: 0 }
+        },
+        nextAction: 'fail',
+        qualityScore: 0,
+        issues: {
+          critical: ['Evaluation failed'],
+          warning: [],
+          info: []
+        }
+      };
+    }
+  }
+
+  /**
+   * 错误处理和自动修复
+   *
+   * 职责：
+   * 1. 分析错误原因
+   * 2. 选择修复策略
+   * 3. 执行修复
+   * 4. 验证修复结果
+   */
+  private async handleError(error: TaskError): Promise<RepairResult> {
+    this.updateTaskStatus(TaskStatus.REPAIRING);
+    this.log('info', 'Starting error repair', { error: error.message });
+
+    const startTime = Date.now();
+    let attemptNumber = 0;
+
+    try {
+      // 分析错误
+      const errorAnalysis = await this.analyzeError(error);
+
+      // 尝试修复
+      for (const strategy of errorAnalysis.suggestedRepair) {
+        attemptNumber++;
+
+        this.log('info', `Attempting repair strategy ${attemptNumber}: ${strategy.type}`, {
+          strategy: strategy.description
+        });
+
+        try {
+          const repairResult = await this.applyRepairStrategy(strategy, error);
+
+          if (repairResult.success) {
+            this.log('info', 'Repair successful', { attemptNumber });
+
+            return {
+              success: true,
+              appliedStrategy: strategy,
+              result: repairResult.result,
+              remainingErrors: [],
+              attemptNumber,
+              maxAttempts: this.config.maxRetries,
+              canContinue: true
+            };
+          }
+        } catch (repairError) {
+          this.log('warn', `Repair attempt ${attemptNumber} failed`, { error: repairError });
+        }
+
+        // 检查是否达到最大尝试次数
+        if (attemptNumber >= this.config.maxRetries) {
+          break;
+        }
+      }
+
+      // 所有修复策略都失败
+      this.log('error', 'All repair strategies failed');
+
+      return {
+        success: false,
+        appliedStrategy: {
+          type: 'user_intervention',
+          description: 'Automatic repair failed, user intervention required',
+          action: '',
+          priority: 0,
+          estimatedSuccessRate: 0
+        },
+        remainingErrors: [error],
+        attemptNumber,
+        maxAttempts: this.config.maxRetries,
+        canContinue: false
+      };
+
+    } catch (error) {
+      this.log('error', 'Error repair failed', { error });
+
+      return {
+        success: false,
+        appliedStrategy: {
+          type: 'user_intervention',
+          description: 'Error analysis failed',
+          action: '',
+          priority: 0,
+          estimatedSuccessRate: 0
+        },
+        remainingErrors: [error],
+        attemptNumber,
+        maxAttempts: this.config.maxRetries,
+        canContinue: false
+      };
+    }
+  }
+
+  /**
+   * 分析错误
+   */
+  private async analyzeError(error: TaskError): Promise<any> {
+    // 根据错误类型生成修复策略
+    const strategies: any[] = [];
+
+    switch (error.category) {
+      case ErrorCategory.COLUMN_NOT_FOUND:
+        strategies.push({
+          type: 'alternative_approach',
+          description: 'Try alternative column name matching',
+          action: 'use_fuzzy_matching',
+          priority: 1,
+          estimatedSuccessRate: 0.7
+        });
+        break;
+
+      case ErrorCategory.CODE_EXECUTION_ERROR:
+        strategies.push({
+          type: 'retry',
+          description: 'Retry with corrected code',
+          action: 'regenerate_code',
+          priority: 1,
+          estimatedSuccessRate: 0.6
+        });
+        break;
+
+      case ErrorCategory.AI_SERVICE_ERROR:
+        strategies.push({
+          type: 'fallback',
+          description: 'Use cached response or simplified approach',
+          action: 'use_cache',
+          priority: 1,
+          estimatedSuccessRate: 0.8
+        });
+        break;
+
+      default:
+        strategies.push({
+          type: 'retry',
+          description: 'Retry the operation',
+          action: 'simple_retry',
+          priority: 1,
+          estimatedSuccessRate: 0.5
+        });
+    }
+
+    return {
+      error,
+      rootCause: error.message,
+      suggestedRepair: strategies,
+      canAutoRecover: true,
+      requiresUserIntervention: false,
+      confidence: 0.7
+    };
+  }
+
+  /**
+   * 应用修复策略
+   */
+  private async applyRepairStrategy(strategy: any, error: TaskError): Promise<any> {
+    switch (strategy.type) {
+      case 'retry':
+        // 重新执行当前步骤
+        return this.retryCurrentStep();
+
+      case 'fallback':
+        // 使用降级策略
+        return this.useFallbackStrategy();
+
+      default:
+        throw new Error(`Unsupported repair strategy: ${strategy.type}`);
+    }
+  }
+
+  /**
+   * 重试当前步骤
+   */
+  private async retryCurrentStep(): Promise<any> {
+    if (!this.currentTask) {
+      throw new Error('No active task');
+    }
+
+    // 重新执行任务流程
+    return this.executeTaskFlow();
+  }
+
+  /**
+   * 使用降级策略
+   */
+  private async useFallbackStrategy(): Promise<any> {
+    this.log('info', 'Using fallback strategy');
+
+    // 返回基本处理结果
+    return {
+      success: true,
+      result: {},
+      message: 'Used fallback processing'
+    };
+  }
+
+  /**
+   * 生成最终结果
+   */
+  private generateFinalResult(stepResult: StepResult, evaluation: EvaluationResult): TaskResult {
+    if (!this.currentTask) {
+      throw new Error('No active task');
+    }
+
+    this.updateTaskStatus(TaskStatus.COMPLETED);
+
+    const completedAt = Date.now();
+    const totalTime = completedAt - this.currentTask.metadata.createdAt;
+
+    return {
+      success: stepResult.success && evaluation.passed,
+      data: stepResult.output,
+      logs: this.logs.map(log => log.message),
+      qualityReport: this.generateQualityReport(evaluation),
+      executionSummary: {
+        totalSteps: this.currentTask.steps.length,
+        successfulSteps: this.currentTask.steps.filter(s => s.status === TaskStatus.COMPLETED).length,
+        failedSteps: this.currentTask.steps.filter(s => s.status === TaskStatus.FAILED).length,
+        retriedSteps: 0, // TODO: Track retries
+        totalTime,
+        averageStepTime: totalTime / this.currentTask.steps.length
+      },
+      metadata: {
+        completedAt,
+        sessionId: this.sessionId,
+        taskId: this.currentTask.id
+      }
+    };
+  }
+
+  /**
+   * 处理任务失败
+   */
+  private handleTaskFailure(error: Error): TaskResult {
+    if (!this.currentTask) {
+      throw new Error('No active task');
+    }
+
+    this.updateTaskStatus(TaskStatus.FAILED);
+
+    const taskError = this.createError(
+      ErrorCategory.UNKNOWN_ERROR,
+      'TASK_EXECUTION_FAILED',
+      error.message
+    );
+
+    this.currentTask.error = taskError;
+
+    const completedAt = Date.now();
+    const totalTime = completedAt - this.currentTask.metadata.createdAt;
+
+    return {
+      success: false,
+      logs: this.logs.map(log => log.message),
+      executionSummary: {
+        totalSteps: this.currentTask.steps.length,
+        successfulSteps: this.currentTask.steps.filter(s => s.status === TaskStatus.COMPLETED).length,
+        failedSteps: this.currentTask.steps.filter(s => s.status === TaskStatus.FAILED).length,
+        retriedSteps: 0,
+        totalTime,
+        averageStepTime: totalTime / Math.max(this.currentTask.steps.length, 1)
+      },
+      metadata: {
+        completedAt,
+        sessionId: this.sessionId,
+        taskId: this.currentTask.id
+      }
+    };
+  }
+
+  // ========== 辅助方法 ==========
+
+  /**
+   * 初始化任务
+   */
+  private initializeTask(taskId: string, userPrompt: string, dataFiles: DataFileInfo[]): MultiStepTask {
+    const now = Date.now();
+
+    return {
+      id: taskId,
+      status: TaskStatus.IDLE,
+      context: {
+        userInput: userPrompt,
+        dataFiles,
+        metadata: {},
+        history: {
+          attempts: 0,
+          errors: [],
+          repairs: []
+        },
+        sessionState: {
+          sessionId: this.sessionId,
+          startTime: now,
+          lastUpdateTime: now
+        }
+      },
+      steps: [],
+      progress: {
+        percentage: 0,
+        currentPhase: 'Initializing',
+        message: 'Task created'
+      },
+      metadata: {
+        createdAt: now,
+        updatedAt: now,
+        version: '1.0.0'
+      }
+    };
+  }
+
+  /**
+   * 更新任务状态
+   */
+  private updateTaskStatus(status: TaskStatus): void {
+    if (!this.currentTask) return;
+
+    this.currentTask.status = status;
+    this.currentTask.metadata.updatedAt = Date.now();
+
+    // 更新进度信息
+    const phaseMessages: Record<TaskStatus, string> = {
+      [TaskStatus.IDLE]: 'Idle',
+      [TaskStatus.OBSERVING]: 'Observing data',
+      [TaskStatus.THINKING]: 'Planning approach',
+      [TaskStatus.ACTING]: 'Executing transformation',
+      [TaskStatus.EVALUATING]: 'Evaluating results',
+      [TaskStatus.REPAIRING]: 'Repairing errors',
+      [TaskStatus.COMPLETED]: 'Completed',
+      [TaskStatus.FAILED]: 'Failed',
+      [TaskStatus.CANCELLED]: 'Cancelled'
+    };
+
+    const progressMap: Record<TaskStatus, number> = {
+      [TaskStatus.IDLE]: 0,
+      [TaskStatus.OBSERVING]: 20,
+      [TaskStatus.THINKING]: 40,
+      [TaskStatus.ACTING]: 60,
+      [TaskStatus.EVALUATING]: 80,
+      [TaskStatus.REPAIRING]: 70,
+      [TaskStatus.COMPLETED]: 100,
+      [TaskStatus.FAILED]: 0,
+      [TaskStatus.CANCELLED]: 0
+    };
+
+    this.currentTask.progress = {
+      percentage: progressMap[status],
+      currentPhase: status,
+      message: phaseMessages[status]
+    };
+
+    this.notifyProgress();
+  }
+
+  /**
+   * 通知进度更新
+   */
+  private notifyProgress(): void {
+    if (this.currentTask) {
+      this.progressCallbacks.forEach(callback => {
+        try {
+          callback(this.currentTask!);
+        } catch (error) {
+          console.error('Progress callback error:', error);
+        }
+      });
+    }
+  }
+
+  /**
+   * 记录日志
+   */
+  private log(level: 'info' | 'warn' | 'error', message: string, context?: any): void {
+    const entry: LogEntry = {
+      level,
+      message,
+      timestamp: Date.now(),
+      context
+    };
+
+    this.logs.push(entry);
+
+    // 根据日志级别决定是否输出到控制台
+    if (this.shouldLog(level)) {
+      const logMethod = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+      logMethod(`[AgenticOrchestrator] ${message}`, context || '');
+    }
+  }
+
+  /**
+   * 判断是否应该输出日志
+   */
+  private shouldLog(level: string): boolean {
+    const levels = ['debug', 'info', 'warn', 'error'];
+    const currentLevelIndex = levels.indexOf(this.config.logLevel);
+    const messageLevelIndex = levels.indexOf(level);
+
+    return messageLevelIndex >= currentLevelIndex;
+  }
+
+  /**
+   * 生成唯一ID
+   */
+  private generateId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * 提取文件头信息
+   */
+  private extractHeaders(file: DataFileInfo): string[] {
+    if (file.sheets && file.currentSheetName) {
+      const sheetData = file.sheets[file.currentSheetName];
+      if (Array.isArray(sheetData) && sheetData.length > 0) {
+        return Object.keys(sheetData[0] || {});
+      }
+    }
+    return [];
+  }
+
+  /**
+   * 提取样本行
+   */
+  private extractSampleRows(file: DataFileInfo): any[] {
+    if (file.sheets && file.currentSheetName) {
+      const sheetData = file.sheets[file.currentSheetName];
+      if (Array.isArray(sheetData)) {
+        return sheetData.slice(0, 5); // 前5行
+      }
+    }
+    return [];
+  }
+
+  /**
+   * 检测数据模式
+   */
+  private detectDataPatterns(data: any[]): string[] {
+    const patterns: string[] = [];
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return patterns;
+    }
+
+    // 检测数值列
+    const firstRow = data[0];
+    const numericColumns = Object.keys(firstRow).filter(key =>
+      typeof firstRow[key] === 'number'
+    );
+
+    if (numericColumns.length > 0) {
+      patterns.push(`Found ${numericColumns.length} numeric columns`);
+    }
+
+    // 检测日期列
+    const dateColumns = Object.keys(firstRow).filter(key => {
+      const value = firstRow[key];
+      return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value);
+    });
+
+    if (dateColumns.length > 0) {
+      patterns.push(`Found ${dateColumns.length} date columns`);
+    }
+
+    return patterns;
+  }
+
+  /**
+   * 构建思考请求
+   */
+  private buildThinkingRequest(observation: ObservationResult): AIAnalysisRequest {
+    return {
+      prompt: `
+Based on the following observation, create an execution plan for processing the data:
+
+User Intent: ${this.currentTask?.context.userInput}
+
+Data Structure:
+- Files: ${observation.observations.dataStructure.files.join(', ')}
+- Total Rows: ${observation.observations.dataStructure.totalRows}
+- Total Columns: ${observation.observations.dataStructure.totalColumns}
+- Has Comments: ${observation.observations.metadata.hasComments}
+- Has Notes: ${observation.observations.metadata.hasNotes}
+
+Issues: ${observation.issues.join(', ')}
+Warnings: ${observation.warnings.join(', ')}
+
+Please provide a step-by-step execution plan in JSON format.
+      `,
+      context: observation,
+      maxTokens: this.config.maxTokens
+    };
+  }
+
+  /**
+   * 调用AI服务
+   */
+  private async callAIService(request: AIAnalysisRequest): Promise<AIAnalysisResponse> {
+    try {
+      // 这里可以扩展为更通用的AI服务接口
+      // 目前使用 zhipuService
+      const result = await generateDataProcessingCode(
+        request.prompt,
+        [] // 暂时不传递文件预览
+      );
+
+      return {
+        success: true,
+        content: result.explanation + '\n\n' + result.code,
+        reasoning: result.explanation,
+        confidence: 0.8
+      };
+    } catch (error) {
+      return {
+        success: false,
+        content: '',
+        error: {
+          code: 'AI_SERVICE_ERROR',
+          message: error instanceof Error ? error.message : String(error)
+        }
+      };
+    }
+  }
+
+  /**
+   * 解析执行计划
+   */
+  private parseExecutionPlan(content: string): ExecutionPlan {
+    // 简化版本：生成基本计划
+    return {
+      id: this.generateId(),
+      steps: [
+        {
+          id: this.generateId(),
+          name: 'Data Processing',
+          description: 'Process data according to user requirements',
+          status: TaskStatus.IDLE,
+          startTime: Date.now(),
+          input: {},
+          metadata: {}
+        }
+      ],
+      estimatedDuration: 30000,
+      requiredResources: ['cpu', 'memory'],
+      fallbackStrategies: {}
+    };
+  }
+
+  /**
+   * 生成降级计划
+   */
+  private generateFallbackPlan(): ExecutionPlan {
+    return {
+      id: this.generateId(),
+      steps: [
+        {
+          id: this.generateId(),
+          name: 'Basic Processing',
+          description: 'Basic data processing without AI optimization',
+          status: TaskStatus.IDLE,
+          startTime: Date.now(),
+          input: {},
+          metadata: {}
+        }
+      ],
+      estimatedDuration: 30000,
+      requiredResources: ['cpu', 'memory'],
+      fallbackStrategies: {}
+    };
+  }
+
+  /**
+   * 评估输出质量
+   */
+  private assessOutputQuality(output: any): {
+    completeness: number;
+    accuracy: number;
+    consistency: number;
+  } {
+    let completeness = 0.8; // 默认值
+    let accuracy = 0.8;
+    let consistency = 0.8;
+
+    // 检查输出是否为空
+    if (!output || Object.keys(output).length === 0) {
+      completeness = 0;
+    }
+
+    // 检查输出数据量
+    for (const [fileName, data] of Object.entries(output)) {
+      if (Array.isArray(data)) {
+        if (data.length > 0) {
+          completeness = Math.min(1, completeness + 0.1);
+        }
+      }
+    }
+
+    return { completeness, accuracy, consistency };
+  }
+
+  /**
+   * 生成质量报告
+   */
+  private generateQualityReport(evaluation: EvaluationResult): QualityReport {
+    return {
+      overallQuality: evaluation.qualityScore,
+      stepReports: {
+        [evaluation.feedback.stepId]: evaluation.feedback
+      },
+      totalIssues: evaluation.issues.critical.length + evaluation.issues.warning.length,
+      criticalIssues: evaluation.issues.critical.length,
+      suggestions: evaluation.feedback.suggestions,
+      metrics: {
+        totalSteps: 1,
+        successfulSteps: evaluation.passed ? 1 : 0,
+        failedSteps: evaluation.passed ? 0 : 1,
+        retriedSteps: 0,
+        totalTime: 0
+      }
+    };
+  }
+
+  /**
+   * 创建错误对象
+   */
+  private createError(
+    category: ErrorCategory,
+    code: string,
+    message: string,
+    details?: any
+  ): TaskError {
+    return {
+      id: this.generateId(),
+      category,
+      code,
+      message,
+      details,
+      timestamp: Date.now(),
+      retryable: this.isRetryableError(category),
+      severity: this.getErrorSeverity(category)
+    };
+  }
+
+  /**
+   * 从评估结果创建错误
+   */
+  private createErrorFromEvaluation(evaluation: EvaluationResult): TaskError {
+    return this.createError(
+      ErrorCategory.UNKNOWN_ERROR,
+      'EVALUATION_FAILED',
+      `Quality score ${evaluation.qualityScore} below threshold ${this.config.qualityThreshold}`
+    );
+  }
+
+  /**
+   * 判断错误是否可重试
+   */
+  private isRetryableError(category: ErrorCategory): boolean {
+    return [
+      ErrorCategory.AI_SERVICE_ERROR,
+      ErrorCategory.NETWORK_ERROR,
+      ErrorCategory.TIMEOUT_ERROR,
+      ErrorCategory.AI_RATE_LIMIT
+    ].includes(category);
+  }
+
+  /**
+   * 获取错误严重程度
+   */
+  private getErrorSeverity(category: ErrorCategory): 'low' | 'medium' | 'high' | 'critical' {
+    const severityMap: Record<ErrorCategory, 'low' | 'medium' | 'high' | 'critical'> = {
+      [ErrorCategory.VALIDATION_ERROR]: 'medium',
+      [ErrorCategory.INVALID_INPUT]: 'low',
+      [ErrorCategory.DATA_PARSING_ERROR]: 'high',
+      [ErrorCategory.DATA_TRANSFORMATION_ERROR]: 'high',
+      [ErrorCategory.COLUMN_NOT_FOUND]: 'medium',
+      [ErrorCategory.AI_SERVICE_ERROR]: 'high',
+      [ErrorCategory.AI_TIMEOUT]: 'medium',
+      [ErrorCategory.AI_RATE_LIMIT]: 'low',
+      [ErrorCategory.CODE_EXECUTION_ERROR]: 'critical',
+      [ErrorCategory.CODE_SYNTAX_ERROR]: 'high',
+      [ErrorCategory.RUNTIME_ERROR]: 'high',
+      [ErrorCategory.NETWORK_ERROR]: 'medium',
+      [ErrorCategory.STORAGE_ERROR]: 'high',
+      [ErrorCategory.TIMEOUT_ERROR]: 'medium',
+      [ErrorCategory.UNKNOWN_ERROR]: 'medium'
+    };
+
+    return severityMap[category] || 'medium';
+  }
+
+  // ========== 公共API ==========
+
+  /**
+   * 注册进度回调
+   */
+  public updateProgress(callback: ProgressCallback): void {
+    this.progressCallbacks.push(callback);
+
+    // 立即通知当前状态
+    if (this.currentTask) {
+      callback(this.currentTask);
+    }
+  }
+
+  /**
+   * 获取当前任务状态
+   */
+  public getTaskState(): MultiStepTask | null {
+    return this.currentTask;
+  }
+
+  /**
+   * 取消当前任务
+   */
+  public cancelTask(): void {
+    if (this.currentTask && this.currentTask.status !== TaskStatus.COMPLETED) {
+      this.updateTaskStatus(TaskStatus.CANCELLED);
+      this.log('info', 'Task cancelled by user');
+    }
+  }
+
+  /**
+   * 获取日志
+   */
+  public getLogs(): LogEntry[] {
+    return [...this.logs];
+  }
+
+  /**
+   * 清除日志
+   */
+  public clearLogs(): void {
+    this.logs = [];
+  }
+
+  /**
+   * 获取统计信息
+   */
+  public getStatistics() {
+    return {
+      sessionId: this.sessionId,
+      totalTasks: 1,
+      completedTasks: this.currentTask?.status === TaskStatus.COMPLETED ? 1 : 0,
+      failedTasks: this.currentTask?.status === TaskStatus.FAILED ? 1 : 0,
+      averageExecutionTime: 0
+    };
+  }
+}
+
+/**
+ * 导出单例实例的工厂函数
+ */
+export const createOrchestrator = (config?: Partial<OrchestratorConfig>): AgenticOrchestrator => {
+  return new AgenticOrchestrator(config);
+};
+
+/**
+ * 默认导出
+ */
+export default AgenticOrchestrator;
