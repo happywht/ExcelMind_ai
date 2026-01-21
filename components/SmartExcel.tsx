@@ -54,6 +54,7 @@ export const SmartExcel: React.FC = () => {
 
   const handleRun = async () => {
     if (filesData.length === 0 || !command.trim()) return;
+
     setIsProcessing(true);
     setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'pending', message: '正在启动智能分析循环 (Observe-Think-Action)...' }, ...prev]);
     setLastGeneratedCode('');
@@ -415,14 +416,14 @@ export const SmartExcel: React.FC = () => {
           <div className="p-4 bg-slate-50 border-t border-slate-200">
             <label className="block text-sm font-bold text-slate-700 mb-2 flex justify-between">
               AI 指令
-              <button 
-                onClick={() => setShowCode(!showCode)} 
+              <button
+                onClick={() => setShowCode(!showCode)}
                 className="text-xs font-normal text-slate-400 hover:text-emerald-600 flex items-center gap-1"
               >
                 <Code className="w-3 h-3" /> {showCode ? '隐藏代码' : '查看代码'}
               </button>
             </label>
-            
+
             {showCode && lastGeneratedCode && (
               <div className="mb-3 p-2 bg-slate-900 text-green-400 text-xs font-mono rounded-lg max-h-32 overflow-y-auto">
                 <pre>{lastGeneratedCode}</pre>

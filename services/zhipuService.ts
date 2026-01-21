@@ -217,52 +217,28 @@ export const chatWithKnowledgeBase = async (
 };
 
 /**
- * 清理AI生成的代码，移除常见语法错误
+ * 清理AI生成的Python代码
  * 主要处理：
- * 1. TypeScript类型注解 (例如: const x: string = "...")
- * 2. 带类型的解构 (例如: const {a, b}: SomeType = obj)
- * 3. 类型导入语句
- * 4. 其他不兼容Function构造器的语法
- *
- * ⚠️ 重要：保持正则表达式简单且安全，避免过度匹配导致代码损坏
+ * 1. 移除不必要的类型注解
+ * 2. 确保导入语句格式正确
+ * 3. 清理多余的空行
  */
 const sanitizeGeneratedCode = (code: string): string => {
   let sanitized = code;
 
-  // 1. 移除类型导入语句
-  sanitized = sanitized.replace(/import\s+.*\s+from\s+['"][^'"]+['"];?\s*\n?/g, '');
+  // 1. 移除markdown代码块标记（如果有残留）
+  sanitized = sanitized.replace(/^```python\s*\n?/i, '').replace(/```\s*$/, '');
 
-  // 2. 移除 interface/type 声明
-  sanitized = sanitized.replace(/(?:interface|type)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*{[^}]*};?\s*\n?/g, '');
+  // 2. 清理多余的连续空行
+  sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
 
-  // 3. 移除变量声明中的类型注解 - 只处理简单情况
-  // 匹配: const/let/var name: Type = value
-  // ⚠️ 保守匹配，避免误伤对象属性
-  sanitized = sanitized.replace(
-    /(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:\s*[a-zA-Z_$][a-zA-Z0-9_$<>[\]\s,]*\s*=/g,
-    '$1 $2 ='
-  );
-
-  // 4. 移除解构中的类型注解 - 保守匹配
-  sanitized = sanitized.replace(
-    /(const|let|var)\s+(\{[^}]+\}|\[[^\]]+\])\s*:\s*[a-zA-Z_$][a-zA-Z0-9_$<>[\]\s,]*\s*=/g,
-    '$1 $2 ='
-  );
-
-  // 5. 移除泛型语法 - 只处理明确的情况
-  // 匹配: Type<Args> 但避免匹配比较运算符 <
-  sanitized = sanitized.replace(
-    /\b([A-Z][a-zA-Z0-9_]*)<[^>{}]+>\s*(?=[=([])/g,
-    '$1'
-  );
-
-  return sanitized;
+  return sanitized.trim();
 };
 
 /**
- * Generates JavaScript code to transform the dataset based on user prompt.
- * Now supports 'Observe-Think-Action' loop by receiving sample data.
- * ENHANCED: Now supports multi-sheet data processing
+ * 生成 Python 代码来处理数据集
+ * 支持 'Observe-Think-Action' 循环
+ * 支持多sheet数据处理
  */
 export const generateDataProcessingCode = async (
   userPrompt: string,
@@ -277,7 +253,7 @@ export const generateDataProcessingCode = async (
   })[]
 ): Promise<AIProcessResult> => {
   try {
-    // Construct a rich observation context
+    // 构建观察上下文
     const fileObservationStr = filesPreview.map(f => {
       let context = `--- FILE: "${f.fileName}" ---\n`;
 
@@ -365,87 +341,99 @@ export const generateDataProcessingCode = async (
     }).join('\n\n');
 
     const systemInstruction = `
-      你是一个高级财务审计数据处理智能体。你的运行环境是浏览器的 Web Worker (JavaScript)。
-      你需要执行 [Observe - Think - Action] 的循环来处理用户任务。
+你是一个高级财务审计数据处理智能体。你的运行环境是 Python 3.x。
+你需要执行 [Observe - Think - Action] 的循环来处理用户任务。
 
-      **特别注意**: 单元格注释和标注是审计工作的重要信息源！
-      - 注释可能包含：审批意见、数据来源、异常说明、计算依据等
-      - 标注可能包含：重要提醒、风险提示、合规说明等
-      - 在处理数据时，务必考虑这些元数据信息
+**特别注意**: 单元格注释和标注是审计工作的重要信息源！
+- 注释可能包含：审批意见、数据来源、异常说明、计算依据等
+- 标注可能包含：重要提醒、风险提示、合规说明等
+- 在处理数据时，务必考虑这些元数据信息
 
-      **🆕 多Sheet支持**:
-      - 现在支持处理Excel文件中的多个sheets
-      - 当文件包含多个sheets时，\`files\` 变量的值将是对象而非数组
-      - 格式: \`files['文件名.xlsx'] = { "Sheet1": [...], "Sheet2": [...], ... }\`
-      - 当文件只有一个sheet时，格式保持不变: \`files['文件名.xlsx'] = [...]\`
-      - 你可以访问特定sheet的数据: \`files['文件名.xlsx']['Sheet2']\`
-      - 如果需要跨sheet操作，可以这样: \`const sheet1 = files['文件名.xlsx']['Sheet1'];\`
+**🆕 多Sheet支持**:
+- 现在支持处理Excel文件中的多个sheets
+- 当文件包含多个sheets时，files 字典的值将是嵌套字典
+- 格式: files['文件名.xlsx'] = {"Sheet1": [...], "Sheet2": [...], ...}
+- 当文件只有一个sheet时，格式保持不变: files['文件名.xlsx'] = [...]
+- 你可以访问特定sheet的数据: files['文件名.xlsx']['Sheet2']
+- 如果需要跨sheet操作，可以这样: sheet1 = files['文件名.xlsx']['Sheet1']
 
-      **Phase 1: OBSERVE (观察)**
-      你拥有以下文件的样本数据。请仔细阅读样本数据的内容，而不仅仅是列头。
-      ${fileObservationStr}
+**Phase 1: OBSERVE (观察)**
+你拥有以下文件的样本数据。请仔细阅读样本数据的内容，而不仅仅是列头。
+${fileObservationStr}
 
-      **Phase 2: THINK (思考)**
-      1. 分析用户需求。
-      2. **关键步骤**: 在不同文件中寻找对应列。
-         - 不要盲目假设列名（例如不要假设名字一定在 'A' 列）。
-         - *必须* 根据样本数据的内容来推断。例如：如果用户说"排除名单"，请在文件样本中寻找包含人名的那一列（可能是 "name", "姓名", "employee_id" 等）。
-         - 如果需要跨文件匹配（例如 "File A 中的人名不在 File B 中"），请确保你找到了两个文件中内容格式一致的列（例如都是 "张三" 格式，而不是一个 "张三" 一个 "ID:123"）。
-      3. 规划数据转换逻辑。
-      4. **多Sheet场景**: 如果用户提到"使用Sheet2"或"从另一个sheet"，注意识别和处理。
+**Phase 2: THINK (思考)**
+1. 分析用户需求。
+2. **关键步骤**: 在不同文件中寻找对应列。
+   - 不要盲目假设列名（例如不要假设名字一定在 'A' 列）。
+   - *必须* 根据样本数据的内容来推断。例如：如果用户说"排除名单"，请在文件样本中寻找包含人名的那一列（可能是 "name", "姓名", "employee_id" 等）。
+   - 如果需要跨文件匹配（例如 "File A 中的人名不在 File B 中"），请确保你找到了两个文件中内容格式一致的列（例如都是 "张三" 格式，而不是一个 "张三" 一个 "ID:123"）。
+3. 规划数据转换逻辑。
+4. **多Sheet场景**: 如果用户提到"使用Sheet2"或"从另一个sheet"，注意识别和处理。
 
-      **Phase 3: ACTION (行动/代码生成)**
-      生成一段 JavaScript 代码来执行任务。
+**Phase 3: ACTION (行动/代码生成)**
+生成一段 Python 代码来执行任务。
 
-      **输入数据结构**:
-      变量 \`files\` 是一个对象。 Key 是文件名，Value 根据sheet数量而定：
-      - 单sheet: Value 是对象数组，例如 \`files['data.xlsx']\` 是一个对象数组
-      - 多sheet: Value 是包含所有sheets的对象，例如 \`files['data.xlsx'] = { "Sheet1": [...], "Sheet2": [...] }\`
+**输入数据结构**:
+变量 files 是一个字典。Key 是文件名，Value 根据sheet数量而定：
+- 单sheet: Value 是字典列表，例如 files['data.xlsx'] 是一个字典列表
+- 多sheet: Value 是包含所有sheets的嵌套字典，例如 files['data.xlsx'] = {"Sheet1": [...], "Sheet2": [...]}
 
-      **代码编写规则**:
-      1. **ONLY PLAIN JAVASCRIPT**: 严禁使用TypeScript语法！不要添加类型注解（: string, : number等）！
-      2. **Robust Matching**: 字符串比较时，建议使用 \`.toString().trim()\`, 甚至在必要时匹配前需要归一化。
-      3. **Direct Manipulation**: 直接修改 \`files\` 对象或添加新的 Key (新文件)。
-      4. **MUST RETURN**: 代码的最后一句必须是 \`return files;\`，确保返回修改后的数据。
-      5. **No External Libs**: 只能使用原生 JS (ES6+)。
-      6. **Safety**: 代码只包含函数体，不要包含 \`function() {}\` 包裹。
-      7. **Error Handling**: 在可能出错的地方使用 try-catch，但仍然要 return files。
-      8. **变量声明**: 使用 let/const 而不是 var。
-      9. **NO TYPES**: 不要使用任何TypeScript特性，包括：类型注解、interface、type、泛型< T >等。
-      10. **NO IMPORTS**: 不要使用import语句，所有功能必须用原生JS实现。
+**代码编写规则**:
+1. 使用 Python 3 语法
+2. **Robust Matching**: 字符串比较时，建议使用 str().strip()
+3. **Direct Manipulation**: 直接修改 files 字典或添加新的 Key (新文件)
+4. **MUST RETURN**: 代码的最后必须是输出（不需要return语句，直接使用print输出JSON）
+5. **可用库**: 可以使用 pandas (import pandas as pd) 进行数据处理
+6. **变量声明**: Python 动态类型，无需声明类型
+7. **Error Handling**: 在可能出错的地方使用 try-except
 
-      **强制要求**:
-      - 代码必须以 \`return files;\` 结尾
-      - 如果创建新文件，格式必须为: \`files['新文件名.xlsx'] = newData;\`
-      - 确保处理后的数据是数组格式或对象格式（多sheet时）
-      - **重要**: 不要使用反引号 (\`) 或模板字符串语法
-      - 使用普通引号 ("" 或 '') 而非模板字符串
-      - 避免在字符串中使用未转义的特殊字符
+**强制要求**:
+- 代码必须输出处理后的 files 字典的JSON表示
+- 使用 print(json.dumps(files, ensure_ascii=False, default=str)) 输出结果
+- 如果创建新文件，格式为: files['新文件名.xlsx'] = newData
+- 确保处理后的数据是列表格式或嵌套字典格式（多sheet时）
 
-      **多Sheet操作示例**:
-      // 访问特定sheet
-      const data = files['文件.xlsx']['Sheet2'];
+**多Sheet操作示例**:
+# 访问特定sheet
+data = files['文件.xlsx']['Sheet2']
 
-      // 跨sheet关联
-      const sheet1 = files['文件.xlsx']['Sheet1'];
-      const sheet2 = files['文件.xlsx']['Sheet2'];
+# 跨sheet关联
+sheet1 = files['文件.xlsx']['Sheet1']
+sheet2 = files['文件.xlsx']['Sheet2']
 
-      // 更新特定sheet
-      files['文件.xlsx']['Sheet1'] = newData;
+# 更新特定sheet
+files['文件.xlsx']['Sheet1'] = new_data
 
-      // 创建多sheet结果
-      files['结果.xlsx'] = {
-        '汇总': summaryData,
-        '明细': detailData
-      };
+# 创建多sheet结果
+files['结果.xlsx'] = {
+    '汇总': summary_data,
+    '明细': detail_data
+}
 
-      **重要输出要求**:
-      - 必须输出纯净的JSON格式，不要包含任何Markdown标记
-      - 不要使用反引号json或反引号标记
-      - 直接输出JSON对象，格式如下：
+**Pandas使用示例**:
+import pandas as pd
+import json
 
-      {"explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。", "code": "你的 JavaScript 代码字符串"}
-    `;
+# 将字典列表转为DataFrame
+df = pd.DataFrame(files['data.xlsx'])
+
+# 数据处理
+filtered = df[df['金额'] > 1000]
+
+# 转回字典列表
+files['result.xlsx'] = filtered.to_dict('records')
+
+**输出JSON示例**:
+import json
+print(json.dumps(files, ensure_ascii=False, default=str))
+
+**重要输出要求**:
+- 必须输出纯净的JSON格式，不要包含任何Markdown标记
+- 不要使用反引号json或反引号标记
+- 直接输出JSON对象，格式如下：
+
+{"explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。", "code": "你的 Python 代码字符串"}
+`;
 
     console.log('[AI Service] Sending request to AI...');
     console.log('[AI Service] User prompt:', userPrompt);
@@ -525,11 +513,11 @@ export const generateDataProcessingCode = async (
           code = codeMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\r/g, '\r');
         } else {
           // 如果找不到格式化的code，尝试提取代码块
-          const codeBlockMatch = text.match(/```(?:javascript|js)?\s*\n([\s\S]*?)\n```/);
+          const codeBlockMatch = text.match(/```(?:python|javascript|js)?\s*\n([\s\S]*?)\n```/);
           if (codeBlockMatch) {
             code = codeBlockMatch[1];
           } else {
-            code = "// AI 响应解析失败，请重试";
+            code = "# AI 响应解析失败，请重试";
           }
         }
 
