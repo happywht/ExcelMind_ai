@@ -1,0 +1,240 @@
+# ExcelMind AI 性能测试 CI/CD 工作流
+#
+# 用途:
+# - 自动运行性能基准测试
+# - 对比历史基线
+# - 检测性能回归
+# - 生成性能报告
+#
+# 触发条件:
+# - Pull Request 到 main 分支
+# - 推送到 main 分支
+# - 手动触发
+
+name: Performance Testing
+
+on:
+  pull_request:
+    branches: [main, new_master]
+    paths:
+      - 'services/**'
+      - 'components/**'
+      - 'src/**'
+  push:
+    branches: [main, new_master]
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: '测试模式'
+        required: true
+        default: 'quick'
+        type: choice
+        options:
+          - quick
+          - full
+      update_baseline:
+        description: '更新性能基线'
+        required: false
+        type: boolean
+        default: false
+
+# 权限
+permissions:
+  contents: read
+  pull-requests: write
+
+# 环境变量
+env:
+  NODE_VERSION: '22'
+  PYTHON_VERSION: '3.x'
+
+jobs:
+  # ============================================================================
+  # 性能基准测试
+  # ============================================================================
+  performance-test:
+    name: 性能基准测试
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. 设置 Node.js
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      # 3. 安装依赖
+      - name: 安装依赖
+        run: npm ci
+
+      # 4. 下载历史基线
+      - name: 下载历史基线
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: test-results/performance/baseline.json
+          key: performance-baseline-${{ github.ref }}
+          restore-keys: |
+            performance-baseline-main
+            performance-baseline-
+
+      # 5. 运行性能测试
+      - name: 运行性能测试
+        run: |
+          if [ "${{ github.event.inputs.test_mode }}" = "full" ]; then
+            npm run perf:full
+          else
+            npm run perf:quick
+          fi
+
+      # 6. 对比基线
+      - name: 对比性能基线
+        if: hashFiles('test-results/performance/baseline.json') != ''
+        run: npm run perf:compare
+        continue-on-error: true
+
+      # 7. 更新基线 (如果需要)
+      - name: 更新性能基线
+        if: |
+          github.event.inputs.update_baseline == 'true' ||
+          github.ref == 'refs/heads/main'
+        run: npm run perf:baseline
+
+      # 8. 上传测试结果
+      - name: 上传测试结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: |
+            test-results/performance/*.json
+            test-results/performance/*.html
+          retention-days: 30
+
+      # 9. 生成性能报告注释
+      - name: 生成性能报告
+        if: github.event_name == 'pull_request'
+        run: |
+          # 提取关键指标
+          echo "## 性能测试报告 🚀" > performance-report.md
+          echo "" >> performance-report.md
+          echo "### 测试摘要" >> performance-report.md
+          echo "- 总测试数: $(node -e "console.log(require('./test-results/performance/latest-results.json').summary.totalTests)")" >> performance-report.md
+          echo "- 通过: $(node -e "console.log(require('./test-results/performance/latest-results.json').summary.passedTests)")" >> performance-report.md
+          echo "- 失败: $(node -e "console.log(require('./test-results/performance/latest-results.json').summary.failedTests)")" >> performance-report.md
+          echo "" >> performance-report.md
+          echo "### 性能变化" >> performance-report.md
+          echo "- 性能提升: $(node -e "console.log(require('./test-results/performance/latest-results.json').summary.improvedTests)")" >> performance-report.md
+          echo "- 性能下降: $(node -e "console.log(require('./test-results/performance/latest-results.json').summary.degradedTests)")" >> performance-report.md
+          echo "" >> performance-report.md
+          echo "📊 详细报告请查看 [性能测试报告](./PERFORMANCE_BENCHMARK_REPORT.md)" >> performance-report.md
+
+      # 10. 发布性能报告到 PR
+      - name: 发布性能报告
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('performance-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+  # ============================================================================
+  # 性能回归检测
+  # ============================================================================
+  regression-check:
+    name: 性能回归检测
+    runs-on: ubuntu-latest
+    needs: performance-test
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载测试结果
+        uses: actions/download-artifact@v4
+        with:
+          name: performance-results
+          path: test-results/performance/
+
+      - name: 检测性能回归
+        run: |
+          # 检查是否有严重性能回归
+          degraded_count=$(node -e "console.log(require('./test-results/performance/latest-results.json').summary.degradedTests || 0)")
+          critical_count=$(node -e "console.log(require('./test-results/performance/latest-results.json').summary.critical || 0)")
+
+          if [ $critical_count -gt 0 ]; then
+            echo "❌ 检测到 $critical_count 个严重性能回归！"
+            exit 1
+          elif [ $degraded_count -gt 3 ]; then
+            echo "⚠️ 检测到 $degraded_count 个性能下降，请检查"
+            exit 1
+          else
+            echo "✅ 无严重性能回归"
+          fi
+
+  # ============================================================================
+  # 性能报告生成 (仅在 main 分支)
+  # ============================================================================
+  generate-report:
+    name: 生成性能报告
+    runs-on: ubuntu-latest
+    needs: [performance-test, regression-check]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 下载测试结果
+        uses: actions/download-artifact@v4
+        with:
+          name: performance-results
+          path: test-results/performance/
+
+      - name: 生成月度性能报告
+        run: |
+          # 生成性能趋势图
+          node scripts/performance-comparator.cjs \
+            test-results/performance/baseline.json \
+            test-results/performance/latest-results.json \
+            --html test-results/performance/monthly-report.html
+
+      - name: 上传月度报告
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-performance-report
+          path: test-results/performance/monthly-report.html
+          retention-days: 90
+
+  # ============================================================================
+  # 性能告警 (可选)
+  # ============================================================================
+  performance-alert:
+    name: 性能告警
+    runs-on: ubuntu-latest
+    needs: performance-test
+    if: failure()
+
+    steps:
+      - name: 发送告警通知
+        run: |
+          echo "⚠️ 性能测试失败或检测到严重性能回归"
+          echo "请查看: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
