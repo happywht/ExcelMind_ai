@@ -11,7 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "electron": "electron .",
-    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 http://localhost:3001 http://localhost:3002 && set NODE_ENV=development&& electron .\"",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 http://localhost:3001 http://localhost:3002 http://localhost:3003 http://localhost:3004 http://localhost:3005 && set NODE_ENV=development&& electron .\"",
     "electron-pack": "npm run build && electron-builder",
     "dist": "npm run build && electron-builder --publish=never",
     "dist-portable": "npm run build && electron-builder --publish=never --win portable",
@@ -33,7 +33,17 @@
     "test:e2e:headless": "npx playwright test --headed=false",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:debug": "npx playwright test --debug",
-    "test:generate-files": "node scripts/generate-test-files.js"
+    "test:generate-files": "node scripts/generate-test-files.js",
+    "setup-resources": "node scripts/setup-resources.js",
+    "test:agentic": "node scripts/run-agentic-tests.cjs all",
+    "test:agentic:basic": "node scripts/run-agentic-tests.cjs basic",
+    "test:agentic:otae": "node scripts/run-agentic-tests.cjs otae",
+    "test:agentic:error-repair": "node scripts/run-agentic-tests.cjs error-repair",
+    "test:agentic:mode-compare": "node scripts/run-agentic-tests.cjs mode-compare",
+    "test:agentic:quality": "node scripts/run-agentic-tests.cjs quality",
+    "test:agentic:multistep": "node scripts/run-agentic-tests.cjs multistep",
+    "test:agentic:report": "node scripts/run-agentic-tests.cjs report",
+    "test:agentic:benchmark": "npx playwright test tests/e2e/performance-benchmark.spec.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
@@ -45,6 +55,7 @@
     "jszip": "^3.10.1",
     "lucide-react": "^0.561.0",
     "mammoth": "^1.6.0",
+    "node-pty": "^1.1.0",
     "pdfjs-dist": "^3.11.174",
     "pizzip": "^3.2.0",
     "react": "^19.2.3",
@@ -55,6 +66,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "^2.1.12",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/jest": "^29.5.12",
@@ -84,7 +96,29 @@
       "dist/**/*",
       "public/electron.cjs",
       "public/preload.js",
+      "public/electron/**/*",
       "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/@anthropic-ai/claude-code",
+        "to": "bin/claude-code",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/bin/node.exe",
+        "to": "bin/node.exe"
+      },
+      {
+        "from": "resources/bin/node",
+        "to": "bin/node"
+      }
+    ],
+    "asarUnpack": [
+      "**/node-pty/**",
+      "public/electron/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",

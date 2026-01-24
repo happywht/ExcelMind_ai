@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         port: 3000,
+        // strictPort: true, // 暂时禁用，让 Vite 自动选择可用端口
         host: '0.0.0.0',
       },
       base: './', // 使用相对路径，修复Electron中的资源加载问题
