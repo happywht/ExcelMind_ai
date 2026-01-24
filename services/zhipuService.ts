@@ -218,19 +218,37 @@ export const chatWithKnowledgeBase = async (
 
 /**
  * 清理AI生成的Python代码
- * 主要处理：
- * 1. 移除不必要的类型注解
- * 2. 确保导入语句格式正确
- * 3. 清理多余的空行
+ *
+ * 优化策略（Phase 1）：
+ * - 移除过度修复逻辑
+ * - 只保留必要的清理
+ * - 避免破坏正确的代码
  */
 const sanitizeGeneratedCode = (code: string): string => {
+  if (!code) return '';
+
   let sanitized = code;
 
   // 1. 移除markdown代码块标记（如果有残留）
   sanitized = sanitized.replace(/^```python\s*\n?/i, '').replace(/```\s*$/, '');
+  sanitized = sanitized.replace(/^```json\s*\n?/i, '').replace(/```\s*$/, '');
 
-  // 2. 清理多余的连续空行
+  // 2. 清理多余的连续空行（最多保留2个）
   sanitized = sanitized.replace(/\n{3,}/g, '\n\n');
+
+  // 3. 移除行尾空格
+  sanitized = sanitized.replace(/[ \t]+$/gm, '');
+
+  // 4. 确保文件末尾有换行
+  if (sanitized && !sanitized.endsWith('\n')) {
+    sanitized += '\n';
+  }
+
+  // ⚠️ 不再进行以下过度修复：
+  // - 不修改缩进（可能破坏代码逻辑）
+  // - 不添加/删除括号（可能破坏语法）
+  // - 不修改变量名
+  // - 不添加类型注解（Python不需要）
 
   return sanitized.trim();
 };

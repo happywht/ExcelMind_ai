@@ -127,6 +127,10 @@ export const executeTransformation = async (
   console.log('[Python Execution] Starting...');
   console.log('[Python Execution] Code length:', code.length);
   console.log('[Python Execution] Datasets keys:', Object.keys(datasets));
+  console.log('[Python Execution] Full Python code to execute:');
+  console.log('---BEGIN PYTHON CODE---');
+  console.log(code);
+  console.log('---END PYTHON CODE---');
 
   try {
     // 检查是否在 Electron 环境中
@@ -135,20 +139,84 @@ export const executeTransformation = async (
     }
 
     // 调用主进程的 Python 执行器
+    console.log('[Python Execution] Calling electronAPI.executePython...');
+    const startTime = Date.now();
+
     const result = await (window as any).electronAPI.executePython({
       code,
       datasets,
       timeout: timeoutMs
     });
 
+    const duration = Date.now() - startTime;
+    console.log(`[Python Execution] IPC call completed in ${duration}ms`);
+    console.log('[Python Execution] Result structure:', {
+      hasSuccess: 'success' in result,
+      success: result.success,
+      hasData: 'data' in result,
+      hasError: 'error' in result,
+      dataKeys: result.data ? Object.keys(result.data) : [],
+      errorType: typeof result.error,
+      errorLength: result.error ? result.error.length : 0
+    });
+
     if (result.success) {
-      console.log('[Python Execution] Success, output keys:', Object.keys(result.data));
+      console.log('[Python Execution] ✅ Success!');
+      console.log('[Python Execution] Output data keys:', Object.keys(result.data));
+      for (const [key, value] of Object.entries(result.data)) {
+        const data = value as any[];
+        console.log(`[Python Execution] - ${key}: ${Array.isArray(data) ? data.length + ' rows' : typeof value}`);
+      }
       return result.data;
     } else {
-      throw new Error(result.error || 'Python 执行失败');
+      console.error('[Python Execution] ❌ Failed!');
+      console.error('[Python Execution] Error type:', typeof result.error);
+      console.error('[Python Execution] Error message:', result.error);
+
+      // 详细的错误分析
+      const errorStr = String(result.error || '');
+      let errorType = 'UNKNOWN_ERROR';
+      let errorDetails = '';
+
+      if (errorStr.includes('SyntaxError')) {
+        errorType = 'SYNTAX_ERROR';
+        errorDetails = 'Python代码有语法错误，可能是引号未闭合、缩进错误或拼写错误';
+      } else if (errorStr.includes('IndentationError')) {
+        errorType = 'INDENTATION_ERROR';
+        errorDetails = 'Python代码缩进不正确';
+      } else if (errorStr.includes('NameError') || errorStr.includes("name '")) {
+        errorType = 'NAME_ERROR';
+        errorDetails = '使用了未定义的变量或函数名';
+      } else if (errorStr.includes('KeyError')) {
+        errorType = 'KEY_ERROR';
+        errorDetails = '尝试访问不存在的字典键或DataFrame列';
+      } else if (errorStr.includes('TypeError')) {
+        errorType = 'TYPE_ERROR';
+        errorDetails = '数据类型不匹配，可能使用了错误类型的操作';
+      } else if (errorStr.includes('AttributeError')) {
+        errorType = 'ATTRIBUTE_ERROR';
+        errorDetails = '尝试访问对象不存在的属性或方法';
+      }
+
+      const fullError = `Python执行失败 [${errorType}]\n${errorDetails}\n\n原始错误:\n${result.error}`;
+      console.error('[Python Execution]', fullError);
+
+      throw new Error(fullError);
     }
   } catch (error) {
-    console.error('[Python Execution] Error:', error);
-    throw error;
+    const errorObj = error as Error;
+    console.error('[Python Execution] Exception caught:', {
+      name: errorObj.name,
+      message: errorObj.message,
+      stack: errorObj.stack
+    });
+
+    // 如果是我们自己抛出的错误，直接抛出
+    if (errorObj.message.includes('Python执行失败')) {
+      throw error;
+    }
+
+    // 否则包装成更详细的错误
+    throw new Error(`Python执行异常: ${errorObj.message}\n\n执行的代码:\n${code.substring(0, 500)}...`);
   }
 };

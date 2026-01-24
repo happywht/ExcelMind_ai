@@ -391,29 +391,64 @@ export class AgenticOrchestrator {
     const startTime = Date.now();
     const stepId = this.generateId();
 
+    // 在 try 块外初始化变量，避免 catch 块中引用未定义的变量
+    let codeGenerationResult: AIProcessResult | null = null;
+    let filesPreview: any[] | null = null;
+    let datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } } = {};
+
     try {
       if (!this.currentTask) {
         throw new Error('No active task');
       }
 
-      // 准备数据预览
-      const filesPreview = this.currentTask.context.dataFiles.map(file => ({
-        fileName: file.fileName,
-        sheets: file.sheets,
-        currentSheetName: file.currentSheetName,
-        headers: this.extractHeaders(file),
-        sampleRows: this.extractSampleRows(file),
-        metadata: file.metadata
-      }));
+      // 准备数据预览 - 修复：构建 zhipuService 期望的嵌套结构
+      filesPreview = this.currentTask.context.dataFiles.map(file => {
+        const preview: any = {
+          fileName: file.fileName,
+          currentSheetName: file.currentSheetName,
+          metadata: file.metadata
+        };
+
+        // 构建嵌套的 sheets 结构，包含每个 sheet 的 headers 和 sampleRows
+        if (file.sheets && Object.keys(file.sheets).length > 0) {
+          preview.sheets = {};
+
+          Object.entries(file.sheets).forEach(([sheetName, sheetData]) => {
+            if (Array.isArray(sheetData) && sheetData.length > 0) {
+              // 提取当前 sheet 的 headers 和 sampleRows
+              const headers = Object.keys(sheetData[0] || {});
+              const sampleRows = sheetData.slice(0, 5);
+
+              preview.sheets[sheetName] = {
+                headers,
+                sampleRows,
+                rowCount: sheetData.length
+              };
+            }
+          });
+        } else {
+          // 兼容单sheet模式
+          preview.headers = this.extractHeaders(file);
+          preview.sampleRows = this.extractSampleRows(file);
+        }
+
+        return preview;
+      });
+
+      // 数据验证：确保 filesPreview 结构正确
+      this.log('info', 'Validating filesPreview structure', {
+        fileCount: filesPreview.length,
+        structureSample: JSON.stringify(filesPreview[0]).substring(0, 300)
+      });
 
       // 调用AI生成代码
       this.log('info', 'Requesting code generation from AI');
-      const codeGenerationResult = await generateDataProcessingCode(
+      codeGenerationResult = await generateDataProcessingCode(
         this.currentTask.context.userInput,
         filesPreview
       );
 
-      if (!codeGenerationResult.code) {
+      if (!codeGenerationResult || !codeGenerationResult.code) {
         throw new Error('Failed to generate processing code');
       }
 
@@ -421,11 +456,34 @@ export class AgenticOrchestrator {
         codeLength: codeGenerationResult.code.length
       });
 
-      // 准备数据集
-      const datasets: { [fileName: string]: any[] } = {};
+      // 准备数据集 - 修复：单sheet时直接传递数组，多sheet时传递嵌套对象
       for (const file of this.currentTask.context.dataFiles) {
         if (file.sheets) {
-          datasets[file.fileName] = file.sheets;
+          const sheetNames = Object.keys(file.sheets);
+
+          // 添加调试日志
+          this.log('info', `Processing file: ${file.fileName}`, {
+            sheetCount: sheetNames.length,
+            sheetNames,
+            isSingleSheet: sheetNames.length === 1
+          });
+
+          if (sheetNames.length === 1) {
+            // 单sheet: 直接传递数据数组
+            datasets[file.fileName] = file.sheets[sheetNames[0]];
+            this.log('info', `Single sheet detected, passing array directly`, {
+              fileName: file.fileName,
+              sheetName: sheetNames[0],
+              dataSample: file.sheets[sheetNames[0]].slice(0, 2)
+            });
+          } else {
+            // 多sheet: 传递嵌套对象
+            datasets[file.fileName] = file.sheets;
+            this.log('info', `Multiple sheets detected, passing nested object`, {
+              fileName: file.fileName,
+              sheets: sheetNames
+            });
+          }
         }
       }
 
@@ -455,7 +513,20 @@ export class AgenticOrchestrator {
       };
 
     } catch (error) {
-      this.log('error', 'Act step failed', { error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : '';
+
+      // 详细记录错误信息 - 修复：安全地访问可能未定义的变量
+      this.log('error', 'Act step failed with details', {
+        message: errorMessage,
+        stack: errorStack,
+        code: codeGenerationResult?.code?.substring(0, 500) || 'No code generated',
+        datasets: Object.keys(datasets),
+        filesPreview: filesPreview ? {
+          count: filesPreview.length,
+          sample: JSON.stringify(filesPreview[0]).substring(0, 200)
+        } : 'No filesPreview created'
+      });
 
       return {
         stepId,
@@ -463,9 +534,11 @@ export class AgenticOrchestrator {
         error: this.createError(
           ErrorCategory.CODE_EXECUTION_ERROR,
           'ACT_EXECUTION_FAILED',
-          error instanceof Error ? error.message : String(error)
+          `${errorMessage}\n\n代码预览: ${codeGenerationResult?.code?.substring(0, 200) || 'No code generated'}...`
         ),
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
+        rawError: error, // 保存原始错误对象
+        generatedCode: codeGenerationResult?.code || '' // 保存生成的代码
       };
     }
   }
@@ -694,21 +767,61 @@ export class AgenticOrchestrator {
     switch (error.category) {
       case ErrorCategory.COLUMN_NOT_FOUND:
         strategies.push({
-          type: 'alternative_approach',
-          description: 'Try alternative column name matching',
-          action: 'use_fuzzy_matching',
+          type: 'code_fix',
+          description: 'Analyze and fix column name error',
+          action: 'fix_column_reference',
           priority: 1,
           estimatedSuccessRate: 0.7
+        });
+        strategies.push({
+          type: 'simple_approach',
+          description: 'Use simplified data processing',
+          action: 'use_basic_operations',
+          priority: 2,
+          estimatedSuccessRate: 0.5
         });
         break;
 
       case ErrorCategory.CODE_EXECUTION_ERROR:
+        // 分析错误消息
+        const errorMessage = error.message || '';
+
+        // 根据具体错误类型提供不同的修复策略
+        if (errorMessage.includes('SyntaxError') || errorMessage.includes('IndentationError')) {
+          strategies.push({
+            type: 'code_fix',
+            description: 'Fix Python syntax error',
+            action: 'fix_syntax',
+            priority: 1,
+            estimatedSuccessRate: 0.4
+          });
+        }
+
+        // 添加代码修复策略
+        strategies.push({
+          type: 'code_fix',
+          description: 'Analyze and attempt to fix code error',
+          action: 'analyze_and_fix',
+          priority: 2,
+          estimatedSuccessRate: 0.3
+        });
+
+        // 添加简化方法
+        strategies.push({
+          type: 'simple_approach',
+          description: 'Use simplified processing approach',
+          action: 'simplify_logic',
+          priority: 3,
+          estimatedSuccessRate: 0.5
+        });
+
+        // 最后添加重试
         strategies.push({
           type: 'retry',
-          description: 'Retry with corrected code',
+          description: 'Retry with new code generation',
           action: 'regenerate_code',
-          priority: 1,
-          estimatedSuccessRate: 0.6
+          priority: 4,
+          estimatedSuccessRate: 0.4
         });
         break;
 
@@ -720,15 +833,39 @@ export class AgenticOrchestrator {
           priority: 1,
           estimatedSuccessRate: 0.8
         });
+        strategies.push({
+          type: 'retry',
+          description: 'Retry AI service call',
+          action: 'retry_ai_call',
+          priority: 2,
+          estimatedSuccessRate: 0.6
+        });
+        break;
+
+      case ErrorCategory.DATA_ERROR:
+        strategies.push({
+          type: 'simple_approach',
+          description: 'Clean and normalize data',
+          action: 'clean_data',
+          priority: 1,
+          estimatedSuccessRate: 0.6
+        });
         break;
 
       default:
         strategies.push({
+          type: 'simple_approach',
+          description: 'Use simplified approach',
+          action: 'simplify',
+          priority: 1,
+          estimatedSuccessRate: 0.5
+        });
+        strategies.push({
           type: 'retry',
           description: 'Retry the operation',
           action: 'simple_retry',
-          priority: 1,
-          estimatedSuccessRate: 0.5
+          priority: 2,
+          estimatedSuccessRate: 0.3
         });
     }
 
@@ -746,6 +883,8 @@ export class AgenticOrchestrator {
    * 应用修复策略
    */
   private async applyRepairStrategy(strategy: any, error: TaskError): Promise<any> {
+    this.log('info', `Applying repair strategy: ${strategy.type}`);
+
     switch (strategy.type) {
       case 'retry':
         // 重新执行当前步骤
@@ -755,9 +894,70 @@ export class AgenticOrchestrator {
         // 使用降级策略
         return this.useFallbackStrategy();
 
+      case 'code_fix':
+        // 尝试修复代码错误
+        return this.fixCodeError(error);
+
+      case 'simple_approach':
+        // 使用简化方法
+        return this.useSimpleApproach();
+
       default:
         throw new Error(`Unsupported repair strategy: ${strategy.type}`);
     }
+  }
+
+  /**
+   * 尝试修复代码错误
+   */
+  private async fixCodeError(error: TaskError): Promise<any> {
+    this.log('info', 'Attempting to fix code error');
+
+    // 如果错误信息包含代码，尝试提取并修复
+    const errorCode = error.message || '';
+
+    // 常见的 Python 错误修复
+    let fixed = false;
+    let suggestion = '';
+
+    if (errorCode.includes('NameError') || errorCode.includes('name \'')) {
+      suggestion = '检查变量名是否定义，确保使用正确的列名';
+      fixed = true;
+    } else if (errorCode.includes('KeyError') || errorCode.includes('column')) {
+      suggestion = '检查列名是否存在，尝试使用可用的列名';
+      fixed = true;
+    } else if (errorCode.includes('SyntaxError')) {
+      suggestion = '检查代码语法是否正确';
+      fixed = true;
+    } else if (errorCode.includes('IndentationError')) {
+      suggestion = '检查代码缩进是否正确';
+      fixed = true;
+    }
+
+    if (fixed) {
+      this.log('info', 'Code error analyzed', { suggestion });
+    }
+
+    // 如果无法自动修复，返回失败
+    return {
+      success: false,
+      error: 'Cannot automatically fix code error',
+      suggestion
+    };
+  }
+
+  /**
+   * 使用简化方法
+   */
+  private async useSimpleApproach(): Promise<any> {
+    this.log('info', 'Using simplified processing approach');
+
+    // 返回一个简单的处理结果，表示需要降级
+    return {
+      success: false,
+      error: 'Simplified approach failed, falling back to basic mode',
+      shouldFallback: true
+    };
   }
 
   /**
