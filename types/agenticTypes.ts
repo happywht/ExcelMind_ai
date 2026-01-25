@@ -47,6 +47,7 @@ export enum ErrorCategory {
   INVALID_INPUT = 'invalid_input',
 
   // 数据处理错误
+  DATA_ERROR = 'data_error',
   DATA_PARSING_ERROR = 'data_parsing_error',
   DATA_TRANSFORMATION_ERROR = 'data_transformation_error',
   COLUMN_NOT_FOUND = 'column_not_found',
@@ -305,7 +306,9 @@ export interface StepResult {
   success: boolean;
   output?: any;
   error?: TaskError;
+  rawError?: unknown; // 原始错误对象
   executionTime: number;
+  generatedCode?: string; // 生成的代码（用于调试）
   memory?: {
     used: number;
     peak: number;
@@ -412,6 +415,22 @@ export interface AIAnalysisResponse {
     code: string;
     message: string;
   };
+  metadata?: {
+    [key: string]: any;
+  };
+}
+
+/**
+ * AI处理结果接口
+ */
+export interface AIProcessResult {
+  success: boolean;
+  data?: any;
+  content?: string;
+  error?: string;
+  metadata?: {
+    [key: string]: any;
+  };
 }
 
 /**
@@ -473,35 +492,3 @@ export interface Statistics {
     count: number;
   }[];
 }
-
-/**
- * 导出所有类型
- */
-export type {
-  DataFileInfo,
-  TaskError,
-  ErrorAnalysis,
-  RepairStrategy,
-  AnalysisStep,
-  ExecutionPlan,
-  StepFeedback,
-  QualityReport,
-  TaskContext,
-  MultiStepTask,
-  TaskResult,
-  ObservationResult,
-  ThinkingResult,
-  StepResult,
-  EvaluationResult,
-  RepairResult,
-  OrchestratorConfig,
-  ProgressCallback,
-  LogLevel,
-  LogEntry,
-  AIAnalysisRequest,
-  AIAnalysisResponse,
-  CodeExecutionRequest,
-  CodeExecutionResponse,
-  SessionState,
-  Statistics
-};

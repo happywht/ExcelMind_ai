@@ -19,7 +19,8 @@
     "custom-build": "npm run build && npm run package-electron",
     "package-electron": "node scripts/package-electron.js",
     "test": "jest",
-    "test:unit": "jest --testPathPattern=unit",
+    "test:unit": "jest --selectProjects services",
+    "test:component": "jest --selectProjects components",
     "test:integration": "jest --testPathPattern=integration",
     "test:regression": "jest --testPathPattern=regression",
     "test:performance": "jest --testPathPattern=performance",
@@ -27,8 +28,9 @@
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "test:check-coverage": "jest --coverage --coverageThreshold='{\"global\":{\"branches\":85,\"functions\":95,\"lines\":90,\"statements\":90}}'",
-    "test:all": "jest --testPathPattern='(unit|integration|regression)'",
+    "test:all": "jest",
     "test:verbose": "jest --verbose",
+    "test:clear-cache": "jest --clearCache",
     "test:e2e": "node scripts/run-e2e-tests.js",
     "test:e2e:headless": "npx playwright test --headed=false",
     "test:e2e:ui": "npx playwright test --ui",
@@ -44,10 +46,26 @@
     "test:agentic:multistep": "node scripts/run-agentic-tests.cjs multistep",
     "test:agentic:report": "node scripts/run-agentic-tests.cjs report",
     "test:agentic:benchmark": "npx playwright test tests/e2e/performance-benchmark.spec.ts",
+    "test:backend": "node scripts/run-backend-tests.cjs",
+    "test:backend:storage": "node scripts/run-backend-tests.cjs storage",
+    "test:backend:vfs": "node scripts/run-backend-tests.cjs vfs",
+    "test:backend:coverage": "node scripts/run-backend-tests.cjs coverage",
     "perf:quick": "node scripts/run-performance-benchmark.cjs --quick",
     "perf:full": "node scripts/run-performance-benchmark.cjs --full",
     "perf:compare": "node scripts/run-performance-benchmark.cjs --compare --report",
-    "perf:baseline": "node scripts/run-performance-benchmark.cjs --update-baseline"
+    "perf:baseline": "node scripts/run-performance-benchmark.cjs --update-baseline",
+    "test:pyodide-memory": "node scripts/run-pyodide-memory-test.cjs",
+    "test:websocket": "node tests/websocket/quickTest.ts",
+    "test:websocket:stability": "node tests/websocket/WebSocketStabilityTest.ts",
+    "test:websocket:performance": "node tests/websocket/WebSocketPerformanceTest.ts",
+    "test:websocket:server": "node tests/websocket/WebSocketTestServer.ts",
+    "perf:test": "node scripts/run-performance-tests.cjs",
+    "perf:test:quick": "node scripts/run-performance-tests.cjs --quick",
+    "perf:test:baseline": "node scripts/run-performance-tests.cjs --update-baseline",
+    "perf:test:compare": "node scripts/run-performance-tests.cjs --compare",
+    "test:week1": "node scripts/run-week1-tests.cjs",
+    "test:shared-types": "jest packages/shared-types/__tests__",
+    "test:degradation": "jest services/infrastructure/degradation/__tests__"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
@@ -73,8 +91,12 @@
     "@anthropic-ai/claude-code": "^2.1.12",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.12",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.19.7",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
     "concurrently": "^8.2.2",
@@ -87,8 +109,10 @@
     "tailwindcss": "^4.1.18",
     "ts-jest": "^29.1.2",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "wait-on": "^7.2.0"
+    "vite": "6.2.0",
+    "vitest": "^2.0.0",
+    "wait-on": "^7.2.0",
+    "ws": "^8.19.0"
   },
   "build": {
     "appId": "com.excelmind.ai",
@@ -162,6 +186,19 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    }
+  },
+  "overrides": {
+    "xmldom": "npm:@xmldom/xmldom@^0.8.11",
+    "tar": "^6.2.1",
+    "@electron/rebuild": {
+      "tar": "^6.2.1"
+    },
+    "@mapbox/node-pre-gyp": {
+      "tar": "^6.2.1"
+    },
+    "app-builder-lib": {
+      "tar": "^6.2.1"
     }
   }
 }

@@ -31,8 +31,12 @@ import {
   AIAnalysisResponse
 } from '../../types/agenticTypes';
 
+import { AIProcessResult } from '../../types';
+
 import { generateDataProcessingCode } from '../zhipuService';
 import { executeTransformation } from '../excelService';
+import { DegradationManager } from '../infrastructure/degradation';
+import { StateManager } from '../infrastructure/storage';
 
 /**
  * 默认配置
@@ -57,6 +61,7 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
  * 2. 协调 AI 服务和代码执行
  * 3. 错误检测和自动修复
  * 4. 质量评估和优化建议
+ * 5. 集成降级策略管理
  */
 export class AgenticOrchestrator {
   private config: OrchestratorConfig;
@@ -64,10 +69,14 @@ export class AgenticOrchestrator {
   private progressCallbacks: ProgressCallback[] = [];
   private logs: LogEntry[] = [];
   private sessionId: string;
+  private degradationManager: DegradationManager;
+  private stateManager: StateManager | null = null;
 
-  constructor(config?: Partial<OrchestratorConfig>) {
+  constructor(config?: Partial<OrchestratorConfig>, stateManager?: StateManager) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.sessionId = this.generateId();
+    this.degradationManager = new DegradationManager();
+    this.stateManager = stateManager || null;
     this.log('info', 'AgenticOrchestrator initialized', { config: this.config });
   }
 
@@ -91,9 +100,54 @@ export class AgenticOrchestrator {
       fileCount: dataFiles.length
     });
 
+    // 创建或恢复会话
+    if (this.stateManager) {
+      try {
+        await this.stateManager.createSession();
+      } catch (error) {
+        this.log('warn', 'Failed to create session, continuing without state persistence', { error });
+      }
+    }
+
+    // 检查降级状态
+    const healthCheck = this.degradationManager.performHealthCheck();
+    if (!healthCheck.isHealthy) {
+      this.log('warn', 'System health check failed', {
+        score: healthCheck.overallScore,
+        recommendedMode: healthCheck.recommendedMode
+      });
+
+      // 根据健康检查结果调整策略
+      if (healthCheck.recommendedMode === 'backend') {
+        this.log('info', 'Switching to backend mode due to health issues');
+      }
+    }
+
+    // 记录文件大小到降级管理器
+    const totalFileSize = dataFiles.reduce((sum, file) => {
+      // 估算文件大小（实际应从文件元数据获取）
+      return sum + (file.sheets ? Object.keys(file.sheets).length * 1000000 : 1000000);
+    }, 0);
+    this.degradationManager.recordFileSize(totalFileSize);
+
     // 初始化任务
     this.currentTask = this.initializeTask(taskId, userPrompt, dataFiles);
     this.notifyProgress();
+
+    // 保存初始执行状态
+    if (this.stateManager) {
+      try {
+        await this.stateManager.saveExecutionState(taskId, {
+          taskId,
+          status: this.currentTask.status,
+          progress: this.currentTask.progress,
+          steps: this.currentTask.steps,
+          metadata: this.currentTask.metadata,
+        });
+      } catch (error) {
+        this.log('warn', 'Failed to save initial state', { error });
+      }
+    }
 
     try {
       // 设置总超时
@@ -107,9 +161,32 @@ export class AgenticOrchestrator {
         timeoutPromise
       ]);
 
+      const duration = Date.now() - startTime;
+
+      // 记录执行时间到降级管理器
+      this.degradationManager.recordExecution(duration / 1000); // 转换为秒
+
+      // 保存最终执行状态
+      if (this.stateManager) {
+        try {
+          await this.stateManager.saveExecutionState(taskId, {
+            taskId,
+            status: TaskStatus.COMPLETED,
+            progress: this.currentTask.progress,
+            steps: this.currentTask.steps,
+            metadata: {
+              ...this.currentTask.metadata,
+              completedAt: Date.now(),
+            },
+          });
+        } catch (error) {
+          this.log('warn', 'Failed to save final state', { error });
+        }
+      }
+
       this.log('info', 'Task completed successfully', {
         taskId,
-        duration: Date.now() - startTime
+        duration
       });
 
       return result;
@@ -119,6 +196,21 @@ export class AgenticOrchestrator {
         taskId,
         error: error instanceof Error ? error.message : String(error)
       });
+
+      // 保存失败状态
+      if (this.stateManager) {
+        try {
+          await this.stateManager.saveExecutionState(taskId, {
+            taskId,
+            status: TaskStatus.FAILED,
+            progress: this.currentTask.progress,
+            steps: this.currentTask.steps,
+            metadata: this.currentTask.metadata,
+          });
+        } catch (err) {
+          this.log('warn', 'Failed to save failed state', { error: err });
+        }
+      }
 
       return this.handleTaskFailure(error as Error);
     }
@@ -1103,7 +1195,7 @@ export class AgenticOrchestrator {
   /**
    * 更新任务状态
    */
-  private updateTaskStatus(status: TaskStatus): void {
+  private async updateTaskStatus(status: TaskStatus): Promise<void> {
     if (!this.currentTask) return;
 
     this.currentTask.status = status;
@@ -1139,6 +1231,15 @@ export class AgenticOrchestrator {
       currentPhase: status,
       message: phaseMessages[status]
     };
+
+    // 持久化进度更新
+    if (this.stateManager && this.currentTask.id) {
+      try {
+        await this.stateManager.updateExecutionProgress(this.currentTask.id, this.currentTask.progress);
+      } catch (error) {
+        this.log('warn', 'Failed to persist progress update', { error });
+      }
+    }
 
     this.notifyProgress();
   }
@@ -1461,6 +1562,7 @@ Please provide a step-by-step execution plan in JSON format.
     const severityMap: Record<ErrorCategory, 'low' | 'medium' | 'high' | 'critical'> = {
       [ErrorCategory.VALIDATION_ERROR]: 'medium',
       [ErrorCategory.INVALID_INPUT]: 'low',
+      [ErrorCategory.DATA_ERROR]: 'high',
       [ErrorCategory.DATA_PARSING_ERROR]: 'high',
       [ErrorCategory.DATA_TRANSFORMATION_ERROR]: 'high',
       [ErrorCategory.COLUMN_NOT_FOUND]: 'medium',
@@ -1533,8 +1635,19 @@ Please provide a step-by-step execution plan in JSON format.
       totalTasks: 1,
       completedTasks: this.currentTask?.status === TaskStatus.COMPLETED ? 1 : 0,
       failedTasks: this.currentTask?.status === TaskStatus.FAILED ? 1 : 0,
-      averageExecutionTime: 0
+      averageExecutionTime: 0,
+      degradationState: this.degradationManager.getCurrentState()
     };
+  }
+
+  /**
+   * 销毁编排器
+   */
+  public destroy(): void {
+    this.degradationManager.destroy();
+    this.progressCallbacks = [];
+    this.logs = [];
+    console.log('[AgenticOrchestrator] Destroyed');
   }
 }
 

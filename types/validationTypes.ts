@@ -34,6 +34,7 @@ export type ValidationWarningLevel = 'info' | 'warning' | 'error' | 'critical';
  */
 export interface ValidationWarning {
   level: ValidationWarningLevel;
+  severity?: ValidationWarningLevel; // 添加 severity 字段以兼容
   code: string;
   message: string;
   suggestion?: string;

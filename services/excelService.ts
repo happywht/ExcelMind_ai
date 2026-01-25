@@ -116,14 +116,14 @@ export const exportMultipleSheetsToExcel = (sheets: { [sheetName: string]: any[]
  * 执行 AI 生成的 Python 代码
  * 通过 IPC 调用主进程中的 Python 解释器
  * @param code AI 生成的 Python 代码
- * @param datasets 文件名 -> 数据数组的映射
+ * @param datasets 文件名 -> 数据数组或多sheet数据的映射
  * @param timeoutMs 超时时间（毫秒），默认 30 秒
  */
 export const executeTransformation = async (
   code: string,
-  datasets: { [fileName: string]: any[] },
+  datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } },
   timeoutMs: number = 30000 // Default 30 seconds
-): Promise<{ [fileName: string]: any[] }> => {
+): Promise<{ [fileName: string]: any[] | { [sheetName: string]: any[] } }> => {
   console.log('[Python Execution] Starting...');
   console.log('[Python Execution] Code length:', code.length);
   console.log('[Python Execution] Datasets keys:', Object.keys(datasets));

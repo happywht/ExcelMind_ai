@@ -10,6 +10,7 @@
 import {
   FixSuggestion,
   FixWizard,
+  FixWizardStep,
   ValidationResult,
   Hallucination,
   SQLValidationResult,

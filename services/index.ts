@@ -13,7 +13,7 @@ export {
   type Relationship,
   type RelationshipPath,
   type ColumnConflict,
-  type SheetMetadata
+  type SheetMetadata as QuerySheetMetadata
 } from './queryEngine/MultiSheetDataSource';
 
 export {
@@ -57,7 +57,7 @@ export {
   type ParserOptions,
   type EnhancedGenerationOptions,
   type BatchOptions,
-  type ValidationResult,
+  type ValidationResult as DocxValidationResult,
   type ConditionalData,
   type LoopData,
   type TableData,
@@ -261,6 +261,25 @@ export {
 } from './tools/auditTools';
 
 // ============================================
+// 质量控制模块
+// ============================================
+
+export {
+  // 主验证器
+  AIOutputValidator,
+
+  // 子组件
+  SQLValidator,
+  ResultValidator,
+  HallucinationDetector,
+  FixSuggestionGenerator,
+
+  // 质量门禁
+  QualityGate,
+  STRICT_GATE,
+} from './quality';
+
+// ============================================
 // 类型导出 - 后端优化
 // ============================================
 
@@ -278,15 +297,30 @@ export type {
 } from './react/reactCycleService';
 
 export type {
-  SecurityCheckResult,
+  SecurityCheckResult as QualitySecurityCheckResult,
   QualityCheckResult,
   AnalysisResult
 } from './quality/staticCodeAnalyzer';
 
 export type {
-  ToolFunction,
   PromptBuilderConfig
 } from './prompt/promptBuilderService';
+
+export type {
+  // 质量控制类型
+  DatabaseSchema,
+  AIOutput,
+  QueryContext,
+  ValidationConfig,
+  ValidationResult as QualityValidationResult,
+  SQLValidationResult,
+  ResultValidationResult,
+  HallucinationDetectionResult,
+  FixSuggestion,
+  QualityReport,
+  GateCriteria,
+  GateResult
+} from './quality';
 
 // ============================================
 // WASM 本地执行模块 (Phase 2)
@@ -300,15 +334,6 @@ export {
   getFileSystemService,
   ExecutionEngine,
   getExecutionEngine,
-
-  // 集成层
-  WasmIntegrationLayer,
-  getWasmIntegration,
-
-  // 编排器
-  WasmAgenticOrchestrator,
-  getWasmOrchestrator,
-  executeTransformationWasm,
 
   // 便捷函数
   initializeWasm,
@@ -337,13 +362,81 @@ export type {
   ExecutionConfig as WasmExecutionConfig,
   ExecutionContext,
   ExecutionResult as WasmExecutionResult,
-  SecurityCheckResult
+  SecurityCheckResult as WasmSecurityCheckResult
 } from './wasm';
+
+// ============================================
+// 虚拟文件系统模块 (Phase 2 - 虚拟工作台优化)
+// ============================================
+
+export {
+  // 核心服务
+  VirtualFileSystem,
+  getVirtualFileSystem,
+  FileRole,
+  RelationType,
+
+  // 元数据服务
+  FileMetadataService,
+  getFileMetadataService,
+
+  // 关系服务
+  FileRelationshipService,
+  getFileRelationshipService,
+
+  // 跨Sheet服务
+  CrossSheetService,
+  getCrossSheetService,
+
+  // 工作台管理器
+  VirtualWorkspaceManager,
+  getVirtualWorkspaceManager
+} from './infrastructure/vfs';
+
+export type {
+  // VFS 核心类型
+  VirtualFileInfo,
+  FileUpdate,
+  FileRelationship,
+  VersionInfo,
+  DirectoryInfo,
+  VFSStats,
+  VFSConfig,
+
+  // 元数据类型
+  FileTag,
+  MetadataQuery,
+  MetadataStats,
+  SchemaInfo,
+  ExtendedFileMetadata,
+
+  // 关系类型
+  GraphNode,
+  GraphEdge,
+  RelationshipGraph,
+  PathInfo,
+  DependencyAnalysis,
+  CascadeImpact,
+
+  // 跨Sheet类型
+  SheetReference,
+  ValidationResult as VFSValidationResult,
+  ResolvedReference,
+  ReferenceAnalysis,
+  SheetSnapshot,
+
+  // 工作台类型
+  WorkspaceStatus,
+  WorkspaceConfig,
+  WorkspaceSnapshot,
+  WorkspaceStats,
+  BatchOperationResult
+} from './infrastructure/vfs';
 
 // ============================================
 // 版本信息
 // ============================================
 
-export const SERVICES_VERSION = '2.2.0';
-export const PHASE = 'Phase 2 & 3 - WASM本地执行 + 后端优化';
+export const SERVICES_VERSION = '2.3.0';
+export const PHASE = 'Phase 2 - 虚拟工作台优化服务';
 export const BUILD_DATE = new Date().toISOString();

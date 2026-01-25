@@ -89,10 +89,14 @@ export interface QueryResult {
   data: any[];
   /** 行数 */
   rowCount: number;
-  /** 列名 */
+  /** 列名（可选） */
   columns?: string[];
-  /** 执行时间（毫秒） */
+  /** SQL查询（可选） */
+  sql?: string;
+  /** 执行时间（毫秒，可选） */
   executionTime?: number;
+  /** 是否成功（可选） */
+  success?: boolean;
 }
 
 /**
@@ -425,6 +429,14 @@ export interface HallucinationReport {
   assessment: string;
   /** 是否需要人工审核 */
   requiresHumanReview: boolean;
+  /** 检测持续时间（新增） */
+  duration?: number;
+  /** 是否存在幻觉（新增） */
+  hasHallucination?: boolean;
+  /** 置信度（新增） */
+  confidence?: number;
+  /** 详细信息（新增） */
+  details?: string[];
 }
 
 /**
