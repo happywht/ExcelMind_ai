@@ -1,0 +1,31 @@
+# Source files (only publish dist)
+types/
+tsconfig.json
+
+# Development files
+*.test.ts
+*.spec.ts
+tests/
+
+# Documentation
+docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Editor
+.vscode/
+.idea/
+.editorconfig
+
+# Git
+.git/
+.gitignore
+
+# NPM
+.npmignore
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

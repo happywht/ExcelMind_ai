@@ -68,8 +68,9 @@ const mockQueryResult: QueryResult = {
     { 姓名: '李四', 部门: '市场部', 销售额: 120000 }
   ],
   rowCount: 2,
-  columns: ['姓名', '部门', '销售额'],
-  executionTime: 50
+  sql: 'SELECT 姓名, 部门, 销售额 FROM 员工表 WHERE 销售额 > 100000',
+  executionTime: 50,
+  success: true
 };
 
 // ============================================================
@@ -211,7 +212,10 @@ describe('AIOutputValidator', () => {
           { 姓名: '李四', 销售额: 120 },
           { 姓名: '王五', 销售额: 999999 } // 异常值
         ],
-        rowCount: 3
+        rowCount: 3,
+        sql: 'SELECT 姓名, 销售额 FROM 员工表',
+        executionTime: 50,
+        success: true
       };
 
       const result = validator.validateResult(dataWithOutliers);
@@ -517,7 +521,10 @@ describe('ResultValidator', () => {
           { 销售额: 150000 },
           { 销售额: 300000 } // 超出范围
         ],
-        rowCount: 2
+        rowCount: 2,
+        sql: 'SELECT 销售额 FROM test',
+        executionTime: 50,
+        success: true
       };
 
       const result = validator.validateRange(data, constraints);
@@ -537,7 +544,10 @@ describe('ResultValidator', () => {
           { 值: 13 },
           { 值: 1000 } // 明显的异常值
         ],
-        rowCount: 5
+        rowCount: 5,
+        sql: 'SELECT 值 FROM test',
+        executionTime: 50,
+        success: true
       };
 
       const result = validator.detectOutliers(data);
@@ -548,7 +558,10 @@ describe('ResultValidator', () => {
     it('应该处理空结果', () => {
       const data: QueryResult = {
         data: [],
-        rowCount: 0
+        rowCount: 0,
+        sql: 'SELECT * FROM test WHERE 1=0',
+        executionTime: 50,
+        success: true
       };
 
       const result = validator.detectOutliers(data);
@@ -563,14 +576,18 @@ describe('ResultValidator', () => {
         {
           data: [{ A: 1, B: 2, C: 3 }],
           rowCount: 1,
-          columns: ['A', 'B', 'C']
+          sql: 'SELECT A, B, C FROM test',
+          executionTime: 50,
+          success: true
         }
       ];
 
       const current: QueryResult = {
         data: [{ A: 1, B: 2 }],
         rowCount: 1,
-        columns: ['A', 'B']
+        sql: 'SELECT A, B FROM test',
+        executionTime: 50,
+        success: true
       };
 
       const result = validator.validateConsistency(current, history);

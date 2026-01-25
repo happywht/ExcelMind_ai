@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pyodide 内存压力测试 - Week 0 技术验证</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .test-config {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .test-config h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .config-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .config-item .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .config-item .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-section.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card .label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .summary-card .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .test-results {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .test-result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #28a745;
+        }
+
+        .test-result-item.failed {
+            border-left-color: #dc3545;
+        }
+
+        .test-result-item.crashed {
+            border-left-color: #ffc107;
+        }
+
+        .test-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .test-result-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .test-result-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .test-result-status.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .test-result-status.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .test-result-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .recommendations {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .recommendations h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .recommendations ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .recommendations li {
+            padding: 10px 0;
+            color: #856404;
+            border-bottom: 1px solid #ffc107;
+        }
+
+        .recommendations li:last-child {
+            border-bottom: none;
+        }
+
+        .conclusion {
+            text-align: center;
+            padding: 30px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .conclusion.pass {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .conclusion.conditional {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .conclusion.fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .log-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .log-line {
+            margin-bottom: 5px;
+        }
+
+        .log-line.error {
+            color: #f48771;
+        }
+
+        .log-line.warn {
+            color: #cca700;
+        }
+
+        .log-line.info {
+            color: #4fc1ff;
+        }
+
+        .log-line.success {
+            color: #89d185;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .memory-chart {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .memory-chart canvas {
+            width: 100%;
+            height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Pyodide 内存压力测试</h1>
+            <p>Week 0 技术验证 - ExcelMind AI Phase 2</p>
+        </div>
+
+        <div class="content">
+            <!-- 测试配置 -->
+            <div class="test-config">
+                <h3>📋 测试配置</h3>
+                <div class="config-grid">
+                    <div class="config-item">
+                        <div class="label">小文件测试</div>
+                        <div class="value">5 MB / 25K 行</div>
+                    </div>
+                    <div class="config-item">
+                        <div class="label">中文件测试</div>
+                        <div class="value">15 MB / 75K 行</div>
+                    </div>
+                    <div class="config-item">
+                        <div class="label">大文件测试</div>
+                        <div class="value">30 MB / 150K 行</div>
+                    </div>
+                    <div class="config-item">
+                        <div class="label">超大文件测试</div>
+                        <div class="value">50 MB / 250K 行</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button id="startTest" class="btn btn-primary">
+                    <span>▶️</span>
+                    <span>开始测试</span>
+                </button>
+                <button id="downloadReport" class="btn btn-secondary" disabled>
+                    <span>📥</span>
+                    <span>下载报告</span>
+                </button>
+            </div>
+
+            <!-- 进度显示 -->
+            <div id="progressSection" class="progress-section">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill" style="width: 0%">0%</div>
+                </div>
+                <div id="progressText" class="progress-text">准备中...</div>
+            </div>
+
+            <!-- 结果显示 -->
+            <div id="resultsSection" class="results-section">
+                <!-- 汇总卡片 -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="label">总测试数</div>
+                        <div id="totalTests" class="value">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label">通过</div>
+                        <div id="passedTests" class="value">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label">失败</div>
+                        <div id="failedTests" class="value">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label">通过率</div>
+                        <div id="passRate" class="value">0%</div>
+                    </div>
+                </div>
+
+                <!-- 测试结果 -->
+                <div class="test-results">
+                    <h3>📊 详细测试结果</h3>
+                    <div id="testResultsList"></div>
+                </div>
+
+                <!-- 内存泄漏分析 -->
+                <div class="test-results">
+                    <h3>🔍 内存泄漏分析</h3>
+                    <div id="leakAnalysis"></div>
+                </div>
+
+                <!-- 建议 -->
+                <div id="recommendations" class="recommendations" style="display: none;">
+                    <h3>💡 建议</h3>
+                    <ul id="recommendationsList"></ul>
+                </div>
+
+                <!-- 最终结论 -->
+                <div id="conclusion" class="conclusion"></div>
+
+                <!-- 内存图表 -->
+                <div class="memory-chart">
+                    <h3>📈 内存使用曲线</h3>
+                    <canvas id="memoryChart"></canvas>
+                </div>
+
+                <!-- 日志输出 -->
+                <div class="test-results">
+                    <h3>📝 测试日志</h3>
+                    <div id="logOutput" class="log-output"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入测试模块
+        import { runPyodideMemoryStressTest } from './pyodide-memory-stress-test.ts';
+
+        // 全局状态
+        let testReport = null;
+        let logMessages = [];
+
+        // DOM 元素
+        const startButton = document.getElementById('startTest');
+        const downloadButton = document.getElementById('downloadReport');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const resultsSection = document.getElementById('resultsSection');
+
+        // 日志函数
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            logMessages.push({ message: logMessage, type });
+
+            const logOutput = document.getElementById('logOutput');
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${type}`;
+            logLine.textContent = logMessage;
+            logOutput.appendChild(logLine);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        // 更新进度
+        function updateProgress(percent, text) {
+            progressFill.style.width = `${percent}%`;
+            progressFill.textContent = `${percent}%`;
+            progressText.textContent = text;
+        }
+
+        // 显示结果
+        function displayResults(report) {
+            resultsSection.classList.add('active');
+
+            // 汇总卡片
+            document.getElementById('totalTests').textContent = report.summary.totalTests;
+            document.getElementById('passedTests').textContent = report.summary.passed;
+            document.getElementById('failedTests').textContent = report.summary.failed;
+            document.getElementById('passRate').textContent = `${report.summary.passRate.toFixed(1)}%`;
+
+            // 测试结果列表
+            const testResultsList = document.getElementById('testResultsList');
+            testResultsList.innerHTML = '';
+
+            report.testResults.forEach((result, index) => {
+                const item = document.createElement('div');
+                item.className = `test-result-item ${result.success ? '' : 'failed'} ${result.crashed ? 'crashed' : ''}`;
+
+                const statusClass = result.success ? 'pass' : 'fail';
+                const statusText = result.crashed ? '💥 崩溃' : (result.success ? '✅ 通过' : '❌ 失败');
+
+                item.innerHTML = `
+                    <div class="test-result-header">
+                        <div class="test-result-name">${index + 1}. ${result.testCase.name}</div>
+                        <div class="test-result-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="test-result-metrics">
+                        <div>📊 实际内存: ${result.actualMaxMemory.toFixed(2)} MB</div>
+                        <div>🎯 预期内存: ${result.testCase.expectedMaxMemory} MB</div>
+                        <div>⏱️ 执行时间: ${result.executionTime} ms</div>
+                    </div>
+                    ${result.error ? `<div style="color: #dc3545; margin-top: 10px;">错误: ${result.error}</div>` : ''}
+                `;
+
+                testResultsList.appendChild(item);
+            });
+
+            // 内存泄漏分析
+            const leakAnalysis = document.getElementById('leakAnalysis');
+            const severityColors = {
+                'none': '#28a745',
+                'low': '#ffc107',
+                'medium': '#fd7e14',
+                'high': '#dc3545',
+                'critical': '#6f42c1'
+            };
+
+            leakAnalysis.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="text-align: center;">
+                        <div style="color: #666; margin-bottom: 5px;">泄漏检测</div>
+                        <div style="font-size: 24px; font-weight: bold;">
+                            ${report.memoryLeakAnalysis.hasLeak ? '⚠️ 发现泄漏' : '✅ 无泄漏'}
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #666; margin-bottom: 5px;">泄漏速率</div>
+                        <div style="font-size: 24px; font-weight: bold;">
+                            ${report.memoryLeakAnalysis.leakRate.toFixed(2)} MB/文件
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #666; margin-bottom: 5px;">严重程度</div>
+                        <div style="font-size: 24px; font-weight: bold; color: ${severityColors[report.memoryLeakAnalysis.severity]}">
+                            ${report.memoryLeakAnalysis.severity.toUpperCase()}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 建议
+            if (report.recommendations.length > 0) {
+                const recommendationsDiv = document.getElementById('recommendations');
+                const recommendationsList = document.getElementById('recommendationsList');
+                recommendationsDiv.style.display = 'block';
+                recommendationsList.innerHTML = '';
+
+                report.recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recommendationsList.appendChild(li);
+                });
+            }
+
+            // 最终结论
+            const conclusionDiv = document.getElementById('conclusion');
+            const conclusionTexts = {
+                'PASS': '✅ PASS - Pyodide 内存管理表现良好，可以进入 Phase 2',
+                'CONDITIONAL_PASS': '⚠️ CONDITIONAL_PASS - 需要实施缓解措施后才能进入 Phase 2',
+                'FAIL': '❌ FAIL - 严重的内存管理问题，不建议进入 Phase 2'
+            };
+
+            conclusionDiv.className = `conclusion ${report.riskAssessment === 'PASS' ? 'pass' : report.riskAssessment === 'CONDITIONAL_PASS' ? 'conditional' : 'fail'}`;
+            conclusionDiv.textContent = conclusionTexts[report.riskAssessment];
+
+            // 绘制内存图表
+            drawMemoryChart(report);
+
+            // 启用下载按钮
+            downloadButton.disabled = false;
+        }
+
+        // 绘制内存图表
+        function drawMemoryChart(report) {
+            const canvas = document.getElementById('memoryChart');
+            const ctx = canvas.getContext('2d');
+
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 设置画布尺寸
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = 300 * 2;
+            ctx.scale(2, 2);
+
+            const width = canvas.offsetWidth;
+            const height = 300;
+
+            // 收集所有内存快照
+            const allSnapshots = report.testResults.flatMap(r => r.memorySnapshots);
+
+            if (allSnapshots.length === 0) {
+                ctx.fillStyle = '#666';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('无内存数据', width / 2, height / 2);
+                return;
+            }
+
+            // 计算缩放比例
+            const maxMemory = Math.max(...allSnapshots.map(s => s.usedJSHeapSize));
+            const minMemory = Math.min(...allSnapshots.map(s => s.usedJSHeapSize));
+            const memoryRange = maxMemory - minMemory;
+
+            // 绘制背景网格
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i <= 4; i++) {
+                const y = (height / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            // 绘制内存曲线
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            allSnapshots.forEach((snapshot, index) => {
+                const x = (index / (allSnapshots.length - 1)) * width;
+                const y = height - ((snapshot.usedJSHeapSize - minMemory) / memoryRange) * height;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // 绘制阈值线
+            const thresholdLine = report.testResults[0]?.testCase.expectedMaxMemory * 1024 * 1024 * 1.2;
+            if (thresholdLine) {
+                const y = height - ((thresholdLine - minMemory) / memoryRange) * height;
+
+                ctx.strokeStyle = '#dc3545';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#dc3545';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(`阈值: ${(thresholdLine / 1024 / 1024).toFixed(0)} MB`, width - 10, y - 5);
+            }
+        }
+
+        // 下载报告
+        function downloadReport() {
+            if (!testReport) return;
+
+            const reportContent = JSON.stringify(testReport, null, 2);
+            const blob = new Blob([reportContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pyodide-memory-test-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 运行测试
+        async function runTest() {
+            startButton.disabled = true;
+            progressSection.classList.add('active');
+            resultsSection.classList.remove('active');
+
+            log('开始 Pyodide 内存压力测试...', 'info');
+            updateProgress(5, '初始化测试环境...');
+
+            try {
+                // 拦截 console.log 以显示在日志区域
+                const originalLog = console.log;
+                const originalError = console.error;
+                const originalWarn = console.warn;
+
+                console.log = (...args) => {
+                    originalLog.apply(console, args);
+                    log(args.join(' '), 'info');
+                };
+
+                console.error = (...args) => {
+                    originalError.apply(console, args);
+                    log(args.join(' '), 'error');
+                };
+
+                console.warn = (...args) => {
+                    originalWarn.apply(console, args);
+                    log(args.join(' '), 'warn');
+                };
+
+                // 运行测试
+                updateProgress(10, '运行测试中...');
+                testReport = await runPyodideMemoryStressTest();
+
+                // 恢复 console
+                console.log = originalLog;
+                console.error = originalError;
+                console.warn = originalWarn;
+
+                updateProgress(100, '测试完成！');
+                log('测试完成！', 'success');
+
+                // 显示结果
+                setTimeout(() => {
+                    displayResults(testReport);
+                }, 500);
+
+            } catch (error) {
+                log(`测试失败: ${error.message}`, 'error');
+                console.error(error);
+                updateProgress(0, '测试失败');
+            } finally {
+                startButton.disabled = false;
+            }
+        }
+
+        // 事件监听
+        startButton.addEventListener('click', runTest);
+        downloadButton.addEventListener('click', downloadReport);
+
+        // 初始化
+        log('测试页面已加载，点击"开始测试"按钮开始测试', 'info');
+    </script>
+</body>
+</html>

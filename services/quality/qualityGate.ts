@@ -10,8 +10,7 @@
 import {
   ValidationResult,
   QualityReport,
-  QualityMetric,
-  GateResult
+  QualityMetric
 } from './aiOutputValidator';
 
 // ============================================================
@@ -35,7 +34,7 @@ export interface GateCriteria {
 /**
  * 门禁结果
  */
-interface GateResult {
+export interface GateResult {
   /** 是否通过 */
   passed: boolean;
   /** 分数 */

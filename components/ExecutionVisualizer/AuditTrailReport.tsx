@@ -15,10 +15,10 @@ import {
   Clock,
   ChevronRight
 } from 'lucide-react';
-import type { AuditTrailEntry, AuditTrailReport } from '../../types/auditTrailTypes';
+import type { AuditTrailEntry, AuditTrailReport as AuditTrailReportType } from '../../types/auditTrailTypes';
 
 export interface AuditTrailReportProps {
-  report: AuditTrailReport;
+  report: AuditTrailReportType;
   onExport?: (format: 'txt' | 'json') => void;
   expanded?: boolean;
   showDetails?: boolean;

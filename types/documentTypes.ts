@@ -55,6 +55,7 @@ export interface CrossSheetMapping {
  */
 export interface MappingScheme {
   explanation: string; // AI的映射思路说明
+  reasoning?: string; // AI的推理过程（可选）
   filterCondition: string | null; // 筛选条件的JavaScript代码
   primarySheet: string; // 主数据sheet（用于批量生成）
   mappings: FieldMapping[]; // 主sheet的字段映射关系
@@ -97,8 +98,8 @@ export interface GenerationResult {
 export interface DocumentProcessingLog {
   id: string;
   timestamp: number;
-  stage: 'template_upload' | 'data_upload' | 'parsing' | 'mapping' | 'generating' | 'completed' | 'error';
-  status: 'pending' | 'success' | 'error';
+  stage: 'template_upload' | 'data_upload' | 'parsing' | 'mapping' | 'generating' | 'completed' | 'error' | 'download' | 'sheet_change';
+  status: 'pending' | 'success' | 'error' | 'info' | 'warning';
   message: string;
   details?: any;
 }

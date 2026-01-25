@@ -271,6 +271,72 @@ export class PyodideService extends EventEmitter {
   }
 
   /**
+   * 写入文件到虚拟文件系统
+   *
+   * @param path 文件路径
+   * @param data 文件数据（Uint8Array 或字符串）
+   */
+  public writeFile(path: string, data: Uint8Array | string): void {
+    if (!this.pyodide) {
+      throw new Error('Pyodide not initialized');
+    }
+
+    console.log(`[PyodideService] Writing file: ${path} (${typeof data === 'string' ? data.length : data.length} bytes/chars)`);
+
+    try {
+      this.pyodide.FS.writeFile(path, data);
+      console.log(`[PyodideService] ✅ File written successfully: ${path}`);
+      this.emit('fileWritten', { path, size: typeof data === 'string' ? data.length : data.length });
+    } catch (error) {
+      console.error(`[PyodideService] ❌ Failed to write file: ${path}`, error);
+      throw new Error(`Failed to write file ${path}: ${error}`);
+    }
+  }
+
+  /**
+   * 创建目录
+   *
+   * @param path 目录路径
+   * @param recursive 是否递归创建（默认 false）
+   */
+  public createDirectory(path: string, recursive: boolean = false): void {
+    if (!this.pyodide) {
+      throw new Error('Pyodide not initialized');
+    }
+
+    console.log(`[PyodideService] Creating directory: ${path} (recursive: ${recursive})`);
+
+    try {
+      if (recursive) {
+        // 递归创建目录
+        const parts = path.split('/').filter(p => p);
+        let currentPath = '';
+
+        for (const part of parts) {
+          currentPath += '/' + part;
+          try {
+            this.pyodide.FS.mkdir(currentPath);
+          } catch (error: any) {
+            // 如果目录已存在，忽略错误
+            if (!error.message.includes('File exists')) {
+              throw error;
+            }
+          }
+        }
+      } else {
+        // 直接创建目录
+        this.pyodide.FS.mkdir(path);
+      }
+
+      console.log(`[PyodideService] ✅ Directory created successfully: ${path}`);
+      this.emit('directoryCreated', { path });
+    } catch (error) {
+      console.error(`[PyodideService] ❌ Failed to create directory: ${path}`, error);
+      throw new Error(`Failed to create directory ${path}: ${error}`);
+    }
+  }
+
+  /**
    * 执行 Python 代码
    *
    * @param code Python 代码

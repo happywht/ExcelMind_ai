@@ -1,0 +1,758 @@
+components/DocumentSpace.tsx(159,12): error TS2345: Argument of type '"download"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpace.tsx(169,14): error TS2345: Argument of type '"download"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpace.tsx(171,14): error TS2345: Argument of type '"download"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpace/DocumentPreview.tsx(97,24): error TS2339: Property 'createElement' does not exist on type 'GeneratedDocument'.
+components/DocumentSpace/DocumentSpace.test.tsx(163,51): error TS2339: Property 'disabled' does not exist on type 'HTMLElement'.
+components/DocumentSpace/DocumentSpace.tsx(115,11): error TS2353: Object literal may only specify known properties, and 'maxResponseTime' does not exist in type '{ simple: BenchmarkThreshold; complex: BenchmarkThreshold; }'.
+components/DocumentSpace/DocumentSpace.tsx(119,11): error TS2353: Object literal may only specify known properties, and 'maxGenerationTime' does not exist in type '{ single: BenchmarkThreshold; batch_10: BenchmarkThreshold; batch_100: BenchmarkThreshold; }'.
+components/DocumentSpace/DocumentSpace.tsx(192,20): error TS2345: Argument of type '{ type: "custom"; name: string; value: number; unit: "ms"; }' is not assignable to parameter of type 'PerformanceMetric'.
+  Property 'timestamp' is missing in type '{ type: "custom"; name: string; value: number; unit: "ms"; }' but required in type 'PerformanceMetric'.
+components/DocumentSpace/DocumentSpace.tsx(242,20): error TS2345: Argument of type '{ type: "custom"; name: string; value: number; unit: "ms"; }' is not assignable to parameter of type 'PerformanceMetric'.
+  Property 'timestamp' is missing in type '{ type: "custom"; name: string; value: number; unit: "ms"; }' but required in type 'PerformanceMetric'.
+components/DocumentSpace/DocumentSpace.tsx(278,23): error TS2339: Property 'length' does not exist on type 'unknown'.
+components/DocumentSpace/DocumentSpace.tsx(279,24): error TS2339: Property 'length' does not exist on type 'unknown'.
+components/DocumentSpace/DocumentSpace.tsx(280,26): error TS2339: Property 'slice' does not exist on type 'unknown'.
+components/DocumentSpace/DocumentSpace.tsx(291,9): error TS2345: Argument of type 'string[]' is not assignable to parameter of type 'number'.
+components/DocumentSpace/DocumentSpace.tsx(315,27): error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(353,20): error TS2345: Argument of type '{ type: "custom"; name: string; value: number; unit: "ms"; metadata: { mappingCount: number; exampleCount: number; }; }' is not assignable to parameter of type 'PerformanceMetric'.
+  Property 'timestamp' is missing in type '{ type: "custom"; name: string; value: number; unit: "ms"; metadata: { mappingCount: number; exampleCount: number; }; }' but required in type 'PerformanceMetric'.
+components/DocumentSpace/DocumentSpace.tsx(431,30): error TS2345: Argument of type '"info"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(510,20): error TS2345: Argument of type '{ type: "custom"; name: string; value: number; unit: "ms"; metadata: { mode: string; documentCount: number; aggregateRules: number; }; }' is not assignable to parameter of type 'PerformanceMetric'.
+  Property 'timestamp' is missing in type '{ type: "custom"; name: string; value: number; unit: "ms"; metadata: { mode: string; documentCount: number; aggregateRules: number; }; }' but required in type 'PerformanceMetric'.
+components/DocumentSpace/DocumentSpace.tsx(571,30): error TS2345: Argument of type '"info"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(587,34): error TS2345: Argument of type '"info"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(591,34): error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(620,36): error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(645,38): error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(660,30): error TS2345: Argument of type '"info"' is not assignable to parameter of type '"pending" | "success" | "error"'.
+components/DocumentSpace/DocumentSpace.tsx(711,20): error TS2345: Argument of type '{ type: "custom"; name: string; value: number; unit: "ms"; metadata: { documentCount: number; avgTime: number; crossSheetMappings: number; lookupSuccessRate: number; }; }' is not assignable to parameter of type 'PerformanceMetric'.
+  Property 'timestamp' is missing in type '{ type: "custom"; name: string; value: number; unit: "ms"; metadata: { documentCount: number; avgTime: number; crossSheetMappings: number; lookupSuccessRate: number; }; }' but required in type 'PerformanceMetric'.
+components/DocumentSpace/DocumentSpace.tsx(745,12): error TS2345: Argument of type '"download"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpace/DocumentSpace.tsx(756,14): error TS2345: Argument of type '"download"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpace/DocumentSpace.tsx(759,14): error TS2345: Argument of type '"download"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpace/DocumentSpace.tsx(783,14): error TS2345: Argument of type '"sheet_change"' is not assignable to parameter of type '"error" | "completed" | "template_upload" | "data_upload" | "parsing" | "mapping" | "generating"'.
+components/DocumentSpaceAdvanced.tsx(38,9): error TS2353: Object literal may only specify known properties, and 'enableCache' does not exist in type 'IMultiSheetDataSource'.
+components/DocumentSpaceAdvanced.tsx(208,37): error TS2322: Type 'string | ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+  Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+components/ExecutionProgress/__tests__/ExecutionProgressPanel.test.tsx(488,21): error TS2339: Property 'focus' does not exist on type 'Element'.
+components/ExecutionVisualizer/AuditTrailReport.tsx(18,32): error TS2395: Individual declarations in merged declaration 'AuditTrailReport' must be all exported or all local.
+components/ExecutionVisualizer/AuditTrailReport.tsx(32,14): error TS2395: Individual declarations in merged declaration 'AuditTrailReport' must be all exported or all local.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(24,3): error TS2305: Module '"../../types"' has no exported member 'AuditTrailReport'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(25,3): error TS2305: Module '"../../types"' has no exported member 'ExecutionStep'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(26,3): error TS2305: Module '"../../types"' has no exported member 'ExecutionState'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(27,3): error TS2305: Module '"../../types"' has no exported member 'ValidationResult'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(28,3): error TS2724: '"../../types"' has no exported member named 'ExcelMetadata'. Did you mean 'ExcelData'?
+components/ExecutionVisualizer/index.ts(12,15): error TS2724: '"./ExecutionVisualizer"' has no exported member named 'ExecutionVisualizerProps'. Did you mean 'ExecutionVisualizer'?
+components/KnowledgeChat.tsx(12,24): error TS2339: Property 'default' does not exist on type 'typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/node_modules/pdfjs-dist/types/src/pdf")'.
+components/KnowledgeChat.tsx(12,44): error TS2339: Property 'default' does not exist on type 'typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/node_modules/pdfjs-dist/types/src/pdf")'.
+components/MappingEditor/MappingEditor.test.tsx(11,9): error TS2741: Property 'primarySheet' is missing in type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: string[]; }' but required in type 'MappingScheme'.
+components/MappingEditor/MappingEditorExample.tsx(52,69): error TS2345: Argument of type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: string[]; }' is not assignable to parameter of type 'MappingScheme | (() => MappingScheme)'.
+  Property 'primarySheet' is missing in type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: string[]; }' but required in type 'MappingScheme'.
+components/MappingEditor/MappingEditorExample.tsx(85,17): error TS2345: Argument of type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: undefined[]; }' is not assignable to parameter of type 'MappingScheme | PromiseLike<MappingScheme>'.
+  Property 'primarySheet' is missing in type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: undefined[]; }' but required in type 'MappingScheme'.
+components/QueryVisualizer/ChartView.tsx(262,32): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+components/QueryVisualizer/ChartView.tsx(262,49): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(10,37): error TS2307: Cannot find module '@storybook/react' or its corresponding type declarations.
+components/QueryVisualizer/QueryVisualizer.test.tsx(510,11): error TS2367: This comparison appears to be unintentional because the types '"webview"' and '"a"' have no overlap.
+components/QueryVisualizer/QueryVisualizerExample.tsx(47,9): error TS2353: Object literal may only specify known properties, and 'tables' does not exist in type 'IMultiSheetDataSource'.
+components/QueryVisualizer/QueryVisualizerExample.tsx(52,20): error TS2339: Property 'tables' does not exist on type 'IMultiSheetDataSource'.
+components/QueryVisualizer/QueryVisualizerExample.tsx(59,14): error TS2339: Property 'setDataSource' does not exist on type 'DataQueryEngine'.
+components/SQLPreview/SQLEditor.tsx(294,9): error TS2322: Type '{ minimun: number; maximun: number; readOnly: boolean; automaticLayout: boolean; fontSize: number; lineHeight: number; lineNumbers: "on" | "off" | "relative" | "interval"; scrollbar: { useShadows?: boolean; verticalHasArrows?: boolean; horizontalHasArrows?: boolean; vertical?: "visible" | "hidden" | "auto"; horizont...' is not assignable to type 'IStandaloneEditorConstructionOptions'.
+  Types of property 'wordBasedSuggestions' are incompatible.
+    Type 'boolean' is not assignable to type '"off" | "currentDocument" | "matchingDocuments" | "allDocuments"'.
+components/SQLPreview/SQLFormatter.ts(52,9): error TS2353: Object literal may only specify known properties, and 'indent' does not exist in type 'FormatOptionsWithLanguage'.
+components/SQLPreview/SQLPreview.test.tsx(327,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(328,19): error TS2304: Cannot find name 'mockMetadata'.
+components/SQLPreview/SQLPreview.test.tsx(340,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(341,19): error TS2304: Cannot find name 'mockMetadata'.
+components/SQLPreview/SQLPreview.test.tsx(356,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(358,14): error TS2304: Cannot find name 'mockMetadata'.
+components/SQLPreview/SQLPreview.test.tsx(378,12): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(383,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(411,12): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(416,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(460,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(475,14): error TS2304: Cannot find name 'mockSQL'.
+components/SQLPreview/SQLPreview.test.tsx(476,9): error TS2322: Type 'Mock<Promise<unknown>, [], any>' is not assignable to type '(sql: string) => Promise<QueryResult>'.
+  Type 'Promise<unknown>' is not assignable to type 'Promise<QueryResult>'.
+    Type '{}' is missing the following properties from type 'QueryResult': data, columns, rowCount, executionTime, and 2 more.
+components/SQLPreview/SQLPreview.tsx(315,13): error TS2322: Type 'string' is not assignable to type '"vs-light" | "vs-dark"'.
+components/SQLPreview/SQLValidator.tsx(250,40): error TS2339: Property 'severity' does not exist on type 'ValidationWarning'.
+components/VirtualWorkspace/__tests__/FileCard.test.tsx(343,13): error TS2304: Cannot find name 'waitFor'.
+components/VirtualWorkspace/__tests__/FileCard.test.tsx(475,14): error TS2339: Property 'focus' does not exist on type 'Element'.
+components/VirtualWorkspace/utils.ts(400,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(401,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(402,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(403,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(413,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(414,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(415,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(416,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/VirtualWorkspace.tsx(60,36): error TS2345: Argument of type '"primary_source"' is not assignable to parameter of type 'FileRole'.
+hooks/useWasmExecution.ts(116,31): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+hooks/useWasmExecution.ts(116,59): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+hooks/useWasmExecution.ts(161,24): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+hooks/useWasmExecution.ts(182,26): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+packages/shared-types/examples/usage.ts(16,8): error TS2307: Cannot find module '@excelmind/shared-types' or its corresponding type declarations.
+packages/shared-types/examples/usage.ts(131,49): error TS2307: Cannot find module '@excelmind/shared-types' or its corresponding type declarations.
+services/agentic/AgenticOrchestrator.test.ts(10,3): error TS2305: Module '"./index"' has no exported member 'validateDataFiles'.
+services/agentic/AgenticOrchestrator.test.ts(11,3): error TS2305: Module '"./index"' has no exported member 'formatExecutionTime'.
+services/agentic/AgenticOrchestrator.test.ts(12,3): error TS2305: Module '"./index"' has no exported member 'formatQualityScore'.
+services/agentic/AgenticOrchestrator.test.ts(13,3): error TS2305: Module '"./index"' has no exported member 'isTaskSuccessful'.
+services/agentic/AgenticOrchestrator.test.ts(14,3): error TS2305: Module '"./index"' has no exported member 'getTaskSummary'.
+services/agentic/AgenticOrchestrator.test.ts(15,3): error TS2305: Module '"./index"' has no exported member 'generateTaskReport'.
+services/agentic/AgenticOrchestrator.test.ts(16,3): error TS2305: Module '"./index"' has no exported member 'createProgressLogger'.
+services/agentic/AgenticOrchestrator.test.ts(17,3): error TS2305: Module '"./index"' has no exported member 'analyzeError'.
+services/agentic/AgenticOrchestrator.test.ts(18,3): error TS2305: Module '"./index"' has no exported member 'estimateExecutionTime'.
+services/agentic/AgenticOrchestrator.ts(485,31): error TS2304: Cannot find name 'AIProcessResult'.
+services/agentic/AgenticOrchestrator.ts(584,9): error TS2345: Argument of type '{ [fileName: string]: any[] | { [sheetName: string]: any[]; }; }' is not assignable to parameter of type '{ [fileName: string]: any[]; }'.
+  'string' index signatures are incompatible.
+    Type 'any[] | { [sheetName: string]: any[]; }' is not assignable to type 'any[]'.
+      Type '{ [sheetName: string]: any[]; }' is missing the following properties from type 'any[]': length, pop, push, concat, and 29 more.
+services/agentic/AgenticOrchestrator.ts(630,9): error TS2353: Object literal may only specify known properties, and 'rawError' does not exist in type 'StepResult'.
+services/agentic/AgenticOrchestrator.ts(935,26): error TS2339: Property 'DATA_ERROR' does not exist on type 'typeof ErrorCategory'.
+services/agentic/dataValidationUtils.ts(130,55): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(136,36): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(136,72): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(145,58): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(151,36): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(151,75): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(160,29): error TS2339: Property 'rowCount' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(160,72): error TS2339: Property 'rowCount' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(241,34): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(242,37): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(243,35): error TS2339: Property 'rowCount' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(244,35): error TS2339: Property 'metadata' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(318,29): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(319,29): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/demo.ts(10,3): error TS2305: Module '"./index"' has no exported member 'createProgressLogger'.
+services/agentic/demo.ts(11,3): error TS2305: Module '"./index"' has no exported member 'generateTaskReport'.
+services/agentic/example.ts(11,3): error TS2724: '"./index"' has no exported member named 'executeMultiStepAnalysisWithProgress'. Did you mean 'executeMultiStepAnalysis'?
+services/agentic/example.ts(12,3): error TS2305: Module '"./index"' has no exported member 'createProgressLogger'.
+services/agentic/example.ts(13,3): error TS2305: Module '"./index"' has no exported member 'generateTaskReport'.
+services/agentic/example.ts(14,3): error TS2305: Module '"./index"' has no exported member 'validateDataFiles'.
+services/agentic/integration-example.tsx(13,8): error TS2307: Cannot find module '../services/agentic' or its corresponding type declarations.
+services/ai/aiOrchestrationService.ts(253,28): error TS2339: Property 'metadata' does not exist on type 'AIAnalysisResponse'.
+services/ai/aiOrchestrationService.ts(261,50): error TS2339: Property 'metadata' does not exist on type 'AIAnalysisResponse'.
+services/ai/fewShotEngine.demo.ts(420,5): error TS2741: Property 'weights' is missing in type '{ defaultMethod: SimilarityMethod.HYBRID; threshold: number; }' but required in type '{ defaultMethod: SimilarityMethod; threshold: number; weights: { cosine: number; jaccard: number; levenshtein: number; semantic: number; }; }'.
+services/ai/fewShotEngine.demo.ts(424,5): error TS2741: Property 'maxCandidates' is missing in type '{ defaultStrategy: RetrievalStrategy.ADAPTIVE; defaultTopK: number; enableCache: true; }' but required in type '{ defaultStrategy: RetrievalStrategy; defaultTopK: number; maxCandidates: number; enableCache: boolean; }'.
+services/ai/fewShotEngine.demo.ts(429,5): error TS2741: Property 'minExamples' is missing in type '{ defaultTemplate: PromptTemplate.HYBRID; maxExamples: number; }' but required in type '{ defaultTemplate: PromptTemplate; maxExamples: number; minExamples: number; }'.
+services/ai/fewShotEngine.demo.ts(575,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/ai/fewShotEngine.test.ts(792,31): error TS2339: Property 'removed' does not exist on type 'Promise<{ removed: number; updated: number; added: number; }>'.
+services/documentMappingService.test.ts(253,64): error TS2345: Argument of type '{ content: { type: string; text: string; }[]; }' is not assignable to parameter of type 'never'.
+services/documentMappingService.test.ts(289,64): error TS2345: Argument of type '{ content: { type: string; text: string; }[]; }' is not assignable to parameter of type 'never'.
+services/documentMappingService.test.ts(299,21): error TS2339: Property 'reasoning' does not exist on type 'MappingScheme'.
+services/docxtemplaterService.demo.ts(37,19): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(38,39): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(216,21): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(218,18): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(223,42): error TS2339: Property 'placeholderCount' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(224,40): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(226,20): error TS2339: Property 'warnings' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(228,18): error TS2339: Property 'warnings' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(305,25): error TS2339: Property 'default' does not exist on type 'JSZip'.
+services/docxtemplaterService.test.ts(8,65): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+services/docxtemplaterService.test.ts(316,21): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(317,21): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(318,21): error TS2339: Property 'warnings' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(319,21): error TS2339: Property 'placeholderCount' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(320,54): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(327,21): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(328,21): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(335,21): error TS2339: Property 'placeholderCount' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(342,54): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(352,27): error TS2339: Property 'length' does not exist on type 'Promise<string[]>'.
+services/docxtemplaterService.test.ts(358,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(iterable?: Iterable<unknown>): Set<unknown>', gave the following error.
+    Argument of type 'Promise<string[]>' is not assignable to parameter of type 'Iterable<unknown>'.
+      Property '[Symbol.iterator]' is missing in type 'Promise<string[]>' but required in type 'Iterable<unknown>'.
+  Overload 2 of 2, '(values?: readonly any[]): Set<any>', gave the following error.
+    Argument of type 'Promise<string[]>' is not assignable to parameter of type 'readonly any[]'.
+      Type 'Promise<string[]>' is missing the following properties from type 'readonly any[]': length, concat, join, slice, and 20 more.
+services/docxtemplaterService.test.ts(656,29): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(660,25): error TS2339: Property 'length' does not exist on type 'Promise<string[]>'.
+services/docxtemplaterService.test.ts(663,78): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.ts(769,37): error TS2339: Property 'async' does not exist on type 'ZipObject'.
+services/docxtemplaterService.ts(775,43): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+services/docxtemplaterService.ts(1207,41): error TS2339: Property 'async' does not exist on type 'ZipObject'.
+services/docxtemplaterService.ts(1273,39): error TS2339: Property 'async' does not exist on type 'ZipObject'.
+services/functionCalling/FunctionCallingAdapter.ts(229,7): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(body: MessageCreateParamsNonStreaming, options?: RequestOptions<unknown>): APIPromise<Message>', gave the following error.
+    Type '{ name: string; description: string; input_schema: ToolInputSchema; }[]' is not assignable to type 'Tool[]'.
+      Type '{ name: string; description: string; input_schema: ToolInputSchema; }' is not assignable to type 'Tool'.
+        Types of property 'input_schema' are incompatible.
+          Type 'ToolInputSchema' is not assignable to type 'InputSchema'.
+            Index signature for type 'string' is missing in type 'ToolInputSchema'.
+  Overload 2 of 3, '(body: MessageCreateParamsStreaming, options?: RequestOptions<unknown>): APIPromise<Stream<RawMessageStreamEvent>>', gave the following error.
+    Type '{ name: string; description: string; input_schema: ToolInputSchema; }[]' is not assignable to type 'Tool[]'.
+      Type '{ name: string; description: string; input_schema: ToolInputSchema; }' is not assignable to type 'Tool'.
+        Types of property 'input_schema' are incompatible.
+          Type 'ToolInputSchema' is not assignable to type 'InputSchema'.
+            Index signature for type 'string' is missing in type 'ToolInputSchema'.
+  Overload 3 of 3, '(body: MessageCreateParamsBase, options?: RequestOptions<unknown>): APIPromise<Message | Stream<RawMessageStreamEvent>>', gave the following error.
+    Type '{ name: string; description: string; input_schema: ToolInputSchema; }[]' is not assignable to type 'Tool[]'.
+      Type '{ name: string; description: string; input_schema: ToolInputSchema; }' is not assignable to type 'Tool'.
+        Types of property 'input_schema' are incompatible.
+          Type 'ToolInputSchema' is not assignable to type 'InputSchema'.
+            Index signature for type 'string' is missing in type 'ToolInputSchema'.
+services/functionCalling/tools.ts(136,11): error TS2353: Object literal may only specify known properties, and 'properties' does not exist in type 'ToolProperty'.
+services/geminiService.ts(1,29): error TS2307: Cannot find module '@google/genai' or its corresponding type declarations.
+services/index.ts(16,8): error TS2300: Duplicate identifier 'SheetMetadata'.
+services/index.ts(60,8): error TS2300: Duplicate identifier 'ValidationResult'.
+services/index.ts(269,3): error TS2300: Duplicate identifier 'SheetMetadata'.
+services/index.ts(281,3): error TS2300: Duplicate identifier 'SecurityCheckResult'.
+services/index.ts(287,3): error TS2305: Module '"./prompt/promptBuilderService"' has no exported member 'ToolFunction'.
+services/index.ts(305,3): error TS2614: Module '"./wasm"' has no exported member 'WasmIntegrationLayer'. Did you mean to use 'import WasmIntegrationLayer from "./wasm"' instead?
+services/index.ts(306,3): error TS2614: Module '"./wasm"' has no exported member 'getWasmIntegration'. Did you mean to use 'import getWasmIntegration from "./wasm"' instead?
+services/index.ts(309,3): error TS2614: Module '"./wasm"' has no exported member 'WasmAgenticOrchestrator'. Did you mean to use 'import WasmAgenticOrchestrator from "./wasm"' instead?
+services/index.ts(310,3): error TS2614: Module '"./wasm"' has no exported member 'getWasmOrchestrator'. Did you mean to use 'import getWasmOrchestrator from "./wasm"' instead?
+services/index.ts(311,3): error TS2614: Module '"./wasm"' has no exported member 'executeTransformationWasm'. Did you mean to use 'import executeTransformationWasm from "./wasm"' instead?
+services/index.ts(340,3): error TS2300: Duplicate identifier 'SecurityCheckResult'.
+services/index.ts(371,3): error TS2305: Module '"./infrastructure/vfs"' has no exported member 'STANDARD_PATHS'.
+services/index.ts(401,3): error TS2300: Duplicate identifier 'ValidationResult'.
+services/infrastructure/__tests__/cacheService.test.ts(6,10): error TS2459: Module '"../../intelligentDocumentService"' declares 'CacheKey' locally, but it is not exported.
+services/infrastructure/__tests__/eventBus.test.ts(86,58): error TS2322: Type 'number' is not assignable to type 'void | Promise<void>'.
+services/infrastructure/__tests__/eventBus.test.ts(87,58): error TS2322: Type 'number' is not assignable to type 'void | Promise<void>'.
+services/infrastructure/__tests__/eventBus.test.ts(88,58): error TS2322: Type 'number' is not assignable to type 'void | Promise<void>'.
+services/infrastructure/__tests__/eventBus.test.ts(103,41): error TS2345: Argument of type 'Mock<Promise<number>, [data: any], any>' is not assignable to parameter of type 'EventHandler<any>'.
+  Type 'Promise<number>' is not assignable to type 'void | Promise<void>'.
+    Type 'Promise<number>' is not assignable to type 'Promise<void>'.
+      Type 'number' is not assignable to type 'void'.
+services/infrastructure/cacheService.ts(10,25): error TS2459: Module '"../intelligentDocumentService"' declares 'CacheKey' locally, but it is not exported.
+services/infrastructure/cacheService.ts(10,35): error TS2459: Module '"../intelligentDocumentService"' declares 'CacheEntry' locally, but it is not exported.
+services/infrastructure/degradation/__tests__/APICircuitBreaker.test.ts(8,34): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/__tests__/DegradationManager.test.ts(11,8): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/__tests__/DegradationManager.test.ts(511,7): error TS1308: 'await' expressions are only allowed within async functions and at the top levels of modules.
+services/infrastructure/degradation/__tests__/DegradationManager.test.ts(635,9): error TS2740: Type '{ memoryWarning: number; }' is missing the following properties from type 'DegradationThresholds': memoryCritical, fileSizeWarning, fileSizeCritical, apiFailureWarning, and 2 more.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(18,8): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(84,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(163,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(212,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(232,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(251,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(282,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(299,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(313,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(328,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(342,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(354,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(376,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(398,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(418,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(470,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(486,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(505,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(522,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(612,9): error TS2345: Argument of type '{ memoryUsage: number; }' is not assignable to parameter of type 'DegradationMetrics'.
+  Type '{ memoryUsage: number; }' is missing the following properties from type 'DegradationMetrics': fileSize, apiFailureRate, avgExecutionTime, consecutiveFailures, lastUpdate
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(695,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/MemoryMonitor.test.ts(8,34): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/DegradationNotifier.ts(104,7): error TS2322: Type '"mode_changed"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(142,7): error TS2322: Type '"warning_triggered"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(168,7): error TS2322: Type '"metrics_updated"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(189,7): error TS2322: Type '"recovery_attempt"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(219,7): error TS2322: Type '"recovery_success"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/demo.ts(139,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(140,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(159,5): error TS1362: 'DegradationLevel' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(167,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(168,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/index.ts(35,8): error TS2307: Cannot find module '../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/index.ts(44,8): error TS2307: Cannot find module '../../config/degradation.config' or its corresponding type declarations.
+services/infrastructure/degradation/index.ts(82,48): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(84,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(85,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(86,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(87,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(95,46): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(97,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(98,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(99,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(107,39): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(109,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(110,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(111,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(120,16): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(121,15): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(130,16): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(131,15): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(140,10): error TS2304: Cannot find name 'DegradationState'.
+services/infrastructure/degradation/index.ts(155,3): error TS18004: No value exists in scope for the shorthand property 'DegradationManager'. Either declare one or provide an initializer.
+services/infrastructure/degradation/index.ts(156,3): error TS18004: No value exists in scope for the shorthand property 'MemoryMonitor'. Either declare one or provide an initializer.
+services/infrastructure/degradation/index.ts(157,3): error TS18004: No value exists in scope for the shorthand property 'APICircuitBreaker'. Either declare one or provide an initializer.
+services/infrastructure/degradation/index.ts(158,3): error TS18004: No value exists in scope for the shorthand property 'DegradationNotifier'. Either declare one or provide an initializer.
+services/infrastructure/eventBus.ts(67,14): error TS2323: Cannot redeclare exported variable 'EventBus'.
+services/infrastructure/eventBus.ts(316,14): error TS2323: Cannot redeclare exported variable 'TypedEventBus'.
+services/infrastructure/eventBus.ts(319,21): error TS2536: Type 'E' cannot be used to index type 'TypedEventMap'.
+services/infrastructure/eventBus.ts(326,21): error TS2536: Type 'E' cannot be used to index type 'TypedEventMap'.
+services/infrastructure/eventBus.ts(331,45): error TS2536: Type 'E' cannot be used to index type 'TypedEventMap'.
+services/infrastructure/eventBus.ts(475,10): error TS2323: Cannot redeclare exported variable 'EventBus'.
+services/infrastructure/eventBus.ts(475,10): error TS2484: Export declaration conflicts with exported declaration of 'EventBus'.
+services/infrastructure/eventBus.ts(475,20): error TS2323: Cannot redeclare exported variable 'TypedEventBus'.
+services/infrastructure/eventBus.ts(475,20): error TS2484: Export declaration conflicts with exported declaration of 'TypedEventBus'.
+services/infrastructure/eventBus.ts(475,35): error TS2484: Export declaration conflicts with exported declaration of 'EventType'.
+services/infrastructure/index.ts(19,3): error TS2459: Module '"./cacheService"' declares 'CacheConfig' locally, but it is not exported.
+services/infrastructure/index.ts(39,3): error TS2459: Module '"./eventBus"' declares 'TypedEventMap' locally, but it is not exported.
+services/infrastructure/index.ts(58,3): error TS2459: Module '"./retryService"' declares 'FallbackEntry' locally, but it is not exported.
+services/infrastructure/retryService.ts(322,20): error TS2347: Untyped function calls may not accept type arguments.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(143,47): error TS2345: Argument of type '{ id: string; status: "running"; progress: { percentage: number; currentPhase: "processing"; message: string; }; metadata: { updatedAt: number; }; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ id: string; status: "running"; progress: { percentage: number; currentPhase: "processing"; message: string; }; metadata: { updatedAt: number; }; }' is missing the following properties from type 'ExecutionState': taskId, steps
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(167,27): error TS2339: Property 'id' does not exist on type 'ExecutionState'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(177,15): error TS2339: Property 'getAll' does not exist on type '{ open: Mock<any, any, any>; close: Mock<any, any, any>; put: Mock<any, any, any>; get: Mock<any, any, any>; delete: Mock<any, any, any>; queryByIndex: Mock<...>; count: Mock<...>; getDatabaseSize: Mock<...>; addListener: Mock<...>; }'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(208,28): error TS2339: Property 'sessionId' does not exist on type 'ExecutionState'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(229,34): error TS2345: Argument of type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; lastUpdated: number; }' is not assignable to parameter of type 'UserSettings'.
+  Property 'savedQueries' is missing in type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; lastUpdated: number; }' but required in type 'UserSettings'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(260,21): error TS2551: Property 'updateUserPreferences' does not exist on type 'ClientStateManager'. Did you mean 'updatePreferences'?
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(394,22): error TS2339: Property 'clear' does not exist on type '{ open: Mock<any, any, any>; close: Mock<any, any, any>; put: Mock<any, any, any>; get: Mock<any, any, any>; delete: Mock<any, any, any>; queryByIndex: Mock<...>; count: Mock<...>; getDatabaseSize: Mock<...>; addListener: Mock<...>; }'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(409,22): error TS2339: Property 'bulkDelete' does not exist on type '{ open: Mock<any, any, any>; close: Mock<any, any, any>; put: Mock<any, any, any>; get: Mock<any, any, any>; delete: Mock<any, any, any>; queryByIndex: Mock<...>; count: Mock<...>; getDatabaseSize: Mock<...>; addListener: Mock<...>; }'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(463,22): error TS2339: Property 'bulkDelete' does not exist on type '{ open: Mock<any, any, any>; close: Mock<any, any, any>; put: Mock<any, any, any>; get: Mock<any, any, any>; delete: Mock<any, any, any>; queryByIndex: Mock<...>; count: Mock<...>; getDatabaseSize: Mock<...>; addListener: Mock<...>; }'.
+services/infrastructure/storage/__tests__/ClientStateManager.test.ts(620,9): error TS2741: Property 'createdAt' is missing in type '{ updatedAt: number; }' but required in type '{ createdAt: number; updatedAt: number; completedAt?: number; }'.
+services/infrastructure/storage/__tests__/IndexedDBService.test.ts(130,27): error TS2339: Property 'age' does not exist on type 'unknown'.
+services/infrastructure/storage/__tests__/IndexedDBService.test.ts(198,31): error TS2339: Property 'name' does not exist on type 'unknown'.
+services/infrastructure/storage/__tests__/IndexedDBService.test.ts(199,31): error TS2339: Property 'name' does not exist on type 'unknown'.
+services/infrastructure/storage/__tests__/IndexedDBService.test.ts(426,27): error TS2339: Property 'name' does not exist on type 'unknown'.
+services/infrastructure/storage/__tests__/IndexedDBService.test.ts(427,27): error TS2339: Property 'emoji' does not exist on type 'unknown'.
+services/infrastructure/storage/__tests__/RedisService.test.ts(422,31): error TS2339: Property 'data' does not exist on type 'unknown'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(167,58): error TS2345: Argument of type '{ status: "running"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { updatedAt: number; }; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ status: "running"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { updatedAt: number; }; }' is missing the following properties from type 'ExecutionState': taskId, steps
+services/infrastructure/storage/__tests__/StateManager.test.ts(185,58): error TS2345: Argument of type '{ status: "completed"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { updatedAt: number; }; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ status: "completed"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { updatedAt: number; }; }' is missing the following properties from type 'ExecutionState': taskId, steps
+services/infrastructure/storage/__tests__/StateManager.test.ts(201,58): error TS2345: Argument of type '{ status: "running"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { updatedAt: number; }; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ status: "running"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { updatedAt: number; }; }' is missing the following properties from type 'ExecutionState': taskId, steps
+services/infrastructure/storage/__tests__/StateManager.test.ts(225,9): error TS2741: Property 'createdAt' is missing in type '{ updatedAt: number; }' but required in type '{ createdAt: number; updatedAt: number; completedAt?: number; }'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(231,9): error TS2741: Property 'createdAt' is missing in type '{ updatedAt: number; }' but required in type '{ createdAt: number; updatedAt: number; completedAt?: number; }'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(237,9): error TS2741: Property 'createdAt' is missing in type '{ updatedAt: number; }' but required in type '{ createdAt: number; updatedAt: number; completedAt?: number; }'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(282,51): error TS2345: Argument of type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' is not assignable to parameter of type 'UserSettings'.
+  Property 'savedQueries' is missing in type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' but required in type 'UserSettings'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(289,27): error TS2339: Property 'lastUpdated' does not exist on type 'UserSettings'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(303,51): error TS2345: Argument of type '{ userId: string; preferences: { theme: "light"; language: string; }; recentFiles: any[]; }' is not assignable to parameter of type 'UserSettings'.
+  Property 'savedQueries' is missing in type '{ userId: string; preferences: { theme: "light"; language: string; }; recentFiles: any[]; }' but required in type 'UserSettings'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(323,51): error TS2345: Argument of type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' is not assignable to parameter of type 'UserSettings'.
+  Property 'savedQueries' is missing in type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' but required in type 'UserSettings'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(343,51): error TS2345: Argument of type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' is not assignable to parameter of type 'UserSettings'.
+  Property 'savedQueries' is missing in type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' but required in type 'UserSettings'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(364,51): error TS2345: Argument of type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' is not assignable to parameter of type 'UserSettings'.
+  Property 'savedQueries' is missing in type '{ userId: string; preferences: { theme: "dark"; language: string; }; recentFiles: any[]; }' but required in type 'UserSettings'.
+services/infrastructure/storage/__tests__/StateManager.test.ts(394,55): error TS2345: Argument of type '{ sessionId: string; timestamp: Date; executionState: { status: "running"; }; userSettings: any; temporaryData: { test: string; }; }' is not assignable to parameter of type 'StateSnapshot'.
+  Types of property 'executionState' are incompatible.
+    Type '{ status: "running"; }' is missing the following properties from type 'ExecutionState': taskId, progress, steps, metadata
+services/infrastructure/storage/__tests__/StateManager.test.ts(470,58): error TS2345: Argument of type '{ status: "running"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { sessionId: string; updatedAt: number; }; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ status: "running"; progress: { percentage: number; currentPhase: string; message: string; }; metadata: { sessionId: string; updatedAt: number; }; }' is missing the following properties from type 'ExecutionState': taskId, steps
+services/infrastructure/storage/__tests__/SyncService.test.ts(388,25): error TS2339: Property 'saveTemporaryData' does not exist on type '{ saveProgress: Mock<any, any, any>; getProgress: Mock<any, any, any>; getSessionExecutions: Mock<any, any, any>; }'.
+services/infrastructure/storage/__tests__/SyncService.test.ts(393,32): error TS2339: Property 'saveTemporaryData' does not exist on type '{ saveProgress: Mock<any, any, any>; getProgress: Mock<any, any, any>; getSessionExecutions: Mock<any, any, any>; }'.
+services/infrastructure/storage/ClientStateManager.ts(457,86): error TS2339: Property 'id' does not exist on type 'ExecutionState'.
+services/infrastructure/vfs/__tests__/VirtualFileSystem.test.ts(327,54): error TS1117: An object literal cannot have multiple properties with the same name.
+services/infrastructure/vfs/FileRelationshipService/core.ts(23,8): error TS2307: Cannot find module './types' or its corresponding type declarations.
+services/infrastructure/vfs/FileRelationshipService/core.ts(32,8): error TS2307: Cannot find module './types' or its corresponding type declarations.
+services/infrastructure/vfs/FileRelationshipService/core.ts(38,8): error TS2307: Cannot find module './GraphOperations' or its corresponding type declarations.
+services/infrastructure/vfs/FileRelationshipService/core.ts(43,8): error TS2307: Cannot find module './DependencyAnalysis' or its corresponding type declarations.
+services/infrastructure/vfs/index.ts(20,3): error TS2300: Duplicate identifier 'VirtualFileSystem'.
+services/infrastructure/vfs/index.ts(42,3): error TS2300: Duplicate identifier 'FileMetadataService'.
+services/infrastructure/vfs/index.ts(59,3): error TS2300: Duplicate identifier 'FileRelationshipService'.
+services/infrastructure/vfs/index.ts(77,3): error TS2300: Duplicate identifier 'CrossSheetService'.
+services/infrastructure/vfs/index.ts(94,3): error TS2300: Duplicate identifier 'VirtualWorkspaceManager'.
+services/infrastructure/vfs/index.ts(110,21): error TS2300: Duplicate identifier 'VirtualFileSystem'.
+services/infrastructure/vfs/index.ts(111,21): error TS2300: Duplicate identifier 'FileMetadataService'.
+services/infrastructure/vfs/index.ts(112,21): error TS2300: Duplicate identifier 'FileRelationshipService'.
+services/infrastructure/vfs/index.ts(113,21): error TS2300: Duplicate identifier 'CrossSheetService'.
+services/infrastructure/vfs/index.ts(114,21): error TS2300: Duplicate identifier 'VirtualWorkspaceManager'.
+services/infrastructure/vfs/utils/__tests__/AccessControl.test.ts(298,22): error TS2339: Property 'toStartWith' does not exist on type 'JestMatchers<string>'.
+services/infrastructure/vfs/utils/__tests__/AccessControl.test.ts(330,19): error TS2345: Argument of type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: true; }' is not assignable to parameter of type 'Omit<AccessControlRule, "id">'.
+  Property 'allow' is missing in type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: true; }' but required in type 'Omit<AccessControlRule, "id">'.
+services/infrastructure/vfs/utils/__tests__/AccessControl.test.ts(352,19): error TS2345: Argument of type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: false; }' is not assignable to parameter of type 'Omit<AccessControlRule, "id">'.
+  Property 'allow' is missing in type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: false; }' but required in type 'Omit<AccessControlRule, "id">'.
+services/infrastructure/vfs/utils/__tests__/AccessControl.test.ts(418,19): error TS2345: Argument of type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: true; }' is not assignable to parameter of type 'Omit<AccessControlRule, "id">'.
+  Property 'allow' is missing in type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: true; }' but required in type 'Omit<AccessControlRule, "id">'.
+services/infrastructure/vfs/utils/__tests__/AccessControl.test.ts(451,19): error TS2345: Argument of type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: true; }' is not assignable to parameter of type 'Omit<AccessControlRule, "id">'.
+  Property 'allow' is missing in type '{ name: string; applyTo: string[]; deny: { readRoles: string[]; }; priority: number; enabled: true; }' but required in type 'Omit<AccessControlRule, "id">'.
+services/infrastructure/vfs/utils/__tests__/FileNameValidator.test.ts(18,3): error TS2614: Module '"../FileNameValidator"' has no exported member 'ALLOWED_EXTENSIONS'. Did you mean to use 'import ALLOWED_EXTENSIONS from "../FileNameValidator"' instead?
+services/infrastructure/vfs/utils/__tests__/FileNameValidator.test.ts(19,3): error TS2614: Module '"../FileNameValidator"' has no exported member 'MAX_FILENAME_LENGTH'. Did you mean to use 'import MAX_FILENAME_LENGTH from "../FileNameValidator"' instead?
+services/infrastructure/vfs/VirtualFileSystem.ts(244,46): error TS2345: Argument of type '{ host?: string; port?: number; password?: string; }' is not assignable to parameter of type 'RedisConfig'.
+  Type '{ host?: string; port?: number; password?: string; }' is missing the following properties from type 'RedisConfig': url, keyPrefix, defaultTTL
+services/infrastructure/vfs/VirtualFileSystem.ts(554,27): error TS2339: Property 'createDirectory' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem.ts(701,25): error TS2339: Property 'writeFile' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem.ts(773,27): error TS2339: Property 'writeFile' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem.ts(882,29): error TS2339: Property 'createDirectory' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(20,3): error TS2300: Duplicate identifier 'FileRole'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(21,3): error TS2300: Duplicate identifier 'RelationType'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(32,3): error TS2300: Duplicate identifier 'FileRole'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(33,3): error TS2300: Duplicate identifier 'RelationType'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(140,46): error TS2345: Argument of type '{ host?: string; port?: number; password?: string; }' is not assignable to parameter of type 'RedisConfig'.
+  Type '{ host?: string; port?: number; password?: string; }' is missing the following properties from type 'RedisConfig': url, keyPrefix, defaultTTL
+services/infrastructure/vfs/VirtualFileSystem/core.ts(285,29): error TS2339: Property 'createDirectory' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(369,30): error TS2339: Property 'FileRole' does not exist on type 'Promise<typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/services/infrastructure/vfs/VirtualFileSystem/types")>'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(370,30): error TS2339: Property 'FileRole' does not exist on type 'Promise<typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/services/infrastructure/vfs/VirtualFileSystem/types")>'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(372,30): error TS2339: Property 'FileRole' does not exist on type 'Promise<typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/services/infrastructure/vfs/VirtualFileSystem/types")>'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(374,30): error TS2339: Property 'FileRole' does not exist on type 'Promise<typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/services/infrastructure/vfs/VirtualFileSystem/types")>'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(376,30): error TS2339: Property 'FileRole' does not exist on type 'Promise<typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/services/infrastructure/vfs/VirtualFileSystem/types")>'.
+services/infrastructure/vfs/VirtualFileSystem/core.ts(378,30): error TS2339: Property 'FileRole' does not exist on type 'Promise<typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/services/infrastructure/vfs/VirtualFileSystem/types")>'.
+services/infrastructure/vfs/VirtualFileSystem/DirectoryOperations.ts(28,10): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/DirectoryOperations.ts(28,25): error TS2339: Property 'createDirectory' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(74,14): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(113,23): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(151,10): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(154,11): error TS2304: Cannot find name 'removeAllRelationships'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(166,14): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(167,18): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/FileOperations.ts(213,12): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/index.ts(10,16): error TS2304: Cannot find name 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/RelationshipOperations.ts(60,12): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/RelationshipOperations.ts(109,14): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/RelationshipOperations.ts(110,18): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(28,8): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(29,8): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(30,8): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(31,8): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(32,8): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(33,8): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/UtilityOperations.ts(72,27): error TS1361: 'FileRole' cannot be used as a value because it was imported using 'import type'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(48,12): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(56,21): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(57,8): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(57,23): error TS2339: Property 'writeFile' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(76,12): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(130,23): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(136,10): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(136,25): error TS2339: Property 'writeFile' does not exist on type 'PyodideService'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(142,14): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(166,10): error TS2341: Property 'pyodideService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(167,14): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualFileSystem/VersionOperations.ts(168,18): error TS2341: Property 'redisService' is private and only accessible within class 'VirtualFileSystem'.
+services/infrastructure/vfs/VirtualWorkspaceManager.ts(340,5): error TS2322: Type 'FileRelationship' is not assignable to type 'void'.
+services/integration.end-to-end.test.ts(8,10): error TS2305: Module '"./zhipuService"' has no exported member 'zhipuService'.
+services/integration.end-to-end.test.ts(15,9): error TS2739: Type '{ sheets: { Products: { id: number; name: string; price: number; category: string; stock: number; }[]; }; }' is missing the following properties from type 'ExcelData': id, fileName, currentSheetName
+services/intelligentDocumentService.ts(936,3): error TS2484: Export declaration conflicts with exported declaration of 'IAIService'.
+services/intelligentDocumentService.ts(937,3): error TS2484: Export declaration conflicts with exported declaration of 'ICacheService'.
+services/intelligentDocumentService.ts(938,3): error TS2484: Export declaration conflicts with exported declaration of 'IRetryStrategy'.
+services/intelligentDocumentService.ts(939,3): error TS2484: Export declaration conflicts with exported declaration of 'IFallbackStrategy'.
+services/intelligentDocumentService.ts(940,3): error TS2484: Export declaration conflicts with exported declaration of 'IEventBus'.
+services/intelligentDocumentService.ts(941,3): error TS2484: Export declaration conflicts with exported declaration of 'ITaskRepository'.
+services/intelligentDocumentService.ts(942,3): error TS2484: Export declaration conflicts with exported declaration of 'ITemplateAnalysisService'.
+services/intelligentDocumentService.ts(943,3): error TS2484: Export declaration conflicts with exported declaration of 'IDataSourceAnalysisService'.
+services/intelligentDocumentService.ts(944,3): error TS2484: Export declaration conflicts with exported declaration of 'IMappingPlanningService'.
+services/intelligentDocumentService.ts(945,3): error TS2484: Export declaration conflicts with exported declaration of 'IDocumentGenerationService'.
+services/monitoring/metricsCollector.ts(155,7): error TS2353: Object literal may only specify known properties, and 'generationTime' does not exist in type 'DocumentPerformance'.
+services/monitoring/metricsCollector.ts(222,7): error TS2353: Object literal may only specify known properties, and 'eventType' does not exist in type 'UXMetrics'.
+services/monitoring/performanceAnalyzer.ts(87,50): error TS2345: Argument of type 'QueryPerformance[]' is not assignable to parameter of type 'number'.
+services/monitoring/performanceAnalyzer.ts(346,7): error TS2322: Type 'string' is not assignable to type 'number'.
+services/monitoring/performanceAnalyzer.ts(581,7): error TS2739: Type '{ overall: number; breakdown: { query: number; ai: number; document: number; resources: number; }; grade: "B" | "A" | "C" | "D" | "F"; }' is missing the following properties from type 'PerformanceScore': query, ai, document, resources
+services/monitoring/performanceMonitor.test.ts(5,65): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+services/monitoring/performanceMonitor.test.ts(65,25): error TS2339: Property 'executionTime' does not exist on type 'PerformanceMetric'.
+services/monitoring/performanceTracker.ts(272,5): error TS2322: Type '<T extends { new (...args: any[]): {}; }>(constructor: T) => { new (...args: any[]): (Anonymous class); prototype: (Anonymous function)<any>.(Anonymous class); } & T' is not assignable to type 'ClassDecorator'.
+  Types of parameters 'constructor' and 'target' are incompatible.
+    Type 'TFunction' is not assignable to type 'new (...args: any[]) => {}'.
+      Type 'Function' is not assignable to type 'new (...args: any[]) => {}'.
+        Type 'Function' provides no match for the signature 'new (...args: any[]): {}'.
+services/quality/aiOutputValidator.test.ts(12,3): error TS2305: Module '"../index"' has no exported member 'AIOutputValidator'.
+services/quality/aiOutputValidator.test.ts(13,3): error TS2305: Module '"../index"' has no exported member 'SQLValidator'.
+services/quality/aiOutputValidator.test.ts(14,3): error TS2305: Module '"../index"' has no exported member 'ResultValidator'.
+services/quality/aiOutputValidator.test.ts(15,3): error TS2305: Module '"../index"' has no exported member 'HallucinationDetector'.
+services/quality/aiOutputValidator.test.ts(16,3): error TS2305: Module '"../index"' has no exported member 'FixSuggestionGenerator'.
+services/quality/aiOutputValidator.test.ts(17,3): error TS2305: Module '"../index"' has no exported member 'QualityGate'.
+services/quality/aiOutputValidator.test.ts(18,3): error TS2305: Module '"../index"' has no exported member 'STRICT_GATE'.
+services/quality/aiOutputValidator.test.ts(19,3): error TS2724: '"../index"' has no exported member named 'STANDARD_GATE'. Did you mean 'STANDARD_PATHS'?
+services/quality/aiOutputValidator.test.ts(22,3): error TS2305: Module '"../index"' has no exported member 'DatabaseSchema'.
+services/quality/aiOutputValidator.test.ts(23,3): error TS2305: Module '"../index"' has no exported member 'AIOutput'.
+services/quality/aiOutputValidator.test.ts(24,3): error TS2305: Module '"../index"' has no exported member 'QueryContext'.
+services/quality/aiOutputValidator.test.ts(71,3): error TS2353: Object literal may only specify known properties, and 'columns' does not exist in type 'QueryResult'.
+services/quality/aiOutputValidator.test.ts(208,13): error TS2739: Type '{ data: { 姓名: string; 销售额: number; }[]; rowCount: number; }' is missing the following properties from type 'QueryResult': sql, executionTime, success
+services/quality/aiOutputValidator.test.ts(515,13): error TS2739: Type '{ data: { 销售额: number; }[]; rowCount: number; }' is missing the following properties from type 'QueryResult': sql, executionTime, success
+services/quality/aiOutputValidator.test.ts(532,13): error TS2739: Type '{ data: { 值: number; }[]; rowCount: number; }' is missing the following properties from type 'QueryResult': sql, executionTime, success
+services/quality/aiOutputValidator.test.ts(549,13): error TS2739: Type '{ data: undefined[]; rowCount: number; }' is missing the following properties from type 'QueryResult': sql, executionTime, success
+services/quality/aiOutputValidator.test.ts(566,11): error TS2353: Object literal may only specify known properties, and 'columns' does not exist in type 'QueryResult'.
+services/quality/aiOutputValidator.test.ts(573,9): error TS2353: Object literal may only specify known properties, and 'columns' does not exist in type 'QueryResult'.
+services/quality/aiOutputValidator.ts(819,9): error TS2353: Object literal may only specify known properties, and 'duration' does not exist in type 'HallucinationReport'.
+services/quality/aiOutputValidator.ts(832,9): error TS2353: Object literal may only specify known properties, and 'duration' does not exist in type 'HallucinationReport'.
+services/quality/aiOutputValidator.ts(1111,43): error TS2729: Property 'hallucinationDetector' is used before its initialization.
+services/quality/examples.ts(8,3): error TS2305: Module '"../index"' has no exported member 'AIOutputValidator'.
+services/quality/examples.ts(9,3): error TS2305: Module '"../index"' has no exported member 'DatabaseSchema'.
+services/quality/examples.ts(10,3): error TS2305: Module '"../index"' has no exported member 'AIOutput'.
+services/quality/examples.ts(11,3): error TS2305: Module '"../index"' has no exported member 'QueryContext'.
+services/quality/fixSuggestionGenerator.ts(185,18): error TS2304: Cannot find name 'FixWizardStep'.
+services/quality/hallucinationDetector.ts(319,14): error TS2678: Type '"critical"' is not comparable to type '"low" | "medium" | "high"'.
+services/quality/index.ts(70,3): error TS2614: Module '"./qualityGate"' has no exported member 'GateResult'. Did you mean to use 'import GateResult from "./qualityGate"' instead?
+services/quality/qualityGate.ts(14,3): error TS2614: Module '"./aiOutputValidator"' has no exported member 'GateResult'. Did you mean to use 'import GateResult from "./aiOutputValidator"' instead?
+services/quality/resultValidator.ts(323,11): error TS2322: Type '"integer" | "float"' is not assignable to type '"string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"'.
+  Type '"integer"' is not assignable to type '"string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"'.
+services/quality/resultValidator.ts(327,13): error TS2322: Type '"date"' is not assignable to type '"string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"'.
+services/quality/sqlValidator.ts(10,26): error TS2724: '"./aiOutputValidator"' has no exported member named 'SyntaxValidationResult'. Did you mean 'ValidationResult'?
+services/quality/sqlValidator.ts(212,19): error TS2304: Cannot find name 'IdentifierCheckItem'.
+services/quality/sqlValidator.ts(213,20): error TS2304: Cannot find name 'IdentifierCheckItem'.
+services/quality/sqlValidator.ts(272,20): error TS2304: Cannot find name 'ComplexityFactor'.
+services/queryEngine/AIQueryParser.ts(404,44): error TS2339: Property 'getColumnsForSheet' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/AIQueryParser.ts(405,27): error TS2339: Property 'getColumnsForSheet' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.benchmark.ts(233,7): error TS2353: Object literal may only specify known properties, and 'enableCache' does not exist in type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.ts(15,25): error TS2440: Import declaration conflicts with local declaration of 'QueryPlan'.
+services/queryEngine/DataQueryEngine.ts(653,25): error TS2339: Property 'type' does not exist on type 'QueryPlan'.
+services/queryEngine/DataQueryEngine.ts(670,7): error TS2353: Object literal may only specify known properties, and 'type' does not exist in type 'QueryPlan'.
+services/queryEngine/DataQueryEngine.ts(679,60): error TS2339: Property 'type' does not exist on type 'QueryPlan'.
+services/queryEngine/DataQueryEngine.ts(803,21): error TS2339: Property 'clear' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.ts(810,54): error TS2554: Expected 2 arguments, but got 3.
+services/queryEngine/DataQueryEngine.ts(817,35): error TS2339: Property 'getStatistics' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.ts(1158,28): error TS2339: Property 'getStatistics' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.ts(1172,25): error TS2339: Property 'getColumnsForSheet' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.ts(1173,30): error TS2339: Property 'getColumnsForSheet' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.ts(1199,21): error TS2339: Property 'clear' does not exist on type 'IMultiSheetDataSource'.
+services/queryEngine/DataQueryEngine.unit.test.ts(33,5): error TS2739: Type '{ sheets: { Products: { id: number; name: string; price: number; category: string; }[]; }; }' is missing the following properties from type 'ExcelData': id, fileName, currentSheetName
+services/queryEngine/DataQueryEngine.unit.test.ts(97,13): error TS2739: Type '{ sheets: { NewTable: { id: number; value: string; }[]; }; }' is missing the following properties from type 'ExcelData': id, fileName, currentSheetName
+services/queryEngine/DataQueryEngine.unit.test.ts(358,13): error TS2739: Type '{ sheets: {}; }' is missing the following properties from type 'ExcelData': id, fileName, currentSheetName
+services/queryEngine/index.ts(21,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(22,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(23,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(29,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(30,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(31,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(32,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(33,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(34,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(35,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/index.ts(36,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/queryEngine/MultiSheetDataSource.example.ts(34,28): error TS2345: Argument of type '{ sheets: { Sheet1: { 姓名: string; 部门: string; 销售额: number; }[]; Sheet2: { 姓名: string; 部门: string; 绩效: string; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { Sheet1: { 姓名: string; 部门: string; 销售额: number; }[]; Sheet2: { 姓名: string; 部门: string; 绩效: string; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(69,28): error TS2345: Argument of type '{ sheets: { 员工表: { 员工ID: number; 姓名: string; 部门: string; }[]; 绩效表: { 记录ID: number; 姓名: string; 绩效: string; }[]; 考勤表: { 日期: string; 姓名: string; 状态: string; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 员工表: { 员工ID: number; 姓名: string; 部门: string; }[]; 绩效表: { 记录ID: number; 姓名: string; 绩效: string; }[]; 考勤表: { 日期: string; 姓名: string; 状态: string; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(114,28): error TS2345: Argument of type '{ sheets: { 员工信息: { 员工ID: number; 姓名: string; 部门: string; }[]; 销售记录: { 记录ID: number; 员工ID: number; 销售额: number; }[]; 部门预算: { 部门: string; 预算: number; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 员工信息: { 员工ID: number; 姓名: string; 部门: string; }[]; 销售记录: { 记录ID: number; 员工ID: number; 销售额: number; }[]; 部门预算: { 部门: string; 预算: number; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(157,28): error TS2345: Argument of type '{ sheets: { 员工信息: { 员工ID: number; 姓名: string; 部门: string; }[]; 销售记录: { 记录ID: number; 员工ID: number; 销售额: number; }[]; 部门预算: { 部门: string; 预算: number; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 员工信息: { 员工ID: number; 姓名: string; 部门: string; }[]; 销售记录: { 记录ID: number; 员工ID: number; 销售额: number; }[]; 部门预算: { 部门: string; 预算: number; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(206,28): error TS2345: Argument of type '{ sheets: { 员工信息: { 员工ID: number; 姓名: string; 部门: string; }[]; 销售记录: { 记录ID: number; 员工ID: number; 销售额: number; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 员工信息: { 员工ID: number; 姓名: string; 部门: string; }[]; 销售记录: { 记录ID: number; 员工ID: number; 销售额: number; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(255,28): error TS2345: Argument of type '{ sheets: { 员工表: { 员工ID: number; 姓名: string; 工资: number; }[]; 部门表: { 部门ID: number; 部门名称: string; 预算: number; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 员工表: { 员工ID: number; 姓名: string; 工资: number; }[]; 部门表: { 部门ID: number; 部门名称: string; 预算: number; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(283,34): error TS2345: Argument of type '{ sheets: { 数据表: { ID: number; 名称: string; 值: number; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 数据表: { ID: number; 名称: string; 值: number; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/queryEngine/MultiSheetDataSource.example.ts(330,28): error TS2345: Argument of type '{ sheets: { 员工: { 员工ID: number; 姓名: string; 部门: string; 入职日期: string; }[]; 销售: { 记录ID: number; 员工ID: number; 金额: number; 日期: string; }[]; 部门: { 部门: string; 预算: number; 负责人: string; }[]; }; currentSheetName: string; }' is not assignable to parameter of type 'ExcelData'.
+  Type '{ sheets: { 员工: { 员工ID: number; 姓名: string; 部门: string; 入职日期: string; }[]; 销售: { 记录ID: number; 员工ID: number; 金额: number; 日期: string; }[]; 部门: { 部门: string; 预算: number; 负责人: string; }[]; }; currentSheetName: string; }' is missing the following properties from type 'ExcelData': id, fileName
+services/wasm/PyodideService.ts(379,59): error TS2339: Property 'memory' does not exist on type 'Performance'.
+services/wasm/PyodideService.ts(380,26): error TS2339: Property 'memory' does not exist on type 'Performance'.
+services/wasm/WasmAgenticOrchestrator.ts(44,56): error TS2345: Argument of type '{ [fileName: string]: any[] | { [sheetName: string]: any[]; }; }' is not assignable to parameter of type '{ [fileName: string]: any[]; }'.
+  'string' index signatures are incompatible.
+    Type 'any[] | { [sheetName: string]: any[]; }' is not assignable to type 'any[]'.
+      Type '{ [sheetName: string]: any[]; }' is missing the following properties from type 'any[]': length, pop, push, concat, and 29 more.
+services/wasm/WasmAgenticOrchestrator.ts(122,49): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+services/wasm/WasmAgenticOrchestrator.ts(143,12): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+services/wasm/WasmAgenticOrchestrator.ts(147,12): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+services/wasm/WasmAgenticOrchestrator.ts(151,12): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+services/wasm/WasmIntegrationLayer.ts(184,56): error TS2345: Argument of type '{ [fileName: string]: any[] | { [sheetName: string]: any[]; }; }' is not assignable to parameter of type '{ [fileName: string]: any[]; }'.
+  'string' index signatures are incompatible.
+    Type 'any[] | { [sheetName: string]: any[]; }' is not assignable to type 'any[]'.
+      Type '{ [sheetName: string]: any[]; }' is missing the following properties from type 'any[]': length, pop, push, concat, and 29 more.
+services/wasm/WasmIntegrationLayer.ts(245,14): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+services/wasm/WasmIntegrationLayer.ts(247,12): error TS1362: 'WasmExecutionMode' cannot be used as a value because it was exported using 'export type'.
+tests/e2e/agentic-otae-system-fixed.spec.ts(124,9): error TS2304: Cannot find name 'hasSmartText'.
+tests/e2e/agentic-otae-system-fixed.spec.ts(124,41): error TS2304: Cannot find name 'hasSmartText'.
+tests/e2e/helpers.ts(84,32): error TS2554: Expected 1 arguments, but got 2.
+tests/e2e/helpers.ts(100,27): error TS2554: Expected 1 arguments, but got 2.
+tests/e2e/helpers.ts(100,40): error TS2339: Property 'toHaveCount' does not exist on type 'JestMatchers<Locator>'.
+tests/e2e/helpers.ts(114,36): error TS2554: Expected 1 arguments, but got 2.
+tests/e2e/helpers.ts(114,75): error TS2554: Expected 0 arguments, but got 1.
+tests/e2e/helpers.ts(154,26): error TS2554: Expected 1 arguments, but got 2.
+tests/e2e/helpers.ts(154,61): error TS2554: Expected 0 arguments, but got 1.
+tests/e2e/helpers.ts(163,30): error TS2554: Expected 1 arguments, but got 2.
+tests/e2e/helpers.ts(174,31): error TS2554: Expected 1 arguments, but got 2.
+tests/e2e/setup.ts(10,22): error TS2614: Module '"@playwright/test"' has no exported member 'FullContext'. Did you mean to use 'import FullContext from "@playwright/test"' instead?
+tests/e2e/setup.ts(35,34): error TS2339: Property 'timeout' does not exist on type 'FullConfig<{}, {}>'.
+tests/performance/component.rendering.test.tsx(116,15): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(121,77): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(141,15): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(146,77): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(164,11): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(169,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(174,9): error TS2345: Argument of type '() => void' is not assignable to parameter of type '() => Promise<unknown>'.
+  Type 'void' is not assignable to type 'Promise<unknown>'.
+tests/performance/component.rendering.test.tsx(178,15): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(199,15): error TS2322: Type '{ rootFileId: string; data: { nodes: { id: string; name: string; type: string; }[]; edges: any[]; }; maxDepth: number; }' is not assignable to type 'IntrinsicAttributes & RelationshipGraphProps'.
+  Property 'data' does not exist on type 'IntrinsicAttributes & RelationshipGraphProps'.
+tests/performance/component.rendering.test.tsx(205,83): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(225,15): error TS2322: Type '{ rootFileId: string; data: { nodes: { id: string; name: string; type: string; }[]; edges: any[]; }; maxDepth: number; }' is not assignable to type 'IntrinsicAttributes & RelationshipGraphProps'.
+  Property 'data' does not exist on type 'IntrinsicAttributes & RelationshipGraphProps'.
+tests/performance/component.rendering.test.tsx(231,83): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(246,11): error TS2322: Type '{ rootFileId: string; data: { nodes: { id: string; name: string; type: string; }[]; edges: any[]; }; maxDepth: number; }' is not assignable to type 'IntrinsicAttributes & RelationshipGraphProps'.
+  Property 'data' does not exist on type 'IntrinsicAttributes & RelationshipGraphProps'.
+tests/performance/component.rendering.test.tsx(252,79): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(281,15): error TS2322: Type '{ executionId: string; progress: { executionId: string; stage: string; progress: number; currentStep: string; totalSteps: number; completedSteps: number; logs: { timestamp: number; level: string; message: string; }[]; }; showLogs: true; }' is not assignable to type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+  Property 'progress' does not exist on type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+tests/performance/component.rendering.test.tsx(287,83): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(305,11): error TS2322: Type '{ executionId: string; progress: { executionId: string; stage: string; progress: number; currentStep: string; totalSteps: number; completedSteps: number; logs: { timestamp: number; level: string; message: string; }[]; }; showLogs: true; }' is not assignable to type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+  Property 'progress' does not exist on type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+tests/performance/component.rendering.test.tsx(311,79): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(316,9): error TS2345: Argument of type '() => void' is not assignable to parameter of type '() => Promise<unknown>'.
+  Type 'void' is not assignable to type 'Promise<unknown>'.
+tests/performance/component.rendering.test.tsx(320,15): error TS2322: Type '{ executionId: string; progress: { progress: number; currentStep: string; executionId: string; stage: string; totalSteps: number; completedSteps: number; logs: { timestamp: number; level: string; message: string; }[]; }; showLogs: true; }' is not assignable to type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+  Property 'progress' does not exist on type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+tests/performance/component.rendering.test.tsx(344,11): error TS2322: Type '{ executionId: string; progress: { executionId: string; stage: string; progress: number; currentStep: string; totalSteps: number; completedSteps: number; logs: { timestamp: number; level: string; message: string; }[]; }; showLogs: true; }' is not assignable to type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+  Property 'progress' does not exist on type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+tests/performance/component.rendering.test.tsx(350,79): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(355,9): error TS2345: Argument of type '() => void' is not assignable to parameter of type '() => Promise<unknown>'.
+  Type 'void' is not assignable to type 'Promise<unknown>'.
+tests/performance/component.rendering.test.tsx(359,15): error TS2322: Type '{ executionId: string; progress: { logs: { timestamp: number; level: string; message: string; }[]; executionId: string; stage: string; progress: number; currentStep: string; totalSteps: number; completedSteps: number; }; showLogs: true; }' is not assignable to type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+  Property 'progress' does not exist on type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+tests/performance/component.rendering.test.tsx(378,11): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(383,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(406,11): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(411,73): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(440,13): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(445,75): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(479,17): error TS2322: Type '{ workspaceId: string; files: { fileId: string; fileName: string; fileSize: number; fileType: string; uploadTime: number; role: string; }[]; }' is not assignable to type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+  Property 'files' does not exist on type 'IntrinsicAttributes & VirtualFileBrowserProps'.
+tests/performance/component.rendering.test.tsx(483,17): error TS2322: Type '{ rootFileId: string; data: { nodes: { id: string; name: string; type: string; }[]; edges: any[]; }; maxDepth: number; }' is not assignable to type 'IntrinsicAttributes & RelationshipGraphProps'.
+  Property 'data' does not exist on type 'IntrinsicAttributes & RelationshipGraphProps'.
+tests/performance/component.rendering.test.tsx(488,17): error TS2322: Type '{ executionId: string; progress: { executionId: string; stage: string; progress: number; currentStep: string; totalSteps: number; completedSteps: number; logs: { timestamp: number; level: string; message: string; }[]; }; showLogs: true; }' is not assignable to type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+  Property 'progress' does not exist on type 'IntrinsicAttributes & ExecutionProgressPanelProps'.
+tests/performance/component.rendering.test.tsx(495,77): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(496,83): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/component.rendering.test.tsx(497,83): error TS2339: Property 'toBeInTheDocument' does not exist on type 'Matchers<void, Element> & SnapshotMatchers<void, Element> & Inverse<JestMatchers<void, Element>> & PromiseMatchers<...>'.
+tests/performance/degradation.strategy.test.ts(59,21): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(64,25): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(86,27): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(115,23): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(143,25): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(175,25): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(201,25): error TS2551: Property 'evaluateDegradation' does not exist on type 'DegradationManager'. Did you mean 'executeDegradation'?
+tests/performance/degradation.strategy.test.ts(218,25): error TS2339: Property 'getSystemMetrics' does not exist on type 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(242,43): error TS2339: Property 'getMetric' does not exist on type 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(263,27): error TS2339: Property 'setStrategy' does not exist on type 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(282,25): error TS2339: Property 'restoreState' does not exist on type 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(296,15): error TS2339: Property 'on' does not exist on type 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(303,25): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/degradation.strategy.test.ts(325,23): error TS2341: Property 'checkDegradation' is private and only accessible within class 'DegradationManager'.
+tests/performance/pyodide-memory-stress-test.ts(123,60): error TS2339: Property 'memory' does not exist on type 'Performance'.
+tests/performance/pyodide-memory-stress-test.ts(128,32): error TS2339: Property 'memory' does not exist on type 'Performance'.
+tests/performance/run-performance-tests.ts(34,14): error TS2323: Cannot redeclare exported variable 'PerformanceTestSuite'.
+tests/performance/run-performance-tests.ts(297,10): error TS2323: Cannot redeclare exported variable 'PerformanceTestSuite'.
+tests/performance/run-performance-tests.ts(297,10): error TS2484: Export declaration conflicts with exported declaration of 'PerformanceTestSuite'.
+tests/performance/state.storage.test.ts(40,49): error TS2554: Expected 0-1 arguments, but got 2.
+tests/performance/state.storage.test.ts(56,24): error TS2339: Property 'close' does not exist on type 'StateManager'.
+tests/performance/state.storage.test.ts(57,30): error TS2339: Property 'close' does not exist on type 'ClientStateManager'.
+tests/performance/state.storage.test.ts(67,13): error TS2322: Type 'number' is not assignable to type '{ percentage: number; currentPhase: string; message: string; }'.
+tests/performance/state.storage.test.ts(84,9): error TS2322: Type 'number' is not assignable to type '{ percentage: number; currentPhase: string; message: string; }'.
+tests/performance/state.storage.test.ts(107,13): error TS2322: Type 'number' is not assignable to type '{ percentage: number; currentPhase: string; message: string; }'.
+tests/performance/state.storage.test.ts(127,15): error TS2353: Object literal may only specify known properties, and 'stage' does not exist in type 'ExecutionState'.
+tests/performance/state.storage.test.ts(153,13): error TS2322: Type 'number' is not assignable to type '{ percentage: number; currentPhase: string; message: string; }'.
+tests/performance/state.storage.test.ts(169,9): error TS2322: Type 'number' is not assignable to type '{ percentage: number; currentPhase: string; message: string; }'.
+tests/performance/state.storage.test.ts(192,13): error TS2322: Type 'number' is not assignable to type '{ percentage: number; currentPhase: string; message: string; }'.
+tests/performance/state.storage.test.ts(215,53): error TS2345: Argument of type '{ stage: string; progress: number; timestamp: number; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ stage: string; progress: number; timestamp: number; }' is missing the following properties from type 'ExecutionState': taskId, status, steps, metadata
+tests/performance/state.storage.test.ts(221,29): error TS2339: Property 'syncToIndexedDB' does not exist on type 'SyncService'.
+tests/performance/state.storage.test.ts(237,53): error TS2345: Argument of type '{ stage: string; progress: number; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ stage: string; progress: number; }' is missing the following properties from type 'ExecutionState': taskId, status, steps, metadata
+tests/performance/state.storage.test.ts(243,29): error TS2339: Property 'syncFromIndexedDB' does not exist on type 'SyncService'.
+tests/performance/state.storage.test.ts(278,51): error TS2345: Argument of type '{ stage: string; progress: number; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ stage: string; progress: number; }' is missing the following properties from type 'ExecutionState': taskId, status, steps, metadata
+tests/performance/state.storage.test.ts(284,30): error TS2339: Property 'queryExecutionsByStatus' does not exist on type 'StateManager'.
+tests/performance/state.storage.test.ts(299,30): error TS2339: Property 'queryExecutionsByTimeRange' does not exist on type 'StateManager'.
+tests/performance/state.storage.test.ts(322,84): error TS2353: Object literal may only specify known properties, and 'index' does not exist in type 'ExecutionState'.
+tests/performance/state.storage.test.ts(357,78): error TS2345: Argument of type '{ stage: string; progress: number; data: { id: number; name: string; value: number; timestamp: number; }[]; }' is not assignable to parameter of type 'ExecutionState'.
+  Type '{ stage: string; progress: number; data: { id: number; name: string; value: number; timestamp: number; }[]; }' is missing the following properties from type 'ExecutionState': taskId, status, steps, metadata
+tests/performance/state.storage.test.ts(371,30): error TS2339: Property 'queryAllExecutions' does not exist on type 'StateManager'.
+tests/performance/state.storage.test.ts(386,55): error TS2353: Object literal may only specify known properties, and 'stage' does not exist in type 'ExecutionState'.
+tests/performance/vfs.operations.test.ts(11,10): error TS2614: Module '"../../services/infrastructure/vfs/VirtualFileSystem"' has no exported member 'getVirtualWorkspaceManager'. Did you mean to use 'import getVirtualWorkspaceManager from "../../services/infrastructure/vfs/VirtualFileSystem"' instead?
+tests/performance/vfs.operations.test.ts(12,10): error TS2614: Module '"../../services/infrastructure/vfs/FileMetadataService"' has no exported member 'FileRole'. Did you mean to use 'import FileRole from "../../services/infrastructure/vfs/FileMetadataService"' instead?
+tests/qa/coverageAnalyzer.ts(16,3): error TS2305: Module '"./types"' has no exported member 'CoverageReport'.
+tests/qa/index.ts(20,20): error TS2304: Cannot find name 'TestGenerator'.
+tests/qa/index.ts(21,17): error TS2304: Cannot find name 'TestRunner'.
+tests/qa/index.ts(22,19): error TS2304: Cannot find name 'CoverageAnalyzer'.
+tests/qa/index.ts(23,22): error TS2304: Cannot find name 'IntegrationTestSuite'.
+tests/qa/index.ts(24,21): error TS2304: Cannot find name 'RegressionTestSuite'.
+tests/qa/index.ts(25,22): error TS2304: Cannot find name 'PerformanceTestSuite'.
+tests/qa/index.ts(31,22): error TS2304: Cannot find name 'TestRunner'.
+tests/qa/index.ts(36,24): error TS2304: Cannot find name 'CoverageAnalyzer'.
+tests/qa/index.ts(41,22): error TS2304: Cannot find name 'TestRunner'.
+tests/qa/performanceTestSuite.ts(541,7): error TS2322: Type '() => Promise<{ id: number; name: string; value: number; }[]>' is not assignable to type '() => void | Promise<void>'.
+  Type 'Promise<{ id: number; name: string; value: number; }[]>' is not assignable to type 'void | Promise<void>'.
+    Type 'Promise<{ id: number; name: string; value: number; }[]>' is not assignable to type 'Promise<void>'.
+      Type '{ id: number; name: string; value: number; }[]' is not assignable to type 'void'.
+tests/qa/testGenerator.ts(74,16): error TS2345: Argument of type 'string[]' is not assignable to parameter of type 'string'.
+tests/qa/testGenerator.ts(77,16): error TS2345: Argument of type 'string[]' is not assignable to parameter of type 'string'.
+tests/qa/testGenerator.ts(434,26): error TS2304: Cannot find name 'p'.
+tests/qa/testGenerator.ts(434,51): error TS2304: Cannot find name 'p'.
+tests/qa/testRunner.ts(162,9): error TS2353: Object literal may only specify known properties, and 'error' does not exist in type 'TestResult'.
+tests/qa/testRunner.ts(215,9): error TS2353: Object literal may only specify known properties, and 'error' does not exist in type 'TestResult'.
+tests/qa/testRunner.ts(270,9): error TS2353: Object literal may only specify known properties, and 'error' does not exist in type 'TestResult'.
+tests/qa/testRunner.ts(319,9): error TS2353: Object literal may only specify known properties, and 'error' does not exist in type 'TestResult'.
+tests/security/input-validation.test.ts(95,25): error TS2339: Property 'endsWith' does not exist on type 'Matchers<void, string> & SnapshotMatchers<void, string> & Inverse<JestMatchers<void, string>> & PromiseMatchers<string>'.
+tests/storage/storage-integration.test.ts(180,30): error TS2339: Property 'data' does not exist on type 'unknown'.
+tests/websocket/WebSocketTestReport.ts(119,23): error TS2339: Property 'totalTests' does not exist on type 'TestReportData'.
+tests/websocket/WebSocketTestReport.ts(120,28): error TS2339: Property 'passedTests' does not exist on type 'TestReportData'.
+tests/websocket/WebSocketTestReport.ts(120,58): error TS2339: Property 'totalTests' does not exist on type 'TestReportData'.
+types/agenticTypes.ts(481,3): error TS2484: Export declaration conflicts with exported declaration of 'DataFileInfo'.
+types/agenticTypes.ts(482,3): error TS2484: Export declaration conflicts with exported declaration of 'TaskError'.
+types/agenticTypes.ts(483,3): error TS2484: Export declaration conflicts with exported declaration of 'ErrorAnalysis'.
+types/agenticTypes.ts(484,3): error TS2484: Export declaration conflicts with exported declaration of 'RepairStrategy'.
+types/agenticTypes.ts(485,3): error TS2484: Export declaration conflicts with exported declaration of 'AnalysisStep'.
+types/agenticTypes.ts(486,3): error TS2484: Export declaration conflicts with exported declaration of 'ExecutionPlan'.
+types/agenticTypes.ts(487,3): error TS2484: Export declaration conflicts with exported declaration of 'StepFeedback'.
+types/agenticTypes.ts(488,3): error TS2484: Export declaration conflicts with exported declaration of 'QualityReport'.
+types/agenticTypes.ts(489,3): error TS2484: Export declaration conflicts with exported declaration of 'TaskContext'.
+types/agenticTypes.ts(490,3): error TS2484: Export declaration conflicts with exported declaration of 'MultiStepTask'.
+types/agenticTypes.ts(491,3): error TS2484: Export declaration conflicts with exported declaration of 'TaskResult'.
+types/agenticTypes.ts(492,3): error TS2484: Export declaration conflicts with exported declaration of 'ObservationResult'.
+types/agenticTypes.ts(493,3): error TS2484: Export declaration conflicts with exported declaration of 'ThinkingResult'.
+types/agenticTypes.ts(494,3): error TS2484: Export declaration conflicts with exported declaration of 'StepResult'.
+types/agenticTypes.ts(495,3): error TS2484: Export declaration conflicts with exported declaration of 'EvaluationResult'.
+types/agenticTypes.ts(496,3): error TS2484: Export declaration conflicts with exported declaration of 'RepairResult'.
+types/agenticTypes.ts(497,3): error TS2484: Export declaration conflicts with exported declaration of 'OrchestratorConfig'.
+types/agenticTypes.ts(498,3): error TS2484: Export declaration conflicts with exported declaration of 'ProgressCallback'.
+types/agenticTypes.ts(499,3): error TS2484: Export declaration conflicts with exported declaration of 'LogLevel'.
+types/agenticTypes.ts(500,3): error TS2484: Export declaration conflicts with exported declaration of 'LogEntry'.
+types/agenticTypes.ts(501,3): error TS2484: Export declaration conflicts with exported declaration of 'AIAnalysisRequest'.
+types/agenticTypes.ts(502,3): error TS2484: Export declaration conflicts with exported declaration of 'AIAnalysisResponse'.
+types/agenticTypes.ts(503,3): error TS2484: Export declaration conflicts with exported declaration of 'CodeExecutionRequest'.
+types/agenticTypes.ts(504,3): error TS2484: Export declaration conflicts with exported declaration of 'CodeExecutionResponse'.
+types/agenticTypes.ts(505,3): error TS2484: Export declaration conflicts with exported declaration of 'SessionState'.
+types/agenticTypes.ts(506,3): error TS2484: Export declaration conflicts with exported declaration of 'Statistics'.
+types/index.ts(22,1): error TS2308: Module './agenticTypes' has already exported a member named 'AIAnalysisRequest'. Consider explicitly re-exporting to resolve the ambiguity.
+types/index.ts(22,1): error TS2308: Module './agenticTypes' has already exported a member named 'AIAnalysisResponse'. Consider explicitly re-exporting to resolve the ambiguity.
+types/index.ts(22,1): error TS2308: Module './validationTypes' has already exported a member named 'ValidationConfig'. Consider explicitly re-exporting to resolve the ambiguity.
+types/index.ts(22,1): error TS2308: Module './validationTypes' has already exported a member named 'ValidationResult'. Consider explicitly re-exporting to resolve the ambiguity.
+types/index.ts(31,1): error TS2308: Module './executionTypes' has already exported a member named 'ExecutionState'. Consider explicitly re-exporting to resolve the ambiguity.
+types/index.ts(31,1): error TS2308: Module './mappingSchemaV2' has already exported a member named 'CacheEntry'. Consider explicitly re-exporting to resolve the ambiguity.
+types/storageTypes.ts(255,3): error TS2484: Export declaration conflicts with exported declaration of 'RedisConfig'.
+types/storageTypes.ts(256,3): error TS2484: Export declaration conflicts with exported declaration of 'IDBConfig'.
+types/storageTypes.ts(257,3): error TS2484: Export declaration conflicts with exported declaration of 'IDBStoreConfig'.
+types/storageTypes.ts(258,3): error TS2484: Export declaration conflicts with exported declaration of 'StateSnapshot'.
+types/storageTypes.ts(259,3): error TS2484: Export declaration conflicts with exported declaration of 'ExecutionState'.
+types/storageTypes.ts(260,3): error TS2484: Export declaration conflicts with exported declaration of 'UserSettings'.
+types/storageTypes.ts(261,3): error TS2484: Export declaration conflicts with exported declaration of 'TemporaryData'.
+types/storageTypes.ts(262,3): error TS2484: Export declaration conflicts with exported declaration of 'StorageOperation'.
+types/storageTypes.ts(263,3): error TS2484: Export declaration conflicts with exported declaration of 'StorageResult'.
+types/storageTypes.ts(264,3): error TS2484: Export declaration conflicts with exported declaration of 'StorageError'.
+types/storageTypes.ts(265,3): error TS2484: Export declaration conflicts with exported declaration of 'SyncConfig'.
+types/storageTypes.ts(266,3): error TS2484: Export declaration conflicts with exported declaration of 'SyncResult'.
+types/storageTypes.ts(267,3): error TS2484: Export declaration conflicts with exported declaration of 'SyncConflict'.
+types/storageTypes.ts(268,3): error TS2484: Export declaration conflicts with exported declaration of 'SessionInfo'.
+types/storageTypes.ts(269,3): error TS2484: Export declaration conflicts with exported declaration of 'SessionData'.
+types/storageTypes.ts(270,3): error TS2484: Export declaration conflicts with exported declaration of 'CacheEntry'.
+types/storageTypes.ts(271,3): error TS2484: Export declaration conflicts with exported declaration of 'CacheStats'.
+types/storageTypes.ts(272,3): error TS2484: Export declaration conflicts with exported declaration of 'StorageEvent'.
+types/storageTypes.ts(273,3): error TS2484: Export declaration conflicts with exported declaration of 'StateChangeEvent'.
+types/storageTypes.ts(274,3): error TS2484: Export declaration conflicts with exported declaration of 'BatchOperation'.
+types/storageTypes.ts(275,3): error TS2484: Export declaration conflicts with exported declaration of 'BatchResult'.
+types/storageTypes.ts(276,3): error TS2484: Export declaration conflicts with exported declaration of 'StorageStats'.
+types/wasmTypes.ts(73,47): error TS2304: Cannot find name 'TaskContext'.
+types/wasmTypes.ts(313,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmExecutionMode'.
+types/wasmTypes.ts(314,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmConfig'.
+types/wasmTypes.ts(315,3): error TS2484: Export declaration conflicts with exported declaration of 'FileFerryStatus'.
+types/wasmTypes.ts(316,3): error TS2484: Export declaration conflicts with exported declaration of 'VirtualFileSystemState'.
+types/wasmTypes.ts(317,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmExecutionContext'.
+types/wasmTypes.ts(318,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmExecutionResult'.
+types/wasmTypes.ts(319,3): error TS2484: Export declaration conflicts with exported declaration of 'SecurityCheckConfig'.
+types/wasmTypes.ts(320,3): error TS2484: Export declaration conflicts with exported declaration of 'PerformanceMetrics'.
+types/wasmTypes.ts(321,3): error TS2484: Export declaration conflicts with exported declaration of 'PyodideInitProgress'.
+types/wasmTypes.ts(322,3): error TS2484: Export declaration conflicts with exported declaration of 'FileFerryEvent'.
+types/wasmTypes.ts(323,3): error TS2484: Export declaration conflicts with exported declaration of 'CodeExecutionEvent'.
+types/wasmTypes.ts(324,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmModuleState'.
+types/wasmTypes.ts(327,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmReActState'.
+types/wasmTypes.ts(330,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmCodeGenerationRequest'.
+types/wasmTypes.ts(331,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmCodeGenerationResponse'.
+types/wasmTypes.ts(334,3): error TS2484: Export declaration conflicts with exported declaration of 'ExcelMetadataWasm'.
+types/wasmTypes.ts(335,3): error TS2484: Export declaration conflicts with exported declaration of 'FileFerryOptions'.
+types/wasmTypes.ts(336,3): error TS2484: Export declaration conflicts with exported declaration of 'ExecutionEngineConfig'.
+types/wasmTypes.ts(339,3): error TS2484: Export declaration conflicts with exported declaration of 'WasmIntegration'.

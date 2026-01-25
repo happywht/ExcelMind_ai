@@ -11,19 +11,45 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "jest",
+      "@testing-library/jest-dom"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
+    "baseUrl": "./",
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@config/*": [
+        "./config/*"
+      ],
+      "@services/*": [
+        "./services/*"
+      ],
+      "@components/*": [
+        "./components/*"
+      ],
+      "@types/*": [
+        "./types/*"
+      ],
+      "@utils/*": [
+        "./utils/*"
+      ],
+      "@excelmind/shared-types": [
+        "./packages/shared-types/dist"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "types/**/*.d.ts"
+  ]
 }

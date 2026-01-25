@@ -1,0 +1,200 @@
+components/DocumentSpace/DocumentPreview.tsx(97,24): error TS2339: Property 'createElement' does not exist on type 'GeneratedDocument'.
+components/DocumentSpace/DocumentSpace.test.tsx(163,51): error TS2339: Property 'disabled' does not exist on type 'HTMLElement'.
+components/DocumentSpace/DocumentSpace.tsx(115,11): error TS2353: Object literal may only specify known properties, and 'maxResponseTime' does not exist in type '{ simple: BenchmarkThreshold; complex: BenchmarkThreshold; }'.
+components/DocumentSpace/DocumentSpace.tsx(119,11): error TS2353: Object literal may only specify known properties, and 'maxGenerationTime' does not exist in type '{ single: BenchmarkThreshold; batch_10: BenchmarkThreshold; batch_100: BenchmarkThreshold; }'.
+components/DocumentSpace/DocumentSpace.tsx(280,23): error TS2339: Property 'length' does not exist on type 'unknown'.
+components/DocumentSpace/DocumentSpace.tsx(281,24): error TS2339: Property 'length' does not exist on type 'unknown'.
+components/DocumentSpace/DocumentSpace.tsx(282,26): error TS2339: Property 'slice' does not exist on type 'unknown'.
+components/DocumentSpace/DocumentSpace.tsx(293,9): error TS2345: Argument of type 'string[]' is not assignable to parameter of type 'number'.
+components/DocumentSpaceAdvanced.tsx(38,9): error TS2353: Object literal may only specify known properties, and 'enableCache' does not exist in type 'IMultiSheetDataSource'.
+components/DocumentSpaceAdvanced.tsx(208,37): error TS2322: Type 'string | ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+components/ExecutionProgress/__tests__/ExecutionProgressPanel.test.tsx(488,21): error TS2339: Property 'focus' does not exist on type 'Element'.
+components/ExecutionVisualizer/AuditTrailReport.tsx(18,32): error TS2395: Individual declarations in merged declaration 'AuditTrailReport' must be all exported or all local.
+components/ExecutionVisualizer/AuditTrailReport.tsx(32,14): error TS2395: Individual declarations in merged declaration 'AuditTrailReport' must be all exported or all local.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(24,3): error TS2305: Module '"../../types"' has no exported member 'AuditTrailReport'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(25,3): error TS2305: Module '"../../types"' has no exported member 'ExecutionStep'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(26,3): error TS2305: Module '"../../types"' has no exported member 'ExecutionState'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(27,3): error TS2305: Module '"../../types"' has no exported member 'ValidationResult'.
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(28,3): error TS2724: '"../../types"' has no exported member named 'ExcelMetadata'. Did you mean 'ExcelData'?
+components/ExecutionVisualizer/index.ts(12,15): error TS2724: '"./ExecutionVisualizer"' has no exported member named 'ExecutionVisualizerProps'. Did you mean 'ExecutionVisualizer'?
+components/KnowledgeChat.tsx(12,24): error TS2339: Property 'default' does not exist on type 'typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/node_modules/.pnpm/pdfjs-dist@5.4.530/node_modules/pdfjs-dist/types/src/pdf")'.
+components/KnowledgeChat.tsx(12,44): error TS2339: Property 'default' does not exist on type 'typeof import("D:/\u5BB6\u5EAD/\u9752\u806A\u8D4B\u80FD/excelmind-ai/node_modules/.pnpm/pdfjs-dist@5.4.530/node_modules/pdfjs-dist/types/src/pdf")'.
+components/MappingEditor/MappingEditor.test.tsx(11,9): error TS2741: Property 'primarySheet' is missing in type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: string[]; }' but required in type 'MappingScheme'.
+components/MappingEditor/MappingEditorExample.tsx(52,69): error TS2345: Argument of type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: string[]; }' is not assignable to parameter of type 'MappingScheme | (() => MappingScheme)'.
+components/MappingEditor/MappingEditorExample.tsx(85,17): error TS2345: Argument of type '{ explanation: string; filterCondition: null; mappings: ({ placeholder: string; excelColumn: string; } | { placeholder: string; excelColumn: string; transform: string; })[]; unmappedPlaceholders: undefined[]; }' is not assignable to parameter of type 'MappingScheme | PromiseLike<MappingScheme>'.
+components/QueryVisualizer/ChartView.tsx(262,32): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+components/QueryVisualizer/ChartView.tsx(262,49): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(10,37): error TS2307: Cannot find module '@storybook/react' or its corresponding type declarations.
+components/QueryVisualizer/QueryVisualizer.test.tsx(510,11): error TS2367: This comparison appears to be unintentional because the types '"webview"' and '"a"' have no overlap.
+components/QueryVisualizer/QueryVisualizerExample.tsx(47,9): error TS2353: Object literal may only specify known properties, and 'tables' does not exist in type 'IMultiSheetDataSource'.
+components/QueryVisualizer/QueryVisualizerExample.tsx(52,20): error TS2339: Property 'tables' does not exist on type 'IMultiSheetDataSource'.
+components/QueryVisualizer/QueryVisualizerExample.tsx(59,14): error TS2339: Property 'setDataSource' does not exist on type 'DataQueryEngine'.
+components/SQLPreview/SQLEditor.tsx(294,9): error TS2322: Type '{ minimun: number; maximun: number; readOnly: boolean; automaticLayout: boolean; fontSize: number; lineHeight: number; lineNumbers: "on" | "off" | "relative" | "interval"; scrollbar: { useShadows?: boolean; verticalHasArrows?: boolean; horizontalHasArrows?: boolean; vertical?: "visible" | "hidden" | "auto"; horizont...' is not assignable to type 'IStandaloneEditorConstructionOptions'.
+components/SQLPreview/SQLFormatter.ts(52,9): error TS2353: Object literal may only specify known properties, and 'indent' does not exist in type 'FormatOptionsWithLanguage'.
+components/SQLPreview/SQLPreview.test.tsx(485,9): error TS2322: Type 'Mock<Promise<unknown>, [], any>' is not assignable to type '(sql: string) => Promise<QueryResult>'.
+components/SQLPreview/SQLPreview.tsx(315,13): error TS2322: Type 'string' is not assignable to type '"vs-light" | "vs-dark"'.
+components/SQLPreview/SQLValidator.tsx(250,40): error TS2339: Property 'severity' does not exist on type 'ValidationWarning'.
+components/VirtualWorkspace/__tests__/FileCard.test.tsx(343,13): error TS2304: Cannot find name 'waitFor'.
+components/VirtualWorkspace/__tests__/FileCard.test.tsx(475,14): error TS2339: Property 'focus' does not exist on type 'Element'.
+components/VirtualWorkspace/utils.ts(400,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(401,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(402,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(403,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(413,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(414,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(415,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/utils.ts(416,6): error TS1361: 'ExecutionStage' cannot be used as a value because it was imported using 'import type'.
+components/VirtualWorkspace/VirtualWorkspace.tsx(60,36): error TS2345: Argument of type '"primary_source"' is not assignable to parameter of type 'FileRole'.
+packages/shared-types/examples/usage.ts(16,8): error TS2307: Cannot find module '@excelmind/shared-types' or its corresponding type declarations.
+packages/shared-types/examples/usage.ts(131,49): error TS2307: Cannot find module '@excelmind/shared-types' or its corresponding type declarations.
+services/agentic/AgenticOrchestrator.test.ts(10,3): error TS2305: Module '"./index"' has no exported member 'validateDataFiles'.
+services/agentic/AgenticOrchestrator.test.ts(11,3): error TS2305: Module '"./index"' has no exported member 'formatExecutionTime'.
+services/agentic/AgenticOrchestrator.test.ts(12,3): error TS2305: Module '"./index"' has no exported member 'formatQualityScore'.
+services/agentic/AgenticOrchestrator.test.ts(13,3): error TS2305: Module '"./index"' has no exported member 'isTaskSuccessful'.
+services/agentic/AgenticOrchestrator.test.ts(14,3): error TS2305: Module '"./index"' has no exported member 'getTaskSummary'.
+services/agentic/AgenticOrchestrator.test.ts(15,3): error TS2305: Module '"./index"' has no exported member 'generateTaskReport'.
+services/agentic/AgenticOrchestrator.test.ts(16,3): error TS2305: Module '"./index"' has no exported member 'createProgressLogger'.
+services/agentic/AgenticOrchestrator.test.ts(17,3): error TS2305: Module '"./index"' has no exported member 'analyzeError'.
+services/agentic/AgenticOrchestrator.test.ts(18,3): error TS2305: Module '"./index"' has no exported member 'estimateExecutionTime'.
+services/agentic/AgenticOrchestrator.ts(485,31): error TS2304: Cannot find name 'AIProcessResult'.
+services/agentic/AgenticOrchestrator.ts(584,9): error TS2345: Argument of type '{ [fileName: string]: any[] | { [sheetName: string]: any[]; }; }' is not assignable to parameter of type '{ [fileName: string]: any[]; }'.
+services/agentic/AgenticOrchestrator.ts(630,9): error TS2353: Object literal may only specify known properties, and 'rawError' does not exist in type 'StepResult'.
+services/agentic/AgenticOrchestrator.ts(935,26): error TS2339: Property 'DATA_ERROR' does not exist on type 'typeof ErrorCategory'.
+services/agentic/dataValidationUtils.ts(130,55): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(136,36): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(136,72): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(145,58): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(151,36): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(151,75): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(160,29): error TS2339: Property 'rowCount' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(160,72): error TS2339: Property 'rowCount' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(241,34): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(242,37): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(243,35): error TS2339: Property 'rowCount' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(244,35): error TS2339: Property 'metadata' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(318,29): error TS2339: Property 'headers' does not exist on type 'object'.
+services/agentic/dataValidationUtils.ts(319,29): error TS2339: Property 'sampleRows' does not exist on type 'object'.
+services/agentic/demo.ts(10,3): error TS2305: Module '"./index"' has no exported member 'createProgressLogger'.
+services/agentic/demo.ts(11,3): error TS2305: Module '"./index"' has no exported member 'generateTaskReport'.
+services/agentic/example.ts(11,3): error TS2724: '"./index"' has no exported member named 'executeMultiStepAnalysisWithProgress'. Did you mean 'executeMultiStepAnalysis'?
+services/agentic/example.ts(12,3): error TS2305: Module '"./index"' has no exported member 'createProgressLogger'.
+services/agentic/example.ts(13,3): error TS2305: Module '"./index"' has no exported member 'generateTaskReport'.
+services/agentic/example.ts(14,3): error TS2305: Module '"./index"' has no exported member 'validateDataFiles'.
+services/agentic/integration-example.tsx(13,8): error TS2307: Cannot find module '../services/agentic' or its corresponding type declarations.
+services/ai/aiOrchestrationService.ts(253,28): error TS2339: Property 'metadata' does not exist on type 'AIAnalysisResponse'.
+services/ai/aiOrchestrationService.ts(261,50): error TS2339: Property 'metadata' does not exist on type 'AIAnalysisResponse'.
+services/ai/fewShotEngine.demo.ts(420,5): error TS2741: Property 'weights' is missing in type '{ defaultMethod: SimilarityMethod.HYBRID; threshold: number; }' but required in type '{ defaultMethod: SimilarityMethod; threshold: number; weights: { cosine: number; jaccard: number; levenshtein: number; semantic: number; }; }'.
+services/ai/fewShotEngine.demo.ts(424,5): error TS2741: Property 'maxCandidates' is missing in type '{ defaultStrategy: RetrievalStrategy.ADAPTIVE; defaultTopK: number; enableCache: true; }' but required in type '{ defaultStrategy: RetrievalStrategy; defaultTopK: number; maxCandidates: number; enableCache: boolean; }'.
+services/ai/fewShotEngine.demo.ts(429,5): error TS2741: Property 'minExamples' is missing in type '{ defaultTemplate: PromptTemplate.HYBRID; maxExamples: number; }' but required in type '{ defaultTemplate: PromptTemplate; maxExamples: number; minExamples: number; }'.
+services/ai/fewShotEngine.demo.ts(575,3): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+services/ai/fewShotEngine.test.ts(792,31): error TS2339: Property 'removed' does not exist on type 'Promise<{ removed: number; updated: number; added: number; }>'.
+services/documentMappingService.test.ts(253,64): error TS2345: Argument of type '{ content: { type: string; text: string; }[]; }' is not assignable to parameter of type 'never'.
+services/documentMappingService.test.ts(289,64): error TS2345: Argument of type '{ content: { type: string; text: string; }[]; }' is not assignable to parameter of type 'never'.
+services/documentMappingService.test.ts(299,21): error TS2339: Property 'reasoning' does not exist on type 'MappingScheme'.
+services/docxtemplaterService.demo.ts(37,19): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(38,39): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(216,21): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(218,18): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(223,42): error TS2339: Property 'placeholderCount' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(224,40): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(226,20): error TS2339: Property 'warnings' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(228,18): error TS2339: Property 'warnings' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.demo.ts(305,25): error TS2339: Property 'default' does not exist on type 'JSZip'.
+services/docxtemplaterService.test.ts(316,21): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(317,21): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(318,21): error TS2339: Property 'warnings' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(319,21): error TS2339: Property 'placeholderCount' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(320,54): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(327,21): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(328,21): error TS2339: Property 'errors' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(335,21): error TS2339: Property 'placeholderCount' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(342,54): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(352,27): error TS2339: Property 'length' does not exist on type 'Promise<string[]>'.
+services/docxtemplaterService.test.ts(358,46): error TS2769: No overload matches this call.
+services/docxtemplaterService.test.ts(656,29): error TS2339: Property 'valid' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.test.ts(660,25): error TS2339: Property 'length' does not exist on type 'Promise<string[]>'.
+services/docxtemplaterService.test.ts(663,78): error TS2339: Property 'complexity' does not exist on type 'Promise<ValidationResult>'.
+services/docxtemplaterService.ts(769,37): error TS2339: Property 'async' does not exist on type 'ZipObject'.
+services/docxtemplaterService.ts(775,43): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+services/docxtemplaterService.ts(1207,41): error TS2339: Property 'async' does not exist on type 'ZipObject'.
+services/docxtemplaterService.ts(1273,39): error TS2339: Property 'async' does not exist on type 'ZipObject'.
+services/functionCalling/FunctionCallingAdapter.ts(229,7): error TS2769: No overload matches this call.
+services/functionCalling/tools.ts(136,11): error TS2353: Object literal may only specify known properties, and 'properties' does not exist in type 'ToolProperty'.
+services/geminiService.ts(1,29): error TS2307: Cannot find module '@google/genai' or its corresponding type declarations.
+services/index.ts(16,8): error TS2300: Duplicate identifier 'SheetMetadata'.
+services/index.ts(60,8): error TS2300: Duplicate identifier 'ValidationResult'.
+services/index.ts(269,3): error TS2300: Duplicate identifier 'SheetMetadata'.
+services/index.ts(281,3): error TS2300: Duplicate identifier 'SecurityCheckResult'.
+services/index.ts(287,3): error TS2305: Module '"./prompt/promptBuilderService"' has no exported member 'ToolFunction'.
+services/index.ts(305,3): error TS2614: Module '"./wasm"' has no exported member 'WasmIntegrationLayer'. Did you mean to use 'import WasmIntegrationLayer from "./wasm"' instead?
+services/index.ts(306,3): error TS2614: Module '"./wasm"' has no exported member 'getWasmIntegration'. Did you mean to use 'import getWasmIntegration from "./wasm"' instead?
+services/index.ts(309,3): error TS2614: Module '"./wasm"' has no exported member 'WasmAgenticOrchestrator'. Did you mean to use 'import WasmAgenticOrchestrator from "./wasm"' instead?
+services/index.ts(310,3): error TS2614: Module '"./wasm"' has no exported member 'getWasmOrchestrator'. Did you mean to use 'import getWasmOrchestrator from "./wasm"' instead?
+services/index.ts(311,3): error TS2614: Module '"./wasm"' has no exported member 'executeTransformationWasm'. Did you mean to use 'import executeTransformationWasm from "./wasm"' instead?
+services/index.ts(340,3): error TS2300: Duplicate identifier 'SecurityCheckResult'.
+services/index.ts(371,3): error TS2305: Module '"./infrastructure/vfs"' has no exported member 'STANDARD_PATHS'.
+services/index.ts(401,3): error TS2300: Duplicate identifier 'ValidationResult'.
+services/infrastructure/__tests__/cacheService.test.ts(6,10): error TS2459: Module '"../../intelligentDocumentService"' declares 'CacheKey' locally, but it is not exported.
+services/infrastructure/__tests__/eventBus.test.ts(86,58): error TS2322: Type 'number' is not assignable to type 'void | Promise<void>'.
+services/infrastructure/__tests__/eventBus.test.ts(87,58): error TS2322: Type 'number' is not assignable to type 'void | Promise<void>'.
+services/infrastructure/__tests__/eventBus.test.ts(88,58): error TS2322: Type 'number' is not assignable to type 'void | Promise<void>'.
+services/infrastructure/__tests__/eventBus.test.ts(103,41): error TS2345: Argument of type 'Mock<Promise<number>, [data: any], any>' is not assignable to parameter of type 'EventHandler<any>'.
+services/infrastructure/cacheService.ts(10,25): error TS2459: Module '"../intelligentDocumentService"' declares 'CacheKey' locally, but it is not exported.
+services/infrastructure/cacheService.ts(10,35): error TS2459: Module '"../intelligentDocumentService"' declares 'CacheEntry' locally, but it is not exported.
+services/infrastructure/degradation/__tests__/APICircuitBreaker.test.ts(8,34): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/__tests__/DegradationManager.test.ts(11,8): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/__tests__/DegradationManager.test.ts(511,7): error TS1308: 'await' expressions are only allowed within async functions and at the top levels of modules.
+services/infrastructure/degradation/__tests__/DegradationManager.test.ts(635,9): error TS2740: Type '{ memoryWarning: number; }' is missing the following properties from type 'DegradationThresholds': memoryCritical, fileSizeWarning, fileSizeCritical, apiFailureWarning, and 2 more.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(18,8): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(84,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(163,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(212,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(232,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(251,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(282,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(299,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(313,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(328,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(342,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(354,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(376,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(398,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(418,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(470,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(486,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(505,30): error TS2339: Property 'mock' does not exist on type 'EventListener'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(522,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(612,9): error TS2345: Argument of type '{ memoryUsage: number; }' is not assignable to parameter of type 'DegradationMetrics'.
+services/infrastructure/degradation/__tests__/DegradationNotifier.test.ts(695,37): error TS2339: Property 'mock' does not exist on type 'NotificationCallback'.
+services/infrastructure/degradation/__tests__/MemoryMonitor.test.ts(8,34): error TS2307: Cannot find module '../../../types/degradationTypes' or its corresponding type declarations.
+services/infrastructure/degradation/APICircuitBreaker.ts(15,8): error TS6137: Cannot import type declaration files. Consider importing 'degradationTypes' instead of '@types/degradationTypes'.
+services/infrastructure/degradation/DegradationManager.ts(22,8): error TS6137: Cannot import type declaration files. Consider importing 'degradationTypes' instead of '@types/degradationTypes'.
+services/infrastructure/degradation/DegradationNotifier.ts(19,8): error TS6137: Cannot import type declaration files. Consider importing 'degradationTypes' instead of '@types/degradationTypes'.
+services/infrastructure/degradation/DegradationNotifier.ts(104,7): error TS2322: Type '"mode_changed"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(142,7): error TS2322: Type '"warning_triggered"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(168,7): error TS2322: Type '"metrics_updated"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(189,7): error TS2322: Type '"recovery_attempt"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/DegradationNotifier.ts(219,7): error TS2322: Type '"recovery_success"' is not assignable to type 'DegradationEventType'.
+services/infrastructure/degradation/demo.ts(139,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(140,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(159,5): error TS1362: 'DegradationLevel' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(167,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/demo.ts(168,5): error TS1362: 'DegradationMode' cannot be used as a value because it was exported using 'export type'.
+services/infrastructure/degradation/index.ts(35,8): error TS6137: Cannot import type declaration files. Consider importing 'degradationTypes' instead of '@types/degradationTypes'.
+services/infrastructure/degradation/index.ts(82,48): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(84,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(85,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(86,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(87,6): error TS2304: Cannot find name 'DegradationLevel'.
+services/infrastructure/degradation/index.ts(95,46): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(97,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(98,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(99,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(107,39): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(109,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(110,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(111,6): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(120,16): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(121,15): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(130,16): error TS2304: Cannot find name 'DegradationMode'.
+services/infrastructure/degradation/index.ts(131,15): error TS2304: Cannot find name 'DegradationMode'.

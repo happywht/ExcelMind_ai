@@ -186,19 +186,15 @@ export function example4_FixSuggestions() {
 
   // 生成修复向导
   console.log('\n=== 修复向导 ===');
-  const wizard = validator.generateFixSuggestion(result);
-  console.log('可自动修复:', wizard.canAutoFix);
-  console.log('\n修复步骤:');
-  wizard.steps.forEach((step, stepIndex) => {
-    console.log(`\n步骤 ${stepIndex + 1}: ${step.title}`);
-    console.log(`  ${step.description}`);
-    step.options.forEach((option, optIndex) => {
-      console.log(`  ${optIndex + 1}. ${option.title}`);
-      console.log(`     ${option.description}`);
-      if (option.isAutoFix) {
-        console.log(`     [可自动修复]`);
-      }
-    });
+  const suggestions = validator.generateFixSuggestion(result);
+  const canAutoFix = suggestions.some(s => s.canAutoFix);
+  console.log('可自动修复:', canAutoFix);
+  console.log('\n修复建议:');
+  suggestions.forEach((suggestion, index) => {
+    console.log(`\n建议 ${index + 1}: ${suggestion.message}`);
+    if (suggestion.canAutoFix) {
+      console.log(`  [可自动修复]`);
+    }
   });
 }
 

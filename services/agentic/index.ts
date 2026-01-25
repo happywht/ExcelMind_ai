@@ -11,7 +11,19 @@ export * from '../../types/agenticTypes';
 export { AgenticOrchestrator, createOrchestrator } from './AgenticOrchestrator';
 
 // 导出便捷函数
-export { executeMultiStepAnalysis } from './utils';
+export {
+  executeMultiStepAnalysis,
+  executeMultiStepAnalysisWithProgress,
+  validateDataFiles,
+  formatExecutionTime,
+  formatQualityScore,
+  isTaskSuccessful,
+  getTaskSummary,
+  createProgressLogger,
+  analyzeError,
+  estimateExecutionTime,
+  generateTaskReport
+} from './utils';
 
 // 导出配置
 export { DEFAULT_ORCHESTRATOR_CONFIG } from './config';

@@ -1,0 +1,51 @@
+{
+  "summary": {
+    "total": 7,
+    "passed": 3,
+    "failed": 4,
+    "successRate": "42.86%",
+    "duration": "11.65s",
+    "timestamp": "2026-01-25T10:04:03.085Z"
+  },
+  "tests": [
+    {
+      "name": "服务器成功启动",
+      "passed": true,
+      "timestamp": "2026-01-25T10:03:52.459Z"
+    },
+    {
+      "name": "端口配置正确",
+      "passed": true,
+      "timestamp": "2026-01-25T10:03:52.461Z"
+    },
+    {
+      "name": "心跳定时器启动",
+      "passed": true,
+      "timestamp": "2026-01-25T10:03:52.461Z"
+    },
+    {
+      "name": "客户端连接成功",
+      "passed": false,
+      "error": "Message timeout",
+      "timestamp": "2026-01-25T10:03:57.542Z"
+    },
+    {
+      "name": "收到客户端ID",
+      "passed": false,
+      "error": "Message timeout",
+      "timestamp": "2026-01-25T10:03:57.542Z"
+    },
+    {
+      "name": "收到服务器时间",
+      "passed": false,
+      "error": "Message timeout",
+      "timestamp": "2026-01-25T10:03:57.542Z"
+    },
+    {
+      "name": "统计连接数正确",
+      "passed": false,
+      "error": "Message timeout",
+      "timestamp": "2026-01-25T10:03:57.543Z"
+    }
+  ]
+}

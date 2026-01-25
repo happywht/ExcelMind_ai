@@ -316,7 +316,7 @@ export class ResultValidator {
 
       result.data.forEach(row => {
         const value = row[column];
-        let type = typeof value;
+        let type: string = typeof value;
 
         // 更细致的类型分类
         if (type === 'number') {

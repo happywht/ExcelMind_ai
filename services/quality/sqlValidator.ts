@@ -8,6 +8,7 @@
  */
 
 import { DatabaseSchema, SyntaxValidationResult, InjectionCheckResult, IdentifierValidationResult, ComplexityValidationResult, DangerousOperation } from './aiOutputValidator';
+import { IdentifierCheckItem, ComplexityFactor } from '../../types/qualityTypes';
 
 // ============================================================
 // 类型定义
@@ -303,7 +304,7 @@ export class SQLValidator {
     if (aggFunctions.length > 0) {
       const score = aggFunctions.length * SQLValidator.COMPLEXITY_WEIGHTS.aggregation;
       factors.push({
-        type: 'aggregation',
+        type: 'aggregate',
         score,
         description: `使用${aggFunctions.length}个聚合函数`
       });
@@ -316,7 +317,7 @@ export class SQLValidator {
       const columnCount = groupByColumns.split(',').filter(c => c.trim()).length;
       const score = SQLValidator.COMPLEXITY_WEIGHTS.groupBy + (columnCount * 2);
       factors.push({
-        type: 'groupBy',
+        type: 'other',
         score,
         description: `按${columnCount}列分组`
       });
@@ -329,7 +330,7 @@ export class SQLValidator {
       const columnCount = orderByColumns.split(',').filter(c => c.trim()).length;
       const score = columnCount * SQLValidator.COMPLEXITY_WEIGHTS.orderBy;
       factors.push({
-        type: 'orderBy',
+        type: 'other',
         score,
         description: `按${columnCount}列排序`
       });
@@ -340,7 +341,7 @@ export class SQLValidator {
     if (/\bHAVING\b/.test(normalized)) {
       const score = SQLValidator.COMPLEXITY_WEIGHTS.having;
       factors.push({
-        type: 'having',
+        type: 'other',
         score,
         description: '使用HAVING子句'
       });
@@ -364,7 +365,7 @@ export class SQLValidator {
     if (caseCount > 0) {
       const score = caseCount * SQLValidator.COMPLEXITY_WEIGHTS.case;
       factors.push({
-        type: 'case',
+        type: 'other',
         score,
         description: `包含${caseCount}个CASE表达式`
       });
@@ -376,7 +377,7 @@ export class SQLValidator {
     if (functionCount > 0) {
       const score = functionCount * SQLValidator.COMPLEXITY_WEIGHTS.function;
       factors.push({
-        type: 'function',
+        type: 'other',
         score,
         description: `调用${functionCount}个函数`
       });

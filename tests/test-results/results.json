@@ -1,0 +1,809 @@
+{
+  "config": {
+    "configFile": "D:\\家庭\\青聪赋能\\excelmind-ai\\playwright.config.ts",
+    "rootDir": "D:/家庭/青聪赋能/excelmind-ai/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "tests/test-results/html"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "tests/test-results/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "tests/test-results/results.xml"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "D:/家庭/青聪赋能/excelmind-ai/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "D:/家庭/青聪赋能/excelmind-ai/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "agentic-otae-system-fixed.spec.ts",
+      "file": "agentic-otae-system-fixed.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "OTAE 系统 - 基础功能测试",
+          "file": "agentic-otae-system-fixed.spec.ts",
+          "line": 68,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够连接到应用并显示智能处理界面",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-589326fff9aa816affb5",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 76,
+              "column": 3
+            },
+            {
+              "title": "应该能够上传文件并显示预览",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-439d598e250dc0b07b9f",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 131,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 循环执行测试",
+          "file": "agentic-otae-system-fixed.spec.ts",
+          "line": 196,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该完整执行 OTAE 循环 - 基础计算任务",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-02e29579d5b9b5fa523a",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 197,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 错误修复测试",
+          "file": "agentic-otae-system-fixed.spec.ts",
+          "line": 332,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够检测并修复执行错误",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-990457dd68d36e83a29a",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 333,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 模式对比测试",
+          "file": "agentic-otae-system-fixed.spec.ts",
+          "line": 421,
+          "column": 6,
+          "specs": [
+            {
+              "title": "智能模式 vs 快速模式 - 性能对比",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-ebd770f02d2544a107f4",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 422,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 质量评估测试",
+          "file": "agentic-otae-system-fixed.spec.ts",
+          "line": 461,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够提供三维度质量评分",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-992b5d4c34863a21d567",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 462,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 多步骤复杂任务测试",
+          "file": "agentic-otae-system-fixed.spec.ts",
+          "line": 543,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够执行复杂的多步骤分析任务",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "9613cf002f3e83986485-8c0cb02994496fe1c41f",
+              "file": "agentic-otae-system-fixed.spec.ts",
+              "line": 544,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "agentic-otae-system.spec.ts",
+      "file": "agentic-otae-system.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "OTAE 系统 - 基础功能测试",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 70,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够连接到应用并显示智能处理界面",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-728e1a059a5e7646d99d",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 78,
+              "column": 3
+            },
+            {
+              "title": "应该能够上传文件并显示预览",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-b133eee4111b662a0781",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 121,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 循环执行测试",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 171,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该完整执行 OTAE 循环 - 基础计算任务",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-53ceb6702ab1ef0da006",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 172,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 错误修复测试",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 303,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够检测并修复执行错误",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-f867ce03b6071931f1a7",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 304,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 模式对比测试",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 398,
+          "column": 6,
+          "specs": [
+            {
+              "title": "智能模式 vs 快速模式 - 性能对比",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-6e7289f8a9422c89fed9",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 399,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 质量评估测试",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 531,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够提供三维度质量评分",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-7b96fecbf10775f17ca5",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 532,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 多步骤复杂任务测试",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 641,
+          "column": 6,
+          "specs": [
+            {
+              "title": "应该能够执行复杂的多步骤分析任务",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-a383445cb10f61f73834",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 642,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "OTAE 系统 - 综合测试报告",
+          "file": "agentic-otae-system.spec.ts",
+          "line": 740,
+          "column": 6,
+          "specs": [
+            {
+              "title": "生成完整的测试报告",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "64dd3324bc348981b202-86d487224cb1f00af49a",
+              "file": "agentic-otae-system.spec.ts",
+              "line": 741,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "multisheet-e2e.spec.ts",
+      "file": "multisheet-e2e.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "多Sheet支持功能 E2E 测试",
+          "file": "multisheet-e2e.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "场景1：员工信息 + 部门表（跨Sheet场景）",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "34597c08739f61462b81-574d0ca0b5ada78706ce",
+              "file": "multisheet-e2e.spec.ts",
+              "line": 21,
+              "column": 3
+            },
+            {
+              "title": "场景2：订单 + 产品 + 客户（3个Sheet）",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "34597c08739f61462b81-4bccea07e7eb6e40adda",
+              "file": "multisheet-e2e.spec.ts",
+              "line": 127,
+              "column": 3
+            },
+            {
+              "title": "UI交互测试：Sheet选择器功能",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "34597c08739f61462b81-5d5cf84cd865bc48c7e4",
+              "file": "multisheet-e2e.spec.ts",
+              "line": 174,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "multisheet-support.spec.ts",
+      "file": "multisheet-support.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "多Sheet支持功能测试",
+          "file": "multisheet-support.spec.ts",
+          "line": 126,
+          "column": 6,
+          "specs": [
+            {
+              "title": "场景1：员工信息 + 部门表（典型跨Sheet场景）",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "43b9717e8f358fee6e18-2715b6aa289ce3c56670",
+              "file": "multisheet-support.spec.ts",
+              "line": 141,
+              "column": 3
+            },
+            {
+              "title": "场景2：订单 + 产品 + 客户（复杂多Sheet场景）",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "43b9717e8f358fee6e18-9d33d4ec59d85b042e75",
+              "file": "multisheet-support.spec.ts",
+              "line": 252,
+              "column": 3
+            },
+            {
+              "title": "性能测试：AI映射生成时间对比",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "43b9717e8f358fee6e18-a97329100c9de96013eb",
+              "file": "multisheet-support.spec.ts",
+              "line": 358,
+              "column": 3
+            },
+            {
+              "title": "UI交互测试：Sheet选择器功能",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "43b9717e8f358fee6e18-5c90142a7756d5dcb064",
+              "file": "multisheet-support.spec.ts",
+              "line": 421,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "performance-benchmark.spec.ts",
+      "file": "performance-benchmark.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "OTAE 系统性能基准测试",
+          "file": "performance-benchmark.spec.ts",
+          "line": 48,
+          "column": 6,
+          "specs": [
+            {
+              "title": "简单任务 - 智能模式性能基准",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a89c596f5e40ddef9738-ab9924439fbebfa3c023",
+              "file": "performance-benchmark.spec.ts",
+              "line": 61,
+              "column": 3
+            },
+            {
+              "title": "简单任务 - 快速模式性能基准",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a89c596f5e40ddef9738-3eb7f8dd0bb92c69e527",
+              "file": "performance-benchmark.spec.ts",
+              "line": 110,
+              "column": 3
+            },
+            {
+              "title": "复杂任务 - 智能模式性能基准",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a89c596f5e40ddef9738-ec1ab6759ce4abc8bed6",
+              "file": "performance-benchmark.spec.ts",
+              "line": 167,
+              "column": 3
+            },
+            {
+              "title": "多步骤任务 - 智能模式性能基准",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a89c596f5e40ddef9738-98136a0c3846ba681a61",
+              "file": "performance-benchmark.spec.ts",
+              "line": 216,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "quick-test.spec.ts",
+      "file": "quick-test.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "多Sheet支持 - 快速验证",
+          "file": "quick-test.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "验证应用可访问性和UI元素",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "1f46ff5a1b762fbf0870-66f85f053243f11dc6a9",
+              "file": "quick-test.spec.ts",
+              "line": 12,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-01-24T06:19:41.216Z",
+    "duration": 844.9120000000003,
+    "expected": 0,
+    "skipped": 27,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

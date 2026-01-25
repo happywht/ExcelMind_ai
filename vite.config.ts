@@ -18,7 +18,14 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
+          // 配置路径别名，解决相对路径解析问题
           '@': path.resolve(__dirname, '.'),
+          '@config': path.resolve(__dirname, './config'),
+          '@services': path.resolve(__dirname, './services'),
+          '@components': path.resolve(__dirname, './components'),
+          '@types': path.resolve(__dirname, './types'),
+          '@utils': path.resolve(__dirname, './utils'),
+          '@excelmind/shared-types': path.resolve(__dirname, './packages/shared-types/dist'),
         }
       },
       build: {

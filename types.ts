@@ -13,8 +13,8 @@ export interface ChatMessage {
 }
 
 export interface ExcelData {
-  id: string; // Unique ID for React keys
-  fileName: string;
+  id?: string; // Unique ID for React keys (可选)
+  fileName?: string;
   sheets: { [sheetName: string]: any[] }; // Array of objects
   currentSheetName: string;
   metadata?: {

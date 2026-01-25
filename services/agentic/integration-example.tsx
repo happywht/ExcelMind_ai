@@ -10,7 +10,7 @@ import {
   DataFileInfo,
   TaskResult,
   TaskStatus
-} from '../services/agentic';
+} from './agentic';
 
 /**
  * 自定义 Hook: useMultiStepAnalysis

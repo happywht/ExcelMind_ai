@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-import { MultiStepTask, TaskResult } from './agenticTypes';
+import { MultiStepTask, TaskResult, TaskContext } from './agenticTypes';
 
 /**
  * WASM 执行模式
@@ -306,35 +306,5 @@ export interface WasmIntegration {
 }
 
 /**
- * 导出所有类型
+ * 所有类型已在定义时导出，无需重复导出
  */
-export type {
-  // 核心类型
-  WasmExecutionMode,
-  WasmConfig,
-  FileFerryStatus,
-  VirtualFileSystemState,
-  WasmExecutionContext,
-  WasmExecutionResult,
-  SecurityCheckConfig,
-  PerformanceMetrics,
-  PyodideInitProgress,
-  FileFerryEvent,
-  CodeExecutionEvent,
-  WasmModuleState,
-
-  // Re-Act 循环
-  WasmReActState,
-
-  // AI 集成
-  WasmCodeGenerationRequest,
-  WasmCodeGenerationResponse,
-
-  // 数据处理
-  ExcelMetadataWasm,
-  FileFerryOptions,
-  ExecutionEngineConfig,
-
-  // 系统集成
-  WasmIntegration
-};

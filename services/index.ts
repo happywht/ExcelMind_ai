@@ -434,9 +434,159 @@ export type {
 } from './infrastructure/vfs';
 
 // ============================================
+// 智能数据处理模块 (Phase 2 - Data Quality Enhancement)
+// ============================================
+
+export {
+  // 数据质量分析器
+  DataQualityAnalyzer,
+  createDataQualityAnalyzer
+} from './ai/dataQualityAnalyzer';
+
+export {
+  // 清洗建议引擎
+  CleaningRecommendationEngine,
+  createCleaningRecommendationEngine
+} from './ai/cleaningRecommendationEngine';
+
+// ============================================
 // 版本信息
 // ============================================
 
-export const SERVICES_VERSION = '2.3.0';
-export const PHASE = 'Phase 2 - 虚拟工作台优化服务';
+export const SERVICES_VERSION = '2.4.0';
+export const PHASE = 'Phase 2 - 智能数据处理增强模块';
 export const BUILD_DATE = new Date().toISOString();
+
+// ============================================
+// 多模板文档生成模块 (Phase 2 - 新增)
+// ============================================
+
+export {
+  // 模板管理器
+  TemplateManager,
+  TemplateValidationError,
+  TemplateNotFoundError,
+  type IStorageService,
+  type TemplateFilters,
+  type TemplateList,
+  type TemplateCreateRequest,
+  type TemplateUpdateRequest
+} from './TemplateManager';
+
+export {
+  // 批量生成调度器
+  BatchGenerationScheduler,
+  DefaultDocumentGenerator,
+  TaskNotFoundError,
+  TaskStatusError,
+  type IDocumentGenerator,
+  type ProgressUpdate
+} from './BatchGenerationScheduler';
+
+export {
+  // WebSocket管理器
+  WebSocketManager,
+  WebSocketError,
+  ConnectionNotFoundError,
+  type WebSocketConfig,
+  type BroadcastOptions,
+  type WebSocketConnection
+} from './websocket/websocketManager';
+
+// ============================================
+// 存储服务模块 (Phase 2 - 新增)
+// ============================================
+
+export {
+  // LocalStorage 服务
+  LocalStorageService,
+  createLocalStorageService
+} from './storage/LocalStorageService';
+
+export {
+  // 内存缓存服务
+  MemoryCacheService,
+  createMemoryCacheService
+} from './storage/MemoryCacheService';
+
+export {
+  // IndexedDB 存储服务
+  IndexedDBStorageService,
+  createIndexedDBStorageService
+} from './storage/IndexedDBStorageService';
+
+export {
+  // 存储服务工厂
+  StorageServiceFactory,
+  createStorageServiceFactory,
+  createDefaultStorageService
+} from './storage/StorageServiceFactory';
+
+// 导出所有存储服务
+export * from './storage';
+
+// 导出类型（从types/templateGeneration.ts重新导出）
+export type {
+  // 核心枚举
+  TaskStatus,
+  GenerationMode,
+  TemplateStatus,
+  Priority,
+  GenerationStage,
+
+  // 模板管理类型
+  TemplateMetadata,
+  TemplateConfig,
+  TemplateMappingConfig,
+  FieldMapping,
+  ValidationRule,
+
+  // 批量任务类型
+  BatchGenerationTask,
+  BatchTaskConfig,
+  DataSourceConfig,
+  GenerationParameters,
+  OutputConfig,
+  BatchTaskOptions,
+
+  // 任务执行信息
+  TaskExecutionInfo,
+  TaskStatistics,
+  TaskTimestamps,
+  TaskError,
+
+  // 文档生成结果
+  DocumentGenerationResult,
+  BatchGenerationResult,
+
+  // 历史记录类型
+  GenerationHistoryItem,
+  HistoryQueryParams,
+  HistoryListResponse,
+
+  // 实时进度类型
+  ProgressUpdateEvent,
+  DocumentGeneratedEvent,
+  TaskStatusChangedEvent,
+  ErrorEvent,
+  TaskCompletedEvent,
+  WebSocketEvent,
+
+  // API请求/响应类型
+  CreateBatchTaskRequest,
+  CreateBatchTaskResponse,
+  TaskStatusResponse,
+  TaskControlResponse,
+
+  // 模板管理API类型
+  UploadTemplateRequest,
+  UploadTemplateResponse,
+  UpdateTemplateRequest,
+  ListTemplatesParams,
+  ListTemplatesResponse,
+
+  // 辅助工具类型
+  TaskQueueItem,
+  SystemStatus,
+  HealthCheckResponse
+} from '../types/templateGeneration';

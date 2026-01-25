@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AIProcessResult } from '../types';
 import { SAMPLING_CONFIG } from '../config/samplingConfig';
+import { APICircuitBreaker } from './infrastructure/degradation';
 
 // 配置智谱AI
 const client = new Anthropic({
@@ -8,6 +9,24 @@ const client = new Anthropic({
   baseURL: 'https://open.bigmodel.cn/api/anthropic',
   dangerouslyAllowBrowser: true // 允许在浏览器环境中使用
 });
+
+// 创建熔断器实例（单例）
+let circuitBreaker: APICircuitBreaker | null = null;
+
+/**
+ * 获取熔断器实例
+ */
+const getCircuitBreaker = (): APICircuitBreaker => {
+  if (!circuitBreaker) {
+    circuitBreaker = new APICircuitBreaker({
+      failureThreshold: 50,    // 50% 失败率触发熔断
+      minimumRequests: 5,      // 至少 5 次请求后才开始熔断判断
+      openDuration: 30000,     // 熔断持续 30 秒
+      halfOpenMaxCalls: 2      // 半开状态允许 2 次测试请求
+    });
+  }
+  return circuitBreaker;
+};
 
 export const generateExcelFormula = async (description: string): Promise<string> => {
   try {
@@ -270,6 +289,18 @@ export const generateDataProcessingCode = async (
     }};
   })[]
 ): Promise<AIProcessResult> => {
+  const breaker = getCircuitBreaker();
+  const startTime = Date.now();
+
+  // 检查熔断器状态
+  if (!breaker.allowRequest()) {
+    console.warn('[zhipuService] Circuit breaker is OPEN, using fallback');
+    return {
+      code: "",
+      explanation: "AI 服务暂时不可用，请稍后重试。熔断器已开启，请等待系统自动恢复。"
+    };
+  }
+
   try {
     // 构建观察上下文
     const fileObservationStr = filesPreview.map(f => {
@@ -557,10 +588,19 @@ print(json.dumps(files, ensure_ascii=False, default=str))
       }
     }
 
+    // 记录成功到熔断器
+    const duration = Date.now() - startTime;
+    breaker.recordCall(true, duration);
+
     return result;
 
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error("Code Gen Error:", error);
+
+    // 记录失败到熔断器
+    breaker.recordCall(false, duration);
+
     return {
       code: "",
       explanation: "理解指令失败，AI 无法分析样本数据，请检查文件格式或重试。"

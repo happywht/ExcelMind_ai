@@ -21,12 +21,11 @@ import {
   FileFerryService
 } from '../../utils';
 import type {
-  AuditTrailReport as AuditTrailReportType,
   ExecutionStep,
-  ExecutionState,
-  ValidationResult,
-  ExcelMetadata
-} from '../../types';
+  ExecutionState
+} from '../../types/executionTypes';
+import type { AuditTrailReport as AuditTrailReportType } from '../../types/auditTrailTypes';
+import type { ValidationResult } from '../../types/validationTypes';
 
 /**
  * 示例组件：完整的执行流程展示

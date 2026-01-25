@@ -1,0 +1,60 @@
+components/ExecutionVisualizer/ExecutionVisualizer.example.tsx(367,21): error TS2304: Cannot find name 'ExcelMetadata'.
+components/ExecutionVisualizer/index.ts(12,15): error TS2724: '"./ExecutionVisualizer"' has no exported member named 'ExecutionVisualizerProps'. Did you mean 'ExecutionVisualizer'?
+components/QueryVisualizer/QueryVisualizer.stories.tsx(62,3): error TS2322: Type 'FC<QueryVisualizerProps>' is not assignable to type 'ComponentType<FC<QueryVisualizerProps>>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(96,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(111,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(126,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(141,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(156,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(175,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(196,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(212,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(228,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(262,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(288,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+components/QueryVisualizer/QueryVisualizer.stories.tsx(312,5): error TS2353: Object literal may only specify known properties, and 'result' does not exist in type 'FunctionComponent<QueryVisualizerProps>'.
+packages/shared-types/examples/usage.ts(66,5): error TS2322: Type '"passed"' is not assignable to type 'ValidationStatus'.
+packages/shared-types/examples/usage.ts(109,5): error TS2322: Type '"medium"' is not assignable to type 'ErrorSeverity'.
+services/agentic/integration-example.tsx(13,8): error TS2307: Cannot find module './agentic' or its corresponding type declarations.
+services/documentMappingService.test.ts(253,67): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+services/documentMappingService.test.ts(289,67): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+services/docxtemplaterService.demo.ts(306,19): error TS2351: This expression is not constructable.
+services/functionCalling/tools.ts(134,9): error TS2741: Property 'description' is missing in type '{ type: "object"; properties: { placeholder: { type: "string"; description: string; }; column: { type: "string"; description: string; }; }; }' but required in type 'ToolProperty'.
+services/index.ts(31,8): error TS2614: Module '"./queryEngine/DataQueryEngine"' has no exported member 'QueryPlan'. Did you mean to use 'import QueryPlan from "./queryEngine/DataQueryEngine"' instead?
+services/infrastructure/examples/usage-examples.ts(440,7): error TS2739: Type '{ value: { mappings: { field: string; cell: string; }[]; }; }' is missing the following properties from type 'CacheEntry<unknown>': key, createdAt, expiresAt, hitCount, metadata
+services/infrastructure/retryService.ts(322,20): error TS2347: Untyped function calls may not accept type arguments.
+services/monitoring/performanceAnalyzer.ts(581,7): error TS2739: Type '{ overall: number; breakdown: { query: number; ai: number; document: number; resources: number; }; grade: "B" | "F" | "A" | "C" | "D"; }' is missing the following properties from type 'PerformanceScore': query, ai, document, resources
+services/monitoring/performanceTracker.ts(272,5): error TS2322: Type '<T extends { new (...args: any[]): {}; }>(constructor: T) => { new (...args: any[]): {}; }' is not assignable to type 'ClassDecorator'.
+services/quality/aiOutputValidator.test.ts(19,3): error TS2724: '"../index"' has no exported member named 'STANDARD_GATE'. Did you mean 'STANDARD_PATHS'?
+services/quality/aiOutputValidator.ts(1123,43): error TS2729: Property 'hallucinationDetector' is used before its initialization.
+services/quality/examples.ts(190,46): error TS2339: Property 'canAutoFix' does not exist on type 'FixSuggestion'.
+services/quality/examples.ts(194,50): error TS2339: Property 'message' does not exist on type 'FixSuggestion'.
+services/quality/examples.ts(195,20): error TS2339: Property 'canAutoFix' does not exist on type 'FixSuggestion'.
+services/quality/hallucinationDetector.ts(319,14): error TS2678: Type '"critical"' is not comparable to type '"medium" | "low" | "high"'.
+services/quality/sqlValidator.ts(10,26): error TS2724: '"./aiOutputValidator"' has no exported member named 'SyntaxValidationResult'. Did you mean 'ValidationResult'?
+services/queryEngine/DataQueryEngine.benchmark.ts(233,7): error TS2353: Object literal may only specify known properties, and 'enableCache' does not exist in type 'IMultiSheetDataSource'.
+services/queryEngine/MultiSheetDataSource.ts(12,9): error TS2451: Cannot redeclare block-scoped variable 'alasql'.
+tests/e2e/setup.ts(10,22): error TS2614: Module '"@playwright/test"' has no exported member 'FullContext'. Did you mean to use 'import FullContext from "@playwright/test"' instead?
+tests/performance/vfs.operations.test.ts(46,21): error TS2339: Property 'cleanup' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(140,27): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(154,27): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(168,27): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(190,51): error TS2339: Property 'fileId' does not exist on type 'VirtualFileInfo'.
+tests/performance/vfs.operations.test.ts(212,51): error TS2339: Property 'fileId' does not exist on type 'VirtualFileInfo'.
+tests/performance/vfs.operations.test.ts(237,25): error TS2551: Property 'createRelationship' does not exist on type 'VirtualFileSystem'. Did you mean 'getRelationships'?
+tests/performance/vfs.operations.test.ts(238,34): error TS2339: Property 'fileId' does not exist on type 'VirtualFileInfo'.
+tests/performance/vfs.operations.test.ts(239,38): error TS2339: Property 'fileId' does not exist on type 'VirtualFileInfo'.
+tests/performance/vfs.operations.test.ts(250,27): error TS2551: Property 'getRelationshipGraph' does not exist on type 'VirtualFileSystem'. Did you mean 'getRelationships'?
+tests/performance/vfs.operations.test.ts(267,27): error TS2551: Property 'getRelationshipGraph' does not exist on type 'VirtualFileSystem'. Did you mean 'getRelationships'?
+tests/performance/vfs.operations.test.ts(307,37): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(314,41): error TS2339: Property 'getFileById' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(333,27): error TS2551: Property 'getRelationshipGraph' does not exist on type 'VirtualFileSystem'. Did you mean 'getRelationships'?
+tests/performance/vfs.operations.test.ts(350,27): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(396,23): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(398,23): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/performance/vfs.operations.test.ts(400,23): error TS2339: Property 'listFiles' does not exist on type 'VirtualFileSystem'.
+tests/qa/coverageAnalyzer.ts(16,3): error TS2305: Module '"./types"' has no exported member 'CoverageReport'.
+tests/qa/performanceTestSuite.ts(541,7): error TS2322: Type '() => Promise<{ id: number; name: string; value: number; }[]>' is not assignable to type '() => void | Promise<void>'.
+tests/security/input-validation.test.ts(95,25): error TS2339: Property 'endsWith' does not exist on type 'Matchers<void, string> & SnapshotMatchers<void, string> & Inverse<JestMatchers<void, string>> & PromiseMatchers<string>'.
+tests/setup.vitest.ts(14,8): error TS2339: Property 'alasql' does not exist on type 'typeof globalThis'.
+tests/storage/storage-integration.test.ts(180,30): error TS2339: Property 'data' does not exist on type 'unknown'.

@@ -1,0 +1,122 @@
+<testsuites id="" name="" tests="27" failures="0" skipped="27" errors="0" time="0.8449120000000002">
+<testsuite name="agentic-otae-system-fixed.spec.ts" timestamp="2026-01-24T06:19:42.057Z" hostname="chromium" tests="7" failures="0" skipped="7" time="0" errors="0">
+<testcase name="OTAE 系统 - 基础功能测试 › 应该能够连接到应用并显示智能处理界面" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 基础功能测试 › 应该能够上传文件并显示预览" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 循环执行测试 › 应该完整执行 OTAE 循环 - 基础计算任务" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 错误修复测试 › 应该能够检测并修复执行错误" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 模式对比测试 › 智能模式 vs 快速模式 - 性能对比" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 质量评估测试 › 应该能够提供三维度质量评分" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 多步骤复杂任务测试 › 应该能够执行复杂的多步骤分析任务" classname="agentic-otae-system-fixed.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="agentic-otae-system.spec.ts" timestamp="2026-01-24T06:19:42.057Z" hostname="chromium" tests="8" failures="0" skipped="8" time="0" errors="0">
+<testcase name="OTAE 系统 - 基础功能测试 › 应该能够连接到应用并显示智能处理界面" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 基础功能测试 › 应该能够上传文件并显示预览" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 循环执行测试 › 应该完整执行 OTAE 循环 - 基础计算任务" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 错误修复测试 › 应该能够检测并修复执行错误" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 模式对比测试 › 智能模式 vs 快速模式 - 性能对比" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 质量评估测试 › 应该能够提供三维度质量评分" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 多步骤复杂任务测试 › 应该能够执行复杂的多步骤分析任务" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统 - 综合测试报告 › 生成完整的测试报告" classname="agentic-otae-system.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="multisheet-e2e.spec.ts" timestamp="2026-01-24T06:19:42.057Z" hostname="chromium" tests="3" failures="0" skipped="3" time="0" errors="0">
+<testcase name="多Sheet支持功能 E2E 测试 › 场景1：员工信息 + 部门表（跨Sheet场景）" classname="multisheet-e2e.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="多Sheet支持功能 E2E 测试 › 场景2：订单 + 产品 + 客户（3个Sheet）" classname="multisheet-e2e.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="多Sheet支持功能 E2E 测试 › UI交互测试：Sheet选择器功能" classname="multisheet-e2e.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="multisheet-support.spec.ts" timestamp="2026-01-24T06:19:42.057Z" hostname="chromium" tests="4" failures="0" skipped="4" time="0" errors="0">
+<testcase name="多Sheet支持功能测试 › 场景1：员工信息 + 部门表（典型跨Sheet场景）" classname="multisheet-support.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="多Sheet支持功能测试 › 场景2：订单 + 产品 + 客户（复杂多Sheet场景）" classname="multisheet-support.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="多Sheet支持功能测试 › 性能测试：AI映射生成时间对比" classname="multisheet-support.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="多Sheet支持功能测试 › UI交互测试：Sheet选择器功能" classname="multisheet-support.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="performance-benchmark.spec.ts" timestamp="2026-01-24T06:19:42.057Z" hostname="chromium" tests="4" failures="0" skipped="4" time="0" errors="0">
+<testcase name="OTAE 系统性能基准测试 › 简单任务 - 智能模式性能基准" classname="performance-benchmark.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统性能基准测试 › 简单任务 - 快速模式性能基准" classname="performance-benchmark.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统性能基准测试 › 复杂任务 - 智能模式性能基准" classname="performance-benchmark.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="OTAE 系统性能基准测试 › 多步骤任务 - 智能模式性能基准" classname="performance-benchmark.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="quick-test.spec.ts" timestamp="2026-01-24T06:19:42.057Z" hostname="chromium" tests="1" failures="0" skipped="1" time="0" errors="0">
+<testcase name="多Sheet支持 - 快速验证 › 验证应用可访问性和UI元素" classname="quick-test.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>
