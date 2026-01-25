@@ -542,6 +542,15 @@ export class DataQualityAnalyzer {
   private readonly formatConsistencyDetector: FormatConsistencyDetector;
   private readonly config: AnalyzerConfig;
 
+  // 流式处理配置
+  private readonly MAX_BATCH_SIZE = 10000;
+  private readonly MAX_MEMORY_USAGE = 500 * 1024 * 1024; // 500MB
+  private readonly GC_INTERVAL = 5; // 每5个批次执行一次GC
+
+  // 缓存管理
+  private columnStatsCache?: Map<string, InternalColumnStats[]>;
+  private detectorCache?: Map<string, DetectionResult[]>;
+
   /**
    * 构造函数
    */
@@ -562,6 +571,10 @@ export class DataQualityAnalyzer {
       maxSampleSize: 10000,
       ...config
     };
+
+    // 初始化缓存
+    this.columnStatsCache = new Map();
+    this.detectorCache = new Map();
   }
 
   /**
@@ -594,52 +607,249 @@ export class DataQualityAnalyzer {
         }
       }
 
-      // 3. 生成列统计信息
-      const columnStats = await this.generateColumnStats(sheetData);
-
-      // 4. 并行执行所有检测器
-      const detectionResults = await this.runAllDetectors(sheetData, columnStats, options);
-
-      // 5. 聚合检测结果
-      const issues = this.aggregateIssues(detectionResults);
-
-      // 6. 执行自定义规则检测
-      if (options?.customRules && options.customRules.length > 0) {
-        const customIssues = await this.runCustomRules(sheetData, options.customRules);
-        issues.push(...customIssues);
+      // 3. 根据数据大小选择处理方式
+      if (sheetData.length < this.MAX_BATCH_SIZE) {
+        // 小数据集: 直接处理
+        return await this.analyzeSmallDataset(data, sheetData, options);
+      } else {
+        // 大数据集: 使用流式处理并合并结果
+        console.log(`[DataQualityAnalyzer] 大数据集检测 (${sheetData.length} 行), 使用流式处理`);
+        return await this.analyzeLargeDataset(data, sheetData, options);
       }
-
-      // 7. 计算质量评分
-      const qualityScore = this.calculateQualityScore(issues, sheetData);
-
-      // 8. 构建报告
-      const report: DataQualityReport = {
-        reportId: this.generateReportId(),
-        fileName: data.fileName,
-        sheetName: data.currentSheetName,
-        totalRows: sheetData.length,
-        totalColumns: columnStats.length,
-        timestamp: Date.now(),
-        qualityScore,
-        issues,
-        columnStats: this.convertToExportStats(columnStats),
-        dataSample: this.extractSample(sheetData, 10)
-      };
-
-      // 9. 缓存报告
-      if (this.config.enableCache && this.cacheService) {
-        const cacheKey = this.generateCacheKey(data, options);
-        await this.cacheService.set(cacheKey, report, this.config.cacheTTL);
-      }
-
-      const duration = Date.now() - startTime;
-      console.log(`[DataQualityAnalyzer] 分析完成，耗时 ${duration}ms`);
-
-      return report;
     } catch (error) {
       console.error('[DataQualityAnalyzer] 分析失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 流式数据分析 - 支持处理大文件
+   */
+  async *analyzeStreaming(
+    data: ExcelData,
+    options?: AnalysisOptions
+  ): AsyncGenerator<DataQualityReport, void, unknown> {
+    const sheetData = this.extractSheetData(data);
+    const totalRows = sheetData.length;
+    let processedRows = 0;
+
+    console.log(`[DataQualityAnalyzer] 开始流式分析: ${totalRows} 行`);
+
+    // 分批处理
+    for (let i = 0; i < totalRows; i += this.MAX_BATCH_SIZE) {
+      // 检查内存使用
+      const memoryUsage = process.memoryUsage().heapUsed;
+      if (memoryUsage > this.MAX_MEMORY_USAGE) {
+        console.warn(`[DataQualityAnalyzer] 内存使用过高: ${Math.round(memoryUsage / 1024 / 1024)}MB, 强制GC`);
+        await this.forceGarbageCollection();
+      }
+
+      const batch = sheetData.slice(i, Math.min(i + this.MAX_BATCH_SIZE, totalRows));
+      const batchNumber = Math.floor(i / this.MAX_BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(totalRows / this.MAX_BATCH_SIZE);
+
+      console.log(`[DataQualityAnalyzer] 处理批次 ${batchNumber}/${totalBatches}, 大小: ${batch.length} 行`);
+
+      // 处理当前批次
+      const result = await this.processBatch(batch, processedRows, options);
+
+      processedRows += batch.length;
+
+      // 更新进度
+      result.summary = {
+        progress: Math.round((processedRows / totalRows) * 100),
+        totalRows,
+        processedRows
+      } as any;
+
+      yield result;
+
+      // 定期执行GC
+      if (batchNumber % this.GC_INTERVAL === 0) {
+        await this.releaseMemory();
+      }
+    }
+
+    console.log(`[DataQualityAnalyzer] 流式分析完成: ${totalRows} 行`);
+  }
+
+  /**
+   * 处理单个批次
+   */
+  private async processBatch(
+    batch: any[],
+    offset: number,
+    options?: AnalysisOptions
+  ): Promise<DataQualityReport> {
+    // 批次处理逻辑
+    const columnStats = await this.generateColumnStats(batch);
+    const detectionResults = await this.runDetectors(batch, columnStats, options);
+
+    return {
+      reportId: this.generateReportId(),
+      fileName: `batch_${offset}`,
+      sheetName: 'batch',
+      totalRows: batch.length,
+      totalColumns: columnStats.length,
+      timestamp: Date.now(),
+      qualityScore: this.calculateQualityScore(
+        this.aggregateIssues(detectionResults),
+        batch
+      ),
+      issues: this.aggregateIssues(detectionResults),
+      columnStats: this.convertToExportStats(columnStats),
+      dataSample: this.extractSample(batch, 10)
+    } as any;
+  }
+
+  /**
+   * 强制垃圾回收
+   */
+  private async forceGarbageCollection(): Promise<void> {
+    if (global.gc) {
+      return new Promise(resolve => {
+        global.gc();
+        // 等待GC完成
+        setTimeout(resolve, 100);
+      });
+    } else {
+      console.warn('[DataQualityAnalyzer] 全局GC不可用。请使用 --expose-gc 标志启动Node');
+    }
+  }
+
+  /**
+   * 释放内存
+   */
+  private async releaseMemory(): Promise<void> {
+    // 清理缓存
+    this.clearCache();
+
+    // 强制GC
+    await this.forceGarbageCollection();
+
+    // 记录内存状态
+    const memUsage = process.memoryUsage();
+    console.log(`[DataQualityAnalyzer] 内存状态:`, {
+      heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+      external: `${Math.round(memUsage.external / 1024 / 1024)}MB`
+    });
+  }
+
+  /**
+   * 清理缓存
+   */
+  private clearCache(): void {
+    // 清理内部缓存
+    if (this.columnStatsCache) {
+      this.columnStatsCache.clear();
+    }
+    if (this.detectorCache) {
+      this.detectorCache.clear();
+    }
+  }
+
+  /**
+   * 分析小数据集
+   */
+  private async analyzeSmallDataset(
+    data: ExcelData,
+    sheetData: any[],
+    options?: AnalysisOptions
+  ): Promise<DataQualityReport> {
+    const startTime = Date.now();
+
+    // 生成列统计信息
+    const columnStats = await this.generateColumnStats(sheetData);
+
+    // 并行执行所有检测器
+    const detectionResults = await this.runAllDetectors(sheetData, columnStats, options);
+
+    // 聚合检测结果
+    const issues = this.aggregateIssues(detectionResults);
+
+    // 执行自定义规则检测
+    if (options?.customRules && options.customRules.length > 0) {
+      const customIssues = await this.runCustomRules(sheetData, options.customRules);
+      issues.push(...customIssues);
+    }
+
+    // 计算质量评分
+    const qualityScore = this.calculateQualityScore(issues, sheetData);
+
+    // 构建报告
+    const report: DataQualityReport = {
+      reportId: this.generateReportId(),
+      fileName: data.fileName,
+      sheetName: data.currentSheetName,
+      totalRows: sheetData.length,
+      totalColumns: columnStats.length,
+      timestamp: Date.now(),
+      qualityScore,
+      issues,
+      columnStats: this.convertToExportStats(columnStats),
+      dataSample: this.extractSample(sheetData, 10)
+    };
+
+    // 缓存报告
+    if (this.config.enableCache && this.cacheService) {
+      const cacheKey = this.generateCacheKey(data, options);
+      await this.cacheService.set(cacheKey, report, this.config.cacheTTL);
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`[DataQualityAnalyzer] 分析完成，耗时 ${duration}ms`);
+
+    return report;
+  }
+
+  /**
+   * 分析大数据集（使用流式处理）
+   */
+  private async analyzeLargeDataset(
+    data: ExcelData,
+    sheetData: any[],
+    options?: AnalysisOptions
+  ): Promise<DataQualityReport> {
+    const reports: DataQualityReport[] = [];
+
+    // 使用流式处理
+    for await (const report of this.analyzeStreaming(data, options)) {
+      reports.push(report);
+    }
+
+    // 合并所有报告
+    return this.mergeReports(reports, data);
+  }
+
+  /**
+   * 合并多个报告
+   */
+  private mergeReports(reports: DataQualityReport[], originalData: ExcelData): DataQualityReport {
+    if (reports.length === 0) {
+      throw new Error('没有报告可合并');
+    }
+
+    // 合并统计信息
+    const totalRows = reports.reduce((sum, r) => sum + r.totalRows, 0);
+    const allIssues = reports.flatMap(r => r.issues);
+    const allColumnStats = reports.flatMap(r => r.columnStats);
+
+    // 计算平均质量分数
+    const avgQualityScore = reports.reduce((sum, r) => sum + r.qualityScore, 0) / reports.length;
+
+    return {
+      reportId: this.generateReportId(),
+      fileName: originalData.fileName,
+      sheetName: originalData.currentSheetName,
+      totalRows,
+      totalColumns: allColumnStats.length,
+      timestamp: Date.now(),
+      qualityScore: avgQualityScore,
+      issues: allIssues,
+      columnStats: allColumnStats,
+      dataSample: reports[0].dataSample
+    };
   }
 
   /**
@@ -654,6 +864,17 @@ export class DataQualityAnalyzer {
    * 运行所有检测器
    */
   private async runAllDetectors(
+    data: any[],
+    columnStats: InternalColumnStats[],
+    options?: AnalysisOptions
+  ): Promise<DetectionResult[]> {
+    return await this.runDetectors(data, columnStats, options);
+  }
+
+  /**
+   * 运行检测器(核心逻辑)
+   */
+  private async runDetectors(
     data: any[],
     columnStats: InternalColumnStats[],
     options?: AnalysisOptions

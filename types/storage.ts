@@ -232,6 +232,8 @@ export interface MemoryCacheConfig extends StorageConfig {
   evictionPolicy: 'lru' | 'lfu' | 'fifo';
   /** 是否启用统计 */
   enableStats?: boolean;
+  /** 最大内存使用（字节） */
+  maxMemory?: number;
 }
 
 // ============================================================================

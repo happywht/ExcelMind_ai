@@ -83,6 +83,10 @@ export class MemoryCacheService implements IStorageService {
   private cleanupTimer: NodeJS.Timeout | null = null;
   private readonly cleanupInterval: number = 60000; // 1分钟
 
+  // 内存限制
+  private readonly maxMemory: number; // 最大内存使用（字节）
+  private readonly memoryWarningThreshold: number; // 内存警告阈值
+
   constructor(config: MemoryCacheConfig) {
     this.cache = new Map();
     this.namespacePrefix = config.namespacePrefix || '';
@@ -92,8 +96,18 @@ export class MemoryCacheService implements IStorageService {
     this.enableStats = config.enableStats ?? true;
     this.listeners = new Set();
 
+    // 设置内存限制（默认100MB）
+    this.maxMemory = config.maxMemory || 100 * 1024 * 1024;
+    this.memoryWarningThreshold = this.maxMemory * 0.8; // 80%阈值
+
     // 启动过期清理定时器
     this.startCleanupTimer();
+
+    console.log('[MemoryCache] 初始化完成', {
+      maxEntries: this.maxEntries,
+      maxMemory: `${Math.round(this.maxMemory / 1024 / 1024)}MB`,
+      evictionPolicy: this.evictionPolicy
+    });
   }
 
   // ========================================================================
@@ -603,6 +617,44 @@ export class MemoryCacheService implements IStorageService {
         this.stats.expirations++;
       }
     });
+
+    // 检查内存使用
+    const memoryUsage = this.estimateMemoryUsage();
+    if (memoryUsage > this.memoryWarningThreshold) {
+      console.warn(`[MemoryCache] 内存使用 ${Math.round(memoryUsage / 1024 / 1024)}MB 超过阈值 ${Math.round(this.memoryWarningThreshold / 1024 / 1024)}MB`);
+
+      // 如果超过最大内存限制，强制淘汰
+      if (memoryUsage > this.maxMemory) {
+        console.warn(`[MemoryCache] 内存使用超过限制，执行强制淘汰`);
+        this.forceEvict();
+      }
+    }
+  }
+
+  /**
+   * 估算内存使用
+   */
+  private estimateMemoryUsage(): number {
+    let size = 0;
+    for (const [, node] of this.cache.entries()) {
+      size += node.item.size || 0;
+    }
+    return size;
+  }
+
+  /**
+   * 强制淘汰（直到内存使用低于阈值）
+   */
+  private forceEvict(): void {
+    const targetSize = this.maxMemory * 0.7; // 目标：降低到70%
+    let evicted = 0;
+
+    while (this.estimateMemoryUsage() > targetSize && this.tail) {
+      this.evict();
+      evicted++;
+    }
+
+    console.log(`[MemoryCache] 强制淘汰完成: 移除 ${evicted} 个条目`);
   }
 
   /**

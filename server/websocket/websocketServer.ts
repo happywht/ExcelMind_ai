@@ -94,6 +94,11 @@ export class WebSocketServer extends EventEmitter {
   // 心跳定时器
   private heartbeatTimer: NodeJS.Timeout | null = null;
 
+  // 清理定时器
+  private cleanupTimer: NodeJS.Timeout | null = null;
+  private readonly CLEANUP_INTERVAL = 5 * 60 * 1000; // 5分钟
+  private readonly CONNECTION_TIMEOUT = 30 * 60 * 1000; // 30分钟
+
   // 统计信息
   private stats: WebSocketServerStats = {
     server: {
@@ -190,6 +195,9 @@ export class WebSocketServer extends EventEmitter {
           // 启动统计更新
           this.startStatsUpdate();
 
+          // 启动清理定时器
+          this.startCleanupTimer();
+
           console.log(`WebSocket服务器已在端口 ${this.config.port} 启动`);
           this.emit('server:started', { port: this.config.port });
           resolve();
@@ -213,6 +221,9 @@ export class WebSocketServer extends EventEmitter {
    * 停止服务器
    */
   async stop(): Promise<void> {
+    // 停止清理定时器
+    this.stopCleanupTimer();
+
     // 停止心跳检测
     this.stopHeartbeat();
 
@@ -943,6 +954,76 @@ export class WebSocketServer extends EventEmitter {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
+    }
+  }
+
+  // ========================================================================
+  // 私有方法 - 清理管理
+  // ========================================================================
+
+  /**
+   * 启动清理定时器
+   */
+  private startCleanupTimer(): void {
+    this.cleanupTimer = setInterval(() => {
+      this.cleanupDisconnectedClients();
+      this.cleanupIdleConnections();
+    }, this.CLEANUP_INTERVAL);
+
+    console.log('[WebSocketServer] 清理定时器已启动');
+  }
+
+  /**
+   * 停止清理定时器
+   */
+  private stopCleanupTimer(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+      console.log('[WebSocketServer] 清理定时器已停止');
+    }
+  }
+
+  /**
+   * 清理已断开的连接
+   */
+  private cleanupDisconnectedClients(): void {
+    const before = this.clients.size;
+
+    // 移除已断开的客户端
+    for (const [clientId, client] of this.clients.entries()) {
+      if (client.socket.readyState === WebSocket.CLOSED) {
+        this.clients.delete(clientId);
+        console.info(`[WebSocketServer] 清理已断开的客户端: ${clientId}`);
+      }
+    }
+
+    const after = this.clients.size;
+    if (before !== after) {
+      console.log(`[WebSocketServer] 清理完成: 移除 ${before - after} 个已断开的客户端`);
+    }
+  }
+
+  /**
+   * 清理空闲连接
+   */
+  private cleanupIdleConnections(): void {
+    const now = Date.now();
+    const before = this.clients.size;
+
+    for (const [clientId, client] of this.clients.entries()) {
+      const idleTime = now - client.lastHeartbeat;
+
+      if (idleTime > this.CONNECTION_TIMEOUT) {
+        console.log(`[WebSocketServer] 关闭空闲连接: ${clientId} (空闲 ${Math.round(idleTime / 1000)}s)`);
+        client.socket.close(1000, 'Connection idle timeout');
+        this.clients.delete(clientId);
+      }
+    }
+
+    const after = this.clients.size;
+    if (before !== after) {
+      console.log(`[WebSocketServer] 空闲清理: 关闭 ${before - after} 个空闲连接`);
     }
   }
 
