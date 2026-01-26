@@ -4,6 +4,7 @@
  * 实时显示系统性能指标、趋势图和告警信息
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
@@ -304,7 +305,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
         }
       });
     } catch (error) {
-      console.error('加载实时指标失败:', error);
+      logger.error('加载实时指标失败:', error);
     }
   }, []);
 
@@ -317,7 +318,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
       // 模拟数据
       setAlerts([]);
     } catch (error) {
-      console.error('加载告警失败:', error);
+      logger.error('加载告警失败:', error);
     }
   }, []);
 
@@ -366,7 +367,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
         ]
       });
     } catch (error) {
-      console.error('加载报告失败:', error);
+      logger.error('加载报告失败:', error);
     }
   }, []);
 

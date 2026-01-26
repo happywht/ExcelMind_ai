@@ -4,6 +4,7 @@
  * 处理实时进度推送、任务状态更新等
  */
 
+import { logger } from '@/utils/logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import type {
@@ -49,7 +50,7 @@ const clients = new Map<string, WebSocketClient>();
  * 设置 WebSocket 服务器
  */
 export function setupWebSocket(wss: WebSocketServer): void {
-  console.log('[WebSocket] 服务器初始化');
+  logger.debug('[WebSocket] 服务器初始化');
 
   wss.on('connection', (ws: WebSocket, req) => {
     const clientId = uuidv4();
@@ -59,7 +60,7 @@ export function setupWebSocket(wss: WebSocketServer): void {
 
     clients.set(clientId, client);
 
-    console.log(`[WebSocket] 客户端连接: ${clientId}`);
+    logger.debug(`[WebSocket] 客户端连接: ${clientId}`);
 
     // 发送欢迎消息
     sendToClient(client, {
@@ -78,18 +79,18 @@ export function setupWebSocket(wss: WebSocketServer): void {
           handleSubscribe(client, message as WebSocketSubscribeMessage);
         }
       } catch (error) {
-        console.error(`[WebSocket] 消息处理错误:`, error);
+        logger.error(`[WebSocket] 消息处理错误:`, error);
       }
     });
 
     // 处理错误
     ws.on('error', (error) => {
-      console.error(`[WebSocket] 客户端错误: ${clientId}`, error);
+      logger.error(`[WebSocket] 客户端错误: ${clientId}`, error);
     });
 
     // 处理断开连接
     ws.on('close', () => {
-      console.log(`[WebSocket] 客户端断开: ${clientId}`);
+      logger.debug(`[WebSocket] 客户端断开: ${clientId}`);
       clients.delete(clientId);
     });
   });
@@ -126,7 +127,7 @@ function handleSubscribe(
     client.filters = filters;
   }
 
-  console.log(`[WebSocket] 客户端 ${client.id} 订阅频道:`, channels);
+  logger.debug(`[WebSocket] 客户端 ${client.id} 订阅频道:`, channels);
 
   // 发送确认
   sendToClient(client, {

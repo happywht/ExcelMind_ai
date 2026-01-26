@@ -32,6 +32,7 @@ import type {
   ExtendedVirtualFileInfo,
 } from './types';
 import {
+import { logger } from '@/utils/logger';
   buildGraphNodes,
   getNodeColor,
   getRelationTypeColor,
@@ -103,7 +104,7 @@ export const RelationshipGraph: React.FC<RelationshipGraphProps> = ({
       }
       setEdges(graphEdges);
     } catch (error) {
-      console.error('Failed to load graph data:', error);
+      logger.error('Failed to load graph data:', error);
     }
   }, [vfs]);
 

@@ -8,11 +8,24 @@ import { IMultiSheetDataSource } from './MultiSheetDataSource';
 import { SAMPLING_CONFIG } from '../../config/samplingConfig';
 
 // 配置智谱AI客户端
-const client = new Anthropic({
-  apiKey: process.env.ZHIPU_API_KEY || process.env.API_KEY || '',
-  baseURL: 'https://open.bigmodel.cn/api/anthropic',
-  dangerouslyAllowBrowser: true
-});
+// 环境检测：兼容浏览器和Node.js环境
+const isNodeEnv = typeof process !== 'undefined' && process.env !== undefined;
+let client: Anthropic | null = null;
+
+const getClient = (): Anthropic => {
+  if (!client) {
+    const apiKey = isNodeEnv
+      ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
+      : '';
+
+    client = new Anthropic({
+      apiKey,
+      baseURL: 'https://open.bigmodel.cn/api/anthropic',
+      dangerouslyAllowBrowser: isNodeEnv
+    });
+  }
+  return client;
+};
 
 // ============================================================
 // 类型定义
@@ -183,7 +196,7 @@ export class AIQueryParser {
 `;
 
     try {
-      const response = await client.messages.create({
+      const response = await getClient().messages.create({
         model: "glm-4.6",
         max_tokens: 2048,
         messages: [{ role: "user", content: prompt }]
@@ -258,7 +271,7 @@ ${allColumns.slice(0, SAMPLING_CONFIG.QUERY_ENGINE.TOP_COLUMNS).map(col => `- ${
 `;
 
     try {
-      const response = await client.messages.create({
+      const response = await getClient().messages.create({
         model: "glm-4.6",
         max_tokens: 2048,
         messages: [{ role: "user", content: prompt }]

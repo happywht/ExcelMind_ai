@@ -7,6 +7,7 @@
 
 import { FileRole } from '../../services/infrastructure/vfs/VirtualFileSystem';
 import {
+import { logger } from '@/utils/logger';
   type ExtendedVirtualFileInfo,
   type FileTreeNode,
   type SortOption,
@@ -489,7 +490,7 @@ export const saveSession = (session: SessionInfo): void => {
 
     localStorage.setItem('workspace_sessions', JSON.stringify(limitedSessions));
   } catch (error) {
-    console.error('Failed to save session:', error);
+    logger.error('Failed to save session:', error);
   }
 };
 
@@ -501,7 +502,7 @@ export const getSessions = (): SessionInfo[] => {
     const data = localStorage.getItem('workspace_sessions');
     return data ? JSON.parse(data) : [];
   } catch (error) {
-    console.error('Failed to get sessions:', error);
+    logger.error('Failed to get sessions:', error);
     return [];
   }
 };
@@ -515,7 +516,7 @@ export const deleteSession = (sessionId: string): void => {
     const filtered = sessions.filter(s => s.id !== sessionId);
     localStorage.setItem('workspace_sessions', JSON.stringify(filtered));
   } catch (error) {
-    console.error('Failed to delete session:', error);
+    logger.error('Failed to delete session:', error);
   }
 };
 
@@ -526,7 +527,7 @@ export const clearAllSessions = (): void => {
   try {
     localStorage.removeItem('workspace_sessions');
   } catch (error) {
-    console.error('Failed to clear sessions:', error);
+    logger.error('Failed to clear sessions:', error);
   }
 };
 
@@ -540,6 +541,6 @@ export const cleanupExpiredSessions = (maxAge: number = 7 * 24 * 60 * 60 * 1000)
     const valid = sessions.filter(s => now - s.timestamp < maxAge);
     localStorage.setItem('workspace_sessions', JSON.stringify(valid));
   } catch (error) {
-    console.error('Failed to cleanup sessions:', error);
+    logger.error('Failed to cleanup sessions:', error);
   }
 };

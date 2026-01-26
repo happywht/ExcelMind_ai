@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Copy, Check, Sparkles, ArrowRight } from 'lucide-react';
-import { generateExcelFormula } from '../services/zhipuService';
+import { generateExcelFormula } from '../services/aiProxyService';
+import { logger } from '@/utils/logger';
 
 export const FormulaGen: React.FC = () => {
   const [input, setInput] = useState('');
@@ -34,7 +35,7 @@ export const FormulaGen: React.FC = () => {
         setFormula(result);
       }
     } catch (err: any) {
-      console.error('Formula generation error:', err);
+      logger.error('Formula generation error:', err);
       setError(`生成错误: ${err.message}`);
     }
 
@@ -156,3 +157,6 @@ export const FormulaGen: React.FC = () => {
     </div>
   );
 };
+
+// 添加默认导出以支持React.lazy()
+export default FormulaGen;

@@ -4,6 +4,7 @@
  * 单一职责原则：只负责文档生成，不涉及映射解析和模板处理
  */
 
+import { logger } from '@/utils/logger';
 import { createReport } from 'docx-templates';
 import * as JSZip from 'jszip';
 import { MappingScheme, FieldMapping, GeneratedDocument } from '../types/documentTypes';
@@ -69,7 +70,7 @@ function applyFilter(excelData: any[], filterCondition: string | null): any[] {
       try {
         return ${filterCondition};
       } catch (e) {
-        console.warn("筛选条件执行失败:", e);
+        logger.warn("筛选条件执行失败:", e);
         return true;
       }
     `);
@@ -78,12 +79,12 @@ function applyFilter(excelData: any[], filterCondition: string | null): any[] {
       try {
         return filterFunc(row);
       } catch (error) {
-        console.warn('筛选行数据失败:', error);
+        logger.error('筛选行数据失败:', error);
         return true;  // 筛选失败时保留该行
       }
     });
   } catch (error) {
-    console.warn('筛选条件解析失败，返回全部数据:', error);
+    logger.error('筛选条件解析失败，返回全部数据:', error);
     return excelData;
   }
 }
@@ -103,7 +104,7 @@ function applyTransform(value: any, transform?: string): any {
     const transformFunc = new Function('value', `return ${transform}`);
     return transformFunc(value);
   } catch (error) {
-    console.warn('数据转换失败，返回原值:', error);
+    logger.error('数据转换失败，返回原值:', error);
     return value;
   }
 }

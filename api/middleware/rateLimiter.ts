@@ -165,7 +165,8 @@ export class RateLimiterMiddleware {
 
     // 检查是否跳过
     if (this.config.skipFunction && await this.config.skipFunction(req)) {
-      return next();
+      next();
+      return;
     }
 
     // 生成键
@@ -195,7 +196,8 @@ export class RateLimiterMiddleware {
       res.setHeader('Retry-After', retryAfter.toString());
 
       if (this.config.handler) {
-        return this.config.handler(req, res, next);
+        this.config.handler(req, res, next);
+        return;
       }
 
       const errorResponse = createApiErrorResponse(
@@ -208,7 +210,8 @@ export class RateLimiterMiddleware {
         requestId
       );
 
-      return res.status(429).json(errorResponse);
+      res.status(429).json(errorResponse);
+      return;
     }
 
     next();
@@ -332,7 +335,8 @@ export const skipRateLimit = (req: Request, res: Response, next: NextFunction): 
   // 如果用户是管理员，跳过速率限制
   const user = (req as any).user;
   if (user && user.tier === 'enterprise' && user.scopes.includes('admin')) {
-    return next();
+    next();
+    return;
   }
 
   // 否则继续使用下一个速率限制器

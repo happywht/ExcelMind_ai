@@ -3,10 +3,16 @@
  *
  * 提供全局错误处理和错误响应格式化
  * 基于 API_SPECIFICATION_PHASE2.md 规范
+ *
+ * @module api/middleware/errorHandler
+ * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import { Request, Response, NextFunction } from 'express';
 import { ApiErrorCode, createApiErrorResponse, getHttpStatus, getHelpUrl } from '../../types/errorCodes';
+import { AppError, isAppError } from '../../types/errors';
+import { ErrorHandler } from '../../utils/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -121,6 +127,20 @@ function getErrorMessage(code: ApiErrorCode): string {
 }
 
 /**
+ * 敏感字段列表（用于日志清理）
+ */
+const SENSITIVE_FIELDS = [
+  'password',
+  'token',
+  'apiKey',
+  'secret',
+  'authorization',
+  'credentials',
+  'accessToken',
+  'refreshToken'
+];
+
+/**
  * 错误处理中间件配置
  */
 interface ErrorHandlerConfig {
@@ -128,6 +148,8 @@ interface ErrorHandlerConfig {
   showDetails?: boolean;
   /** 是否记录错误日志 */
   logErrors?: boolean;
+  /** 是否显示堆栈信息（开发环境可设为 true） */
+  showStackTrace?: boolean;
   /** 自定义日志函数 */
   logger?: (error: Error, req: Request) => void;
 }
@@ -137,6 +159,7 @@ interface ErrorHandlerConfig {
  */
 const defaultConfig: ErrorHandlerConfig = {
   showDetails: process.env.NODE_ENV !== 'production',
+  showStackTrace: process.env.NODE_ENV === 'development',
   logErrors: true,
 };
 
@@ -147,125 +170,227 @@ export const errorHandler = (config: ErrorHandlerConfig = defaultConfig) => {
   return (err: Error, req: Request, res: Response, next: NextFunction): void => {
     const requestId = req.headers['x-request-id'] as string || uuidv4();
 
-    // 记录错误日志
+    // 转换为 AppError（如果不是的话）
+    const appError = isAppError(err) ? err : ErrorHandler.handleError(err);
+
+    // 记录错误日志（清理敏感信息）
     if (config.logErrors !== false) {
       if (config.logger) {
-        config.logger(err, req);
+        config.logger(appError, req);
       } else {
-        logError(err, req);
+        logError(appError, req, config);
       }
     }
 
-    // 如果是自定义 API 错误
-    if (err instanceof ApiError) {
-      const errorResponse = createApiErrorResponse(
-        err.code,
-        err.details,
-        requestId
-      );
-
-      return res.status(err.statusCode).json(errorResponse);
-    }
-
-    // 处理其他类型的错误
-    const statusCode = getStatusCodeFromError(err);
-    const errorCode = getErrorCodeFromError(err);
-    const details = config.showDetails ? parseErrorDetails(err) : [];
-
+    // 构建错误响应
     const errorResponse = createApiErrorResponse(
-      errorCode,
-      details,
+      appError.code,
+      buildErrorDetails(appError, config),
       requestId
     );
 
-    res.status(statusCode).json(errorResponse);
+    // 记录请求 ID 到响应头
+    res.setHeader('X-Request-ID', requestId);
+    res.setHeader('X-Error-Code', appError.code.toString());
+
+    res.status(appError.statusCode).json(errorResponse);
   };
 };
 
 /**
  * 记录错误日志
  */
-function logError(error: Error, req: Request): void {
-  const logData = {
-    message: error.message,
-    stack: error.stack,
+function logError(error: Error, req: Request, config: ErrorHandlerConfig): void {
+  const logData: any = {
+    message: sanitizeMessage(error.message),
     request: {
       method: req.method,
-      url: req.url,
-      headers: req.headers,
-      body: req.body,
-      query: req.query,
+      url: sanitizeUrl(req.url),
+      headers: sanitizeHeaders(req.headers),
+      body: sanitizeBody(req.body),
+      query: sanitizeQuery(req.query),
       params: req.params,
     },
     timestamp: new Date().toISOString(),
+    requestId: req.headers['x-request-id'] as string || uuidv4(),
   };
 
-  console.error('[ErrorHandler]', JSON.stringify(logData, null, 2));
+  // 添加 AppError 特定信息
+  if (isAppError(error)) {
+    logData.error = {
+      name: error.name,
+      code: error.code,
+      statusCode: error.statusCode,
+      isOperational: error.isOperational,
+      ...(error.context && { context: sanitizeContext(error.context) })
+    };
+  }
+
+  // 仅在开发环境显示堆栈
+  if (config.showStackTrace && error.stack) {
+    logData.stack = sanitizeStack(error.stack);
+  }
+
+  logger.error('[ErrorHandler]', JSON.stringify(logData, null, 2));
 }
 
 /**
- * 从错误获取 HTTP 状态码
+ * 清理请求头中的敏感信息
  */
-function getStatusCodeFromError(error: Error): number {
-  // 类型错误
-  if (error instanceof TypeError) {
-    return 400;
-  }
+function sanitizeHeaders(headers: any): any {
+  const sanitized = { ...headers };
 
-  // 语法错误
-  if (error instanceof SyntaxError) {
-    return 400;
-  }
+  SENSITIVE_FIELDS.forEach(field => {
+    if (sanitized[field]) {
+      sanitized[field] = '***';
+    }
+  });
 
-  // 验证错误
-  if (error.name === 'ValidationError') {
-    return 400;
-  }
-
-  // 未授权错误
-  if (error.name === 'UnauthorizedError') {
-    return 401;
-  }
-
-  // 默认返回 500
-  return 500;
+  return sanitized;
 }
 
 /**
- * 从错误获取错误代码
+ * 清理请求体中的敏感信息
  */
-function getErrorCodeFromError(error: Error): ApiErrorCode {
-  if (error.name === 'ValidationError') {
-    return ApiErrorCode.VALIDATION_ERROR;
+function sanitizeBody(body: any): any {
+  if (!body || typeof body !== 'object') {
+    return body;
   }
 
-  if (error.name === 'UnauthorizedError') {
-    return ApiErrorCode.UNAUTHORIZED;
-  }
+  const sanitized = { ...body };
 
-  if (error.message.includes('not found')) {
-    return ApiErrorCode.NOT_FOUND;
-  }
+  SENSITIVE_FIELDS.forEach(field => {
+    if (sanitized[field]) {
+      sanitized[field] = '***';
+    }
+  });
 
-  return ApiErrorCode.INTERNAL_ERROR;
+  return sanitized;
 }
 
 /**
- * 解析错误详情
+ * 清理查询参数中的敏感信息
  */
-function parseErrorDetails(error: Error): any[] {
+function sanitizeQuery(query: any): any {
+  if (!query || typeof query !== 'object') {
+    return query;
+  }
+
+  const sanitized = { ...query };
+
+  SENSITIVE_FIELDS.forEach(field => {
+    if (sanitized[field]) {
+      sanitized[field] = '***';
+    }
+  });
+
+  return sanitized;
+}
+
+/**
+ * 清理上下文中的敏感信息
+ */
+function sanitizeContext(context: Record<string, any>): Record<string, any> {
+  const sanitized: Record<string, any> = {};
+
+  Object.keys(context).forEach(key => {
+    const value = context[key];
+
+    // 检查是否为敏感字段
+    if (SENSITIVE_FIELDS.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+      sanitized[key] = '***';
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeContext(value);
+    } else {
+      sanitized[key] = value;
+    }
+  });
+
+  return sanitized;
+}
+
+/**
+ * 清理错误消息中的敏感信息
+ */
+function sanitizeMessage(message: string): string {
+  let sanitized = message;
+
+  // 移除路径信息
+  sanitized = sanitized.replace(/at [^(]+\([^)]+\)/g, 'at [hidden]');
+
+  // 移除敏感关键字
+  SENSITIVE_FIELDS.forEach(field => {
+    const regex = new RegExp(`${field}.*`, 'gi');
+    sanitized = sanitized.replace(regex, '***');
+  });
+
+  return sanitized;
+}
+
+/**
+ * 清理堆栈信息中的敏感数据
+ */
+function sanitizeStack(stack: string): string {
+  // 移除路径信息中的用户目录
+  let sanitized = stack.replace(/at [^(]+\(.*[\\/]([^\\/)]+)\)/g, (match, filename) => {
+    return `at [sanitized_path](${filename})`;
+  });
+
+  // 移除敏感关键字
+  SENSITIVE_FIELDS.forEach(field => {
+    const regex = new RegExp(`${field}.*`, 'gi');
+    sanitized = sanitized.replace(regex, '***');
+  });
+
+  return sanitized;
+}
+
+/**
+ * 清理URL中的敏感信息
+ */
+function sanitizeUrl(url: string): string {
+  // 移除URL中的敏感参数
+  SENSITIVE_FIELDS.forEach(field => {
+    const regex = new RegExp(`[?&]${field}=[^&]*`, 'gi');
+    url = url.replace(regex, '');
+  });
+
+  return url;
+}
+
+/**
+ * 构建错误详情（用于API响应）
+ */
+function buildErrorDetails(error: Error, config: ErrorHandlerConfig): any[] {
   const details: any[] = [];
 
-  if (error.message) {
-    details.push({
-      message: error.message,
-    });
-  }
+  if (isAppError(error)) {
+    // 添加上下文信息
+    if (error.context && config.showDetails) {
+      details.push({
+        ...error.context,
+      });
+    }
 
-  if (error.stack && process.env.NODE_ENV !== 'production') {
-    details.push({
-      stack: error.stack,
-    });
+    // 在开发环境添加堆栈信息
+    if (config.showStackTrace && error.stack) {
+      details.push({
+        stack: sanitizeStack(error.stack),
+      });
+    }
+  } else {
+    // 非 AppError
+    if (config.showDetails) {
+      details.push({
+        message: sanitizeMessage(error.message),
+      });
+
+      if (config.showStackTrace && error.stack) {
+        details.push({
+          stack: sanitizeStack(error.stack),
+        });
+      }
+    }
   }
 
   return details;
@@ -288,6 +413,7 @@ export const notFoundHandler = (req: Request, res: Response): void => {
     requestId
   );
 
+  res.setHeader('X-Request-ID', requestId);
   res.status(404).json(errorResponse);
 };
 

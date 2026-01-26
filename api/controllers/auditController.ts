@@ -5,6 +5,7 @@
  * 基于 API_SPECIFICATION_PHASE2.md 规范
  */
 
+import { logger } from '@/utils/logger';
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -501,7 +502,7 @@ export class AuditController {
    * 统一错误处理
    */
   private handleError(error: any, res: Response, requestId: string): void {
-    console.error('[AuditController] Error:', error);
+    logger.error('[AuditController] Error:', error);
 
     let errorCode = ApiErrorCode.INTERNAL_ERROR;
     let httpStatus = 500;

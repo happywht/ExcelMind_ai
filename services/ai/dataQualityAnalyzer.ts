@@ -9,6 +9,7 @@
  * @description 智能数据处理增强模块的核心分析器
  */
 
+import { logger } from '@/utils/logger';
 import {
   DataQualityReport,
   DataQualityIssue,
@@ -602,7 +603,7 @@ export class DataQualityAnalyzer {
         const cacheKey = this.generateCacheKey(data, options);
         const cached = await this.cacheService.get(cacheKey);
         if (cached) {
-          console.log('[DataQualityAnalyzer] 使用缓存的分析结果');
+          logger.debug('[DataQualityAnalyzer] 使用缓存的分析结果');
           return cached;
         }
       }
@@ -613,11 +614,11 @@ export class DataQualityAnalyzer {
         return await this.analyzeSmallDataset(data, sheetData, options);
       } else {
         // 大数据集: 使用流式处理并合并结果
-        console.log(`[DataQualityAnalyzer] 大数据集检测 (${sheetData.length} 行), 使用流式处理`);
+        logger.debug(`[DataQualityAnalyzer] 大数据集检测 (${sheetData.length} 行), 使用流式处理`);
         return await this.analyzeLargeDataset(data, sheetData, options);
       }
     } catch (error) {
-      console.error('[DataQualityAnalyzer] 分析失败:', error);
+      logger.error('[DataQualityAnalyzer] 分析失败:', error);
       throw error;
     }
   }
@@ -633,14 +634,14 @@ export class DataQualityAnalyzer {
     const totalRows = sheetData.length;
     let processedRows = 0;
 
-    console.log(`[DataQualityAnalyzer] 开始流式分析: ${totalRows} 行`);
+    logger.debug(`[DataQualityAnalyzer] 开始流式分析: ${totalRows} 行`);
 
     // 分批处理
     for (let i = 0; i < totalRows; i += this.MAX_BATCH_SIZE) {
       // 检查内存使用
       const memoryUsage = process.memoryUsage().heapUsed;
       if (memoryUsage > this.MAX_MEMORY_USAGE) {
-        console.warn(`[DataQualityAnalyzer] 内存使用过高: ${Math.round(memoryUsage / 1024 / 1024)}MB, 强制GC`);
+        logger.warn(`[DataQualityAnalyzer] 内存使用过高: ${Math.round(memoryUsage / 1024 / 1024)}MB, 强制GC`);
         await this.forceGarbageCollection();
       }
 
@@ -648,7 +649,7 @@ export class DataQualityAnalyzer {
       const batchNumber = Math.floor(i / this.MAX_BATCH_SIZE) + 1;
       const totalBatches = Math.ceil(totalRows / this.MAX_BATCH_SIZE);
 
-      console.log(`[DataQualityAnalyzer] 处理批次 ${batchNumber}/${totalBatches}, 大小: ${batch.length} 行`);
+      logger.debug(`[DataQualityAnalyzer] 处理批次 ${batchNumber}/${totalBatches}, 大小: ${batch.length} 行`);
 
       // 处理当前批次
       const result = await this.processBatch(batch, processedRows, options);
@@ -670,7 +671,7 @@ export class DataQualityAnalyzer {
       }
     }
 
-    console.log(`[DataQualityAnalyzer] 流式分析完成: ${totalRows} 行`);
+    logger.debug(`[DataQualityAnalyzer] 流式分析完成: ${totalRows} 行`);
   }
 
   /**
@@ -713,7 +714,7 @@ export class DataQualityAnalyzer {
         setTimeout(resolve, 100);
       });
     } else {
-      console.warn('[DataQualityAnalyzer] 全局GC不可用。请使用 --expose-gc 标志启动Node');
+      logger.warn('[DataQualityAnalyzer] 全局GC不可用。请使用 --expose-gc 标志启动Node');
     }
   }
 
@@ -729,7 +730,7 @@ export class DataQualityAnalyzer {
 
     // 记录内存状态
     const memUsage = process.memoryUsage();
-    console.log(`[DataQualityAnalyzer] 内存状态:`, {
+    logger.debug(`[DataQualityAnalyzer] 内存状态:`, {
       heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
       heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
       external: `${Math.round(memUsage.external / 1024 / 1024)}MB`
@@ -798,7 +799,7 @@ export class DataQualityAnalyzer {
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[DataQualityAnalyzer] 分析完成，耗时 ${duration}ms`);
+    logger.debug(`[DataQualityAnalyzer] 分析完成，耗时 ${duration}ms`);
 
     return report;
   }
@@ -977,7 +978,7 @@ export class DataQualityAnalyzer {
             affectedRows.push(index);
           }
         } catch (error) {
-          console.error(`[DataQualityAnalyzer] 自定义规则执行失败: ${rule.name}`, error);
+          logger.error(`[DataQualityAnalyzer] 自定义规则执行失败: ${rule.name}`, error);
         }
       });
 

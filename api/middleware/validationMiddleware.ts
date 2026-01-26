@@ -96,7 +96,8 @@ export class ValidationMiddleware {
           requestId
         );
 
-        return res.status(400).json(errorResponse);
+        res.status(400).json(errorResponse);
+        return;
       }
 
       next();
@@ -408,7 +409,8 @@ export const fileUploadValidation = (
         [{ field: 'file', message: 'File is required' }],
         requestId
       );
-      return res.status(400).json(errorResponse);
+      res.status(400).json(errorResponse);
+      return;
     }
 
     // 检查文件类型
@@ -418,7 +420,8 @@ export const fileUploadValidation = (
         [{ field: 'file', message: `File type ${req.file.mimetype} is not allowed` }],
         requestId
       );
-      return res.status(400).json(errorResponse);
+      res.status(400).json(errorResponse);
+      return;
     }
 
     // 检查文件大小
@@ -428,7 +431,8 @@ export const fileUploadValidation = (
         [{ field: 'file', message: `File size exceeds maximum allowed size of ${maxSize} bytes` }],
         requestId
       );
-      return res.status(413).json(errorResponse);
+      res.status(413).json(errorResponse);
+      return;
     }
 
     next();

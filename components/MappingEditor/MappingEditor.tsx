@@ -16,6 +16,7 @@ import { UnmappedPanel } from './UnmappedPanel';
 import { MappingValidator } from './MappingValidator';
 import { AutoMapButton } from './AutoMapButton';
 import { MappingPreview } from './MappingPreview';
+import { logger } from '@/utils/logger';
 
 /**
  * Excel数据信息
@@ -238,7 +239,7 @@ export const MappingEditor: React.FC<MappingEditorProps> = ({
       const newScheme = await onAutoMap();
       onChange?.(newScheme);
     } catch (error) {
-      console.error('AI自动映射失败:', error);
+      logger.error('AI自动映射失败:', error);
     } finally {
       setAutoMappingLoading(false);
     }

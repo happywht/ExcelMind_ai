@@ -12,6 +12,7 @@
  * @module BatchGenerationServer
  */
 
+import { logger } from '@/utils/logger';
 import express, { Express } from 'express';
 import { BatchGenerationScheduler, DefaultDocumentGenerator } from '../services/BatchGenerationScheduler';
 import { TemplateManager } from '../services/TemplateManager';
@@ -181,7 +182,7 @@ export class BatchGenerationServer {
     // 8. 设置路由
     this.setupRoutes();
 
-    console.log('[BatchGenerationServer] 所有服务已初始化');
+    logger.debug('[BatchGenerationServer] 所有服务已初始化');
   }
 
   /**
@@ -217,7 +218,7 @@ export class BatchGenerationServer {
     // 挂载路由
     this.app.use('/api/v2', router);
 
-    console.log('[BatchGenerationServer] API路由已设置');
+    logger.info('[BatchGenerationServer] API路由已设置');
   }
 
   // ========================================================================
@@ -229,7 +230,7 @@ export class BatchGenerationServer {
    */
   async start(): Promise<void> {
     if (!this.config.enabled) {
-      console.log('[BatchGenerationServer] 服务器已禁用，跳过启动');
+      logger.debug('[BatchGenerationServer] 服务器已禁用，跳过启动');
       return;
     }
 
@@ -240,9 +241,9 @@ export class BatchGenerationServer {
       // 2. 启动HTTP服务器
       await this.startHTTPServer();
 
-      console.log('[BatchGenerationServer] 服务器已启动');
+      logger.debug('[BatchGenerationServer] 服务器已启动');
     } catch (error) {
-      console.error('[BatchGenerationServer] 启动失败:', error);
+      logger.error('[BatchGenerationServer] 启动失败:', error);
       throw error;
     }
   }
@@ -261,9 +262,9 @@ export class BatchGenerationServer {
       // 3. 清理资源
       this.progressBroadcaster.destroy();
 
-      console.log('[BatchGenerationServer] 服务器已停止');
+      logger.debug('[BatchGenerationServer] 服务器已停止');
     } catch (error) {
-      console.error('[BatchGenerationServer] 停止失败:', error);
+      logger.error('[BatchGenerationServer] 停止失败:', error);
       throw error;
     }
   }
@@ -277,14 +278,14 @@ export class BatchGenerationServer {
         this.wsServer = this.websocketServer.getServer();
         this.wsServer.listen(this.config.websocketPort, this.config.websocketHost, () => {
           this.isWsStarted = true;
-          console.log(
+          logger.debug(
             `[BatchGenerationServer] WebSocket服务器已启动: ws://${this.config.websocketHost}:${this.config.websocketPort}${this.config.websocketPath}`
           );
           resolve();
         });
 
         this.wsServer.on('error', (error: Error) => {
-          console.error('[BatchGenerationServer] WebSocket服务器错误:', error);
+          logger.error('[BatchGenerationServer] WebSocket服务器错误:', error);
           reject(error);
         });
       } catch (error) {
@@ -306,7 +307,7 @@ export class BatchGenerationServer {
       try {
         this.wsServer.close(() => {
           this.isWsStarted = false;
-          console.log('[BatchGenerationServer] WebSocket服务器已停止');
+          logger.debug('[BatchGenerationServer] WebSocket服务器已停止');
           resolve();
         });
       } catch (error) {
@@ -323,14 +324,14 @@ export class BatchGenerationServer {
       try {
         this.httpServer = this.app.listen(this.config.httpPort, this.config.httpHost, () => {
           this.isHttpStarted = true;
-          console.log(
+          logger.debug(
             `[BatchGenerationServer] HTTP服务器已启动: http://${this.config.httpHost}:${this.config.httpPort}`
           );
           resolve();
         });
 
         this.httpServer.on('error', (error: Error) => {
-          console.error('[BatchGenerationServer] HTTP服务器错误:', error);
+          logger.error('[BatchGenerationServer] HTTP服务器错误:', error);
           reject(error);
         });
       } catch (error) {
@@ -352,7 +353,7 @@ export class BatchGenerationServer {
       try {
         this.httpServer.close(() => {
           this.isHttpStarted = false;
-          console.log('[BatchGenerationServer] HTTP服务器已停止');
+          logger.debug('[BatchGenerationServer] HTTP服务器已停止');
           resolve();
         });
       } catch (error) {
@@ -449,7 +450,7 @@ class DefaultDocumentGenerator {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
     } catch (error) {
-      console.error('[DefaultDocumentGenerator] 生成文档失败:', error);
+      logger.error('[DefaultDocumentGenerator] 生成文档失败:', error);
       throw error;
     }
   }

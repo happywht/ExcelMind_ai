@@ -6,6 +6,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Save,
@@ -18,7 +19,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { templateAPI } from '../../api/templateAPI';
+import { templateAPI } from '../../services/templateAPI';
 import TemplateUpload from './TemplateUpload';
 import VariableMapping from './VariableMapping';
 import TemplatePreview from './TemplatePreview';
@@ -85,7 +86,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
       setActiveTab('mapping');
     } catch (err) {
       setError('加载模板失败');
-      console.error(err);
+      logger.error(err);
     }
   };
 

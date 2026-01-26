@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import * as XLSX from 'xlsx';
 import { ExcelData } from '../types';
 
@@ -124,13 +125,13 @@ export const executeTransformation = async (
   datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } },
   timeoutMs: number = 30000 // Default 30 seconds
 ): Promise<{ [fileName: string]: any[] | { [sheetName: string]: any[] } }> => {
-  console.log('[Python Execution] Starting...');
-  console.log('[Python Execution] Code length:', code.length);
-  console.log('[Python Execution] Datasets keys:', Object.keys(datasets));
-  console.log('[Python Execution] Full Python code to execute:');
-  console.log('---BEGIN PYTHON CODE---');
-  console.log(code);
-  console.log('---END PYTHON CODE---');
+  logger.debug('[Python Execution] Starting...');
+  logger.debug('[Python Execution] Code length:', code.length);
+  logger.debug('[Python Execution] Datasets keys:', Object.keys(datasets));
+  logger.debug('[Python Execution] Full Python code to execute:');
+  logger.debug('---BEGIN PYTHON CODE---');
+  logger.debug(code);
+  logger.debug('---END PYTHON CODE---');
 
   try {
     // 检查是否在 Electron 环境中
@@ -139,7 +140,7 @@ export const executeTransformation = async (
     }
 
     // 调用主进程的 Python 执行器
-    console.log('[Python Execution] Calling electronAPI.executePython...');
+    logger.info('[Python Execution] Calling electronAPI.executePython...');
     const startTime = Date.now();
 
     const result = await (window as any).electronAPI.executePython({
@@ -149,8 +150,8 @@ export const executeTransformation = async (
     });
 
     const duration = Date.now() - startTime;
-    console.log(`[Python Execution] IPC call completed in ${duration}ms`);
-    console.log('[Python Execution] Result structure:', {
+    logger.info(`[Python Execution] IPC call completed in ${duration}ms`);
+    logger.debug('[Python Execution] Result structure:', {
       hasSuccess: 'success' in result,
       success: result.success,
       hasData: 'data' in result,
@@ -161,17 +162,17 @@ export const executeTransformation = async (
     });
 
     if (result.success) {
-      console.log('[Python Execution] ✅ Success!');
-      console.log('[Python Execution] Output data keys:', Object.keys(result.data));
+      logger.info('[Python Execution] ✅ Success!');
+      logger.debug('[Python Execution] Output data keys:', Object.keys(result.data));
       for (const [key, value] of Object.entries(result.data)) {
         const data = value as any[];
-        console.log(`[Python Execution] - ${key}: ${Array.isArray(data) ? data.length + ' rows' : typeof value}`);
+        logger.debug(`[Python Execution] - ${key}: ${Array.isArray(data) ? data.length + ' rows' : typeof value}`);
       }
       return result.data;
     } else {
-      console.error('[Python Execution] ❌ Failed!');
-      console.error('[Python Execution] Error type:', typeof result.error);
-      console.error('[Python Execution] Error message:', result.error);
+      logger.error('[Python Execution] ❌ Failed!');
+      logger.error('[Python Execution] Error type:', typeof result.error);
+      logger.error('[Python Execution] Error message:', result.error);
 
       // 详细的错误分析
       const errorStr = String(result.error || '');
@@ -199,13 +200,13 @@ export const executeTransformation = async (
       }
 
       const fullError = `Python执行失败 [${errorType}]\n${errorDetails}\n\n原始错误:\n${result.error}`;
-      console.error('[Python Execution]', fullError);
+      logger.error('[Python Execution]', fullError);
 
       throw new Error(fullError);
     }
   } catch (error) {
     const errorObj = error as Error;
-    console.error('[Python Execution] Exception caught:', {
+    logger.error('[Python Execution] Exception caught:', {
       name: errorObj.name,
       message: errorObj.message,
       stack: errorObj.stack

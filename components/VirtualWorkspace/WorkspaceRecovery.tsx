@@ -11,6 +11,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   History,
@@ -241,7 +242,7 @@ export const WorkspaceRecovery: React.FC<WorkspaceRecoveryProps> = ({
 
       await onRestore(sessionId, options);
     } catch (error) {
-      console.error('Failed to restore session:', error);
+      logger.error('Failed to restore session:', error);
     }
   }, [onRestore]);
 
@@ -257,7 +258,7 @@ export const WorkspaceRecovery: React.FC<WorkspaceRecoveryProps> = ({
       }
       loadSessions();
     } catch (error) {
-      console.error('Failed to delete session:', error);
+      logger.error('Failed to delete session:', error);
     }
   }, [onDelete, loadSessions]);
 
@@ -275,7 +276,7 @@ export const WorkspaceRecovery: React.FC<WorkspaceRecoveryProps> = ({
       loadSessions();
       setShowConfirmDialog(false);
     } catch (error) {
-      console.error('Failed to clear sessions:', error);
+      logger.error('Failed to clear sessions:', error);
     } finally {
       setIsClearing(false);
     }

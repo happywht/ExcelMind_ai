@@ -15,6 +15,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useRef, useCallback } from 'react';
 import {
   FileSpreadsheet,
@@ -326,7 +327,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
         onClose();
       }, 1500);
     } catch (error: any) {
-      console.error('Export failed:', error);
+      logger.error('Export failed:', error);
       alert(`导出失败: ${error.message}`);
     } finally {
       setIsExporting(false);

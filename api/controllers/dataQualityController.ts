@@ -8,6 +8,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -121,7 +122,7 @@ export class DataQualityController {
               requestId,
               progress
             }
-          }).catch(err => console.error('[DataQualityController] 进度推送失败:', err));
+          }).catch(err => logger.error('[DataQualityController] 进度推送失败:', err));
         }
       };
 
@@ -246,7 +247,7 @@ export class DataQualityController {
             error: error.message || '分析失败',
             timestamp: Date.now()
           }
-        }).catch(err => console.error('[DataQualityController] 错误推送失败:', err));
+        }).catch(err => logger.error('[DataQualityController] 错误推送失败:', err));
       }
 
       this.handleError(error, res, requestId);
@@ -541,7 +542,7 @@ export class DataQualityController {
    * 统一错误处理
    */
   private handleError(error: any, res: Response, requestId: string): void {
-    console.error('[DataQualityController] Error:', error);
+    logger.error('[DataQualityController] Error:', error);
 
     let errorCode = ApiErrorCode.INTERNAL_ERROR;
     let httpStatus = 500;
@@ -735,11 +736,11 @@ export function createDataQualityController(
   return new DataQualityController(storageService, websocketService);
 }
 
-// 为了向后兼容，导出一个使用默认实例的getter
+// 导出单例实例（将在服务器初始化时注入）
 let defaultInstance: DataQualityController | null = null;
 
 export const dataQualityController = {
-  get instance() {
+  get instance(): DataQualityController {
     if (!defaultInstance) {
       // 这里应该从DI容器获取实际的storageService和websocketService
       // 暂时使用null，实际使用时需要注入
@@ -747,7 +748,10 @@ export const dataQualityController = {
     }
     return defaultInstance;
   },
-  set instance(value: DataQualityController) {
+  set instance(value: DataQualityController | null) {
     defaultInstance = value;
   }
 };
+
+// 为了向后兼容，也导出一个默认实例
+export default dataQualityController;

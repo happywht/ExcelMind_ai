@@ -9,6 +9,7 @@
  * @description 智能数据处理增强模块的AI服务适配器
  */
 
+import { logger } from '@/utils/logger';
 import Anthropic from "@anthropic-ai/sdk";
 import { IAIService } from '../../types/dataQuality';
 
@@ -18,18 +19,32 @@ import { IAIService } from '../../types/dataQuality';
  * 实现IAIService接口，封装智谱AI的具体调用逻辑
  */
 export class AIServiceAdapter implements IAIService {
-  private client: Anthropic;
+  private client: Anthropic | null = null;
 
   /**
    * 构造函数
    */
   constructor() {
-    // 初始化智谱AI客户端
-    this.client = new Anthropic({
-      apiKey: process.env.ZHIPU_API_KEY || process.env.API_KEY || '',
-      baseURL: 'https://open.bigmodel.cn/api/anthropic',
-      dangerouslyAllowBrowser: true // 允许在浏览器环境中使用
-    });
+    // 延迟初始化客户端
+  }
+
+  /**
+   * 获取AI客户端（延迟初始化）
+   */
+  private getClient(): Anthropic {
+    if (!this.client) {
+      const isNodeEnv = typeof process !== 'undefined' && process.env !== undefined;
+      const apiKey = isNodeEnv
+        ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
+        : '';
+
+      this.client = new Anthropic({
+        apiKey,
+        baseURL: 'https://open.bigmodel.cn/api/anthropic',
+        dangerouslyAllowBrowser: isNodeEnv // 仅在Node.js环境允许直接调用
+      });
+    }
+    return this.client;
   }
 
   /**
@@ -40,7 +55,7 @@ export class AIServiceAdapter implements IAIService {
    */
   async analyze(prompt: string): Promise<string> {
     try {
-      const response = await this.client.messages.create({
+      const response = await this.getClient().messages.create({
         model: 'glm-4.6',
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }]
@@ -52,7 +67,7 @@ export class AIServiceAdapter implements IAIService {
 
       throw new Error('AI响应格式错误');
     } catch (error) {
-      console.error('[AIServiceAdapter] 分析失败:', error);
+      logger.error('[AIServiceAdapter] 分析失败:', error);
       throw new Error(`AI分析失败: ${error.message}`);
     }
   }
@@ -71,7 +86,7 @@ export class AIServiceAdapter implements IAIService {
 
 直接返回可执行的Python代码。`;
 
-      const response = await this.client.messages.create({
+      const response = await this.getClient().messages.create({
         model: 'glm-4.6',
         max_tokens: 3000,
         messages: [{ role: 'user', content: enhancedPrompt }]
@@ -89,7 +104,7 @@ export class AIServiceAdapter implements IAIService {
 
       throw new Error('AI响应格式错误');
     } catch (error) {
-      console.error('[AIServiceAdapter] 代码生成失败:', error);
+      logger.error('[AIServiceAdapter] 代码生成失败:', error);
       throw new Error(`代码生成失败: ${error.message}`);
     }
   }

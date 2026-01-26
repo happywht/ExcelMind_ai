@@ -12,6 +12,7 @@
  * @module TemplateManager
  */
 
+import { logger } from '@/utils/logger';
 import { CacheService } from './infrastructure/cacheService';
 import { TemplateValidator, ValidationResult } from './docxtemplaterService';
 import type {
@@ -381,7 +382,7 @@ export class TemplateManager {
       const result = await mammoth.convertToHtml({ arrayBuffer: templateBuffer });
       return result.value;
     } catch (error) {
-      console.error('生成预览失败:', error);
+      logger.error('生成预览失败:', error);
       return '<p>预览生成失败</p>';
     }
   }

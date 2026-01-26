@@ -6,6 +6,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState } from 'react';
 import {
   History,
@@ -80,7 +81,7 @@ const TemplateVersionHistory: React.FC<TemplateVersionHistoryProps> = ({
     try {
       await onRollback(versionId);
     } catch (error) {
-      console.error('回滚失败:', error);
+      logger.error('回滚失败:', error);
       alert('回滚失败，请重试');
     }
   };

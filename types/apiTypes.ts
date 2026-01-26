@@ -578,6 +578,8 @@ export interface BatchGenerationRequest {
   dataSourceId: string;
   templateIds: string[];
   outputFormat: 'docx' | 'pdf';
+  data?: any[];
+  mode?: 'sequential' | 'parallel';
   options?: BatchGenerationOptions;
   filters?: BatchGenerationFilters;
   notification?: NotificationConfig;
@@ -736,6 +738,7 @@ export interface AuditRule {
   description: string;
   lastTriggered?: string;
   triggerCount?: number;
+  createdAt?: string;
 }
 
 /**
@@ -799,9 +802,12 @@ export interface AuditSummary {
   totalRules: number;
   passed: number;
   failed: number;
+  passedRules?: number;
+  failedRules?: number;
   skipped: number;
   totalViolations: number;
   overallStatus: 'passed' | 'failed';
+  severity?: 'low' | 'medium' | 'high' | 'critical';
 }
 
 /**

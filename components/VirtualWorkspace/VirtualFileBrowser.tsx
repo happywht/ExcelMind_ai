@@ -12,6 +12,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
@@ -99,7 +100,7 @@ export const VirtualFileBrowser: React.FC<VirtualFileBrowserProps> = ({
 
       setFiles(extended);
     } catch (error) {
-      console.error('Failed to load files:', error);
+      logger.error('Failed to load files:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -187,7 +188,7 @@ export const VirtualFileBrowser: React.FC<VirtualFileBrowserProps> = ({
       await onFileUpload(uploadedFiles);
       await loadFiles(); // 刷新文件列表
     } catch (error) {
-      console.error('File upload failed:', error);
+      logger.error('File upload failed:', error);
     } finally {
       setIsUploading(false);
     }
@@ -203,7 +204,7 @@ export const VirtualFileBrowser: React.FC<VirtualFileBrowserProps> = ({
       await onFileDelete(fileId);
       await loadFiles(); // 刷新文件列表
     } catch (error) {
-      console.error('File delete failed:', error);
+      logger.error('File delete failed:', error);
     }
   }, [onFileDelete, loadFiles]);
 
@@ -227,11 +228,11 @@ export const VirtualFileBrowser: React.FC<VirtualFileBrowserProps> = ({
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         } catch (error) {
-          console.error('Download failed:', error);
+          logger.error('Download failed:', error);
         }
         break;
       default:
-        console.log('Operation:', operation, file);
+        logger.debug('Operation:', operation, file);
     }
   }, [vfs, handleFileDelete]);
 

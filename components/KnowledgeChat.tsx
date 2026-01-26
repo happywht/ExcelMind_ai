@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Book, Paperclip, Bot, User, Trash2, FileText } from 'lucide-react';
 import { ChatMessage } from '../types';
-import { chatWithKnowledgeBase } from '../services/zhipuService';
+import { chatWithKnowledgeBase } from '../services/aiProxyService';
 import ReactMarkdown from 'react-markdown';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 // Use explicit named imports or fallback to default if necessary
 import * as pdfjsLib from 'pdfjs-dist';
+import { logger } from '@/utils/logger';
 
 // Handle PDF.js export structure differences (ESM vs CJS interop)
 const pdfjs = pdfjsLib.default ? (pdfjsLib.default as any) : pdfjsLib;
@@ -96,7 +97,7 @@ export const KnowledgeChat: React.FC = () => {
         const result = await mammoth.extractRawText({ arrayBuffer: buffer });
         textContent = result.value;
         if (result.messages.length > 0) {
-          console.warn("Mammoth messages:", result.messages);
+          logger.warn("Mammoth messages:", result.messages);
         }
       }
       else if (extension === 'pdf') {
@@ -123,7 +124,7 @@ export const KnowledgeChat: React.FC = () => {
 
       return { content: textContent.trim(), type: fileType };
     } catch (err) {
-      console.error("Failed to parse file", err);
+      logger.error("Failed to parse file", err);
       throw new Error(`解析文件失败: ${file.name}`);
     }
   };
@@ -349,3 +350,6 @@ export const KnowledgeChat: React.FC = () => {
     </div>
   );
 };
+
+// 添加默认导出以支持React.lazy()
+export default KnowledgeChat;

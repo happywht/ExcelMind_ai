@@ -429,3 +429,6 @@ export const DocumentSpace: React.FC = () => {
     </div>
   );
 };
+
+// 添加默认导出以支持React.lazy()
+export default DocumentSpace;

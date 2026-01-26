@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
-import { batchGenerationAPI, TaskProgress, WebSocketEvent } from '../../api/batchGenerationAPI';
+import { batchGenerationAPI, WebSocketEvent } from '../../services/batchGenerationAPI';
+import type { TaskProgress as TaskProgressType } from '../../services/batchGenerationAPI';
 import StatusIndicator from '../Shared/StatusIndicator';
 import ProgressBar from '../Shared/ProgressBar';
 
@@ -28,7 +29,7 @@ interface TaskProgressProps {
 }
 
 const TaskProgress: React.FC<TaskProgressProps> = ({ taskId, onComplete, className }) => {
-  const [progress, setProgress] = useState<TaskProgress | null>(null);
+  const [progress, setProgress] = useState<TaskProgressType | null>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [error, setError] = useState<string | null>(null);
 

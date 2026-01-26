@@ -9,6 +9,7 @@
  * 5. 单一职责：每个类只有一个变更的理由
  */
 
+import { logger } from '@/utils/logger';
 import {
   ProcessingStage,
   ExecutionStatus,
@@ -908,7 +909,7 @@ export class IntelligentDocumentService implements ITaskOrchestrationService {
   }
 
   private handleError(operation: string, error: Error): void {
-    console.error(`[IntelligentDocumentService] Error in ${operation}:`, error);
+    logger.error(`[IntelligentDocumentService] Error in ${operation}:`, error);
     this.eventBus.publish('service:error', {
       service: 'IntelligentDocumentService',
       operation,
@@ -917,15 +918,15 @@ export class IntelligentDocumentService implements ITaskOrchestrationService {
   }
 
   private handleTaskCompleted(data: any): void {
-    console.log(`[IntelligentDocumentService] Task completed:`, data.taskId);
+    logger.info(`[IntelligentDocumentService] Task completed:`, data.taskId);
   }
 
   private handleTaskFailed(data: any): void {
-    console.error(`[IntelligentDocumentService] Task failed:`, data.taskId, data.error);
+    logger.error(`[IntelligentDocumentService] Task failed:`, data.taskId, data.error);
   }
 
   private handleTaskProgress(data: any): void {
-    console.log(`[IntelligentDocumentService] Task progress:`, data.taskId, data.progress);
+    logger.debug(`[IntelligentDocumentService] Task progress:`, data.taskId, data.progress);
   }
 }
 

@@ -6,6 +6,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect } from 'react';
 import {
   FileText,
@@ -18,8 +19,8 @@ import {
   Search,
   Filter
 } from 'lucide-react';
-import { TemplateMetadata } from '../../api/templateAPI';
-import { templateAPI } from '../../api/templateAPI';
+import { TemplateMetadata } from '../../services/templateAPI';
+import { templateAPI } from '../../services/templateAPI';
 import StatusIndicator from '../Shared/StatusIndicator';
 
 interface TemplateListProps {
@@ -44,7 +45,7 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
       const response = await templateAPI.listTemplates({ page: 1, pageSize: 50 });
       setTemplates(response.items);
     } catch (error) {
-      console.error('加载模板失败:', error);
+      logger.error('加载模板失败:', error);
     } finally {
       setLoading(false);
     }
@@ -59,7 +60,7 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
       setTemplates(templates.filter(t => t.id !== templateId));
       setShowMenu(null);
     } catch (error) {
-      console.error('删除模板失败:', error);
+      logger.error('删除模板失败:', error);
       alert('删除失败，请重试');
     }
   };
@@ -75,7 +76,7 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('下载模板失败:', error);
+      logger.error('下载模板失败:', error);
     }
     setShowMenu(null);
   };

@@ -5,6 +5,7 @@
  * 整合所有路由、中间件和配置
  */
 
+import { logger } from '@/utils/logger';
 import express, { Express } from 'express';
 import cors from 'cors';
 import compression from 'compression';
@@ -71,7 +72,7 @@ export function createApp(): Express {
         const method = req.method;
         const path = req.path;
 
-        console.log(
+        logger.debug(
           `[${requestId}] ${method} ${path} ${status} - ${duration}ms`
         );
       });

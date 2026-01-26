@@ -8,6 +8,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import { Router } from 'express';
 import { DataQualityController } from '../controllers/dataQualityController';
 
@@ -26,7 +27,7 @@ export function createDataQualityRoutes(controller: DataQualityController): Rout
    */
   router.post('/analyze', (req, res) => {
     controller.analyze(req, res).catch(err => {
-      console.error('[DataQualityRoutes] /analyze error:', err);
+      logger.error('[DataQualityRoutes] /analyze error:', err);
       res.status(500).json({
         success: false,
         error: {
@@ -43,7 +44,7 @@ export function createDataQualityRoutes(controller: DataQualityController): Rout
    */
   router.get('/analysis/:id', (req, res) => {
     controller.getAnalysis(req, res).catch(err => {
-      console.error('[DataQualityRoutes] /analysis/:id error:', err);
+      logger.error('[DataQualityRoutes] /analysis/:id error:', err);
       res.status(500).json({
         success: false,
         error: {
@@ -60,7 +61,7 @@ export function createDataQualityRoutes(controller: DataQualityController): Rout
    */
   router.post('/recommendations', (req, res) => {
     controller.getRecommendations(req, res).catch(err => {
-      console.error('[DataQualityRoutes] /recommendations error:', err);
+      logger.error('[DataQualityRoutes] /recommendations error:', err);
       res.status(500).json({
         success: false,
         error: {
@@ -77,7 +78,7 @@ export function createDataQualityRoutes(controller: DataQualityController): Rout
    */
   router.post('/auto-fix', (req, res) => {
     controller.autoFix(req, res).catch(err => {
-      console.error('[DataQualityRoutes] /auto-fix error:', err);
+      logger.error('[DataQualityRoutes] /auto-fix error:', err);
       res.status(500).json({
         success: false,
         error: {
@@ -94,7 +95,7 @@ export function createDataQualityRoutes(controller: DataQualityController): Rout
    */
   router.get('/statistics', (req, res) => {
     controller.getStatistics(req, res).catch(err => {
-      console.error('[DataQualityRoutes] /statistics error:', err);
+      logger.error('[DataQualityRoutes] /statistics error:', err);
       res.status(500).json({
         success: false,
         error: {

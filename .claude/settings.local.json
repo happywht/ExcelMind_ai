@@ -8,7 +8,9 @@
       "mcp__chrome-devtools__upload_file",
       "mcp__chrome-devtools__list_console_messages",
       "mcp__chrome-devtools__fill",
-      "mcp__chrome-devtools__wait_for"
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__get_console_message",
+      "mcp__chrome-devtools__press_key"
     ]
   }
 }

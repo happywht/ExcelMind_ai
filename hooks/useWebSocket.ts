@@ -6,6 +6,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import { useEffect, useState, useCallback, useRef } from 'react';
 
 // ==================== 类型定义 ====================
@@ -67,7 +68,7 @@ class WebSocketClientImpl implements WebSocketClient {
 
   connect(): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('[WebSocket] 已经连接');
+      logger.debug('[WebSocket] 已经连接');
       return;
     }
 
@@ -77,7 +78,7 @@ class WebSocketClientImpl implements WebSocketClient {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
-        console.log('[WebSocket] 连接成功');
+        logger.debug('[WebSocket] 连接成功');
         this.reconnectAttempts = 0;
 
         // 重新订阅之前的频道
@@ -101,7 +102,7 @@ class WebSocketClientImpl implements WebSocketClient {
       this.ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          console.log('[WebSocket] 收到消息:', message);
+          logger.debug('[WebSocket] 收到消息:', message);
 
           // 触发全局消息处理
           this.options.onMessage(message);
@@ -109,12 +110,12 @@ class WebSocketClientImpl implements WebSocketClient {
           // 触发特定类型的处理
           this.emit(message.type, message);
         } catch (error) {
-          console.error('[WebSocket] 解析消息失败:', error);
+          logger.error('[WebSocket] 解析消息失败:', error);
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error('[WebSocket] 连接错误:', error);
+        logger.error('[WebSocket] 连接错误:', error);
         this.options.onError(error);
 
         this.emit('error', {
@@ -125,7 +126,7 @@ class WebSocketClientImpl implements WebSocketClient {
       };
 
       this.ws.onclose = () => {
-        console.log('[WebSocket] 连接关闭');
+        logger.debug('[WebSocket] 连接关闭');
         this.options.onDisconnect();
 
         this.emit('disconnected', {
@@ -139,7 +140,7 @@ class WebSocketClientImpl implements WebSocketClient {
         }
       };
     } catch (error) {
-      console.error('[WebSocket] 创建连接失败:', error);
+      logger.error('[WebSocket] 创建连接失败:', error);
       this.scheduleReconnect();
     }
   }
@@ -162,7 +163,7 @@ class WebSocketClientImpl implements WebSocketClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     } else {
-      console.warn('[WebSocket] 未连接，无法发送消息');
+      logger.warn('[WebSocket] 未连接，无法发送消息');
     }
   }
 
@@ -216,7 +217,7 @@ class WebSocketClientImpl implements WebSocketClient {
         try {
           handler(message);
         } catch (error) {
-          console.error(`[WebSocket] 处理事件 ${event} 失败:`, error);
+          logger.error(`[WebSocket] 处理事件 ${event} 失败:`, error);
         }
       });
     }
@@ -224,7 +225,7 @@ class WebSocketClientImpl implements WebSocketClient {
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
-      console.error('[WebSocket] 达到最大重连次数，停止重连');
+      logger.error('[WebSocket] 达到最大重连次数，停止重连');
       return;
     }
 
@@ -235,7 +236,7 @@ class WebSocketClientImpl implements WebSocketClient {
     this.reconnectAttempts++;
     const delay = this.options.reconnectInterval * Math.min(this.reconnectAttempts, 5);
 
-    console.log(`[WebSocket] ${delay}ms后进行第${this.reconnectAttempts}次重连`);
+    logger.debug(`[WebSocket] ${delay}ms后进行第${this.reconnectAttempts}次重连`);
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

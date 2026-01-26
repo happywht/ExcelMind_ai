@@ -8,7 +8,7 @@ import { Router, Request, Response } from 'express';
 import { v2Router } from './v2';
 import { errorHandler, notFoundHandler } from '../middleware/errorHandler';
 import { authMiddleware } from '../middleware/authMiddleware';
-import rateLimit from 'express-rate-limit';
+// import rateLimit from 'express-rate-limit'; // 暂时注释掉，因为包未安装
 
 /**
  * 创建API路由器

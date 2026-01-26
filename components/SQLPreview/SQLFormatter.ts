@@ -5,6 +5,7 @@
 
 import { format } from 'sql-formatter';
 import type { FormatOptions, ValidationResult, ValidationError } from './types';
+import { logger } from '@/utils/logger';
 
 /**
  * SQL格式化器类
@@ -57,7 +58,7 @@ export class SQLFormatter {
 
       return formatted.trim();
     } catch (error) {
-      console.error('SQL格式化失败:', error);
+      logger.error('SQL格式化失败:', error);
       // 如果格式化失败，返回原SQL
       return sql;
     }
@@ -76,7 +77,7 @@ export class SQLFormatter {
         .replace(/;\s*;/g, ';')         // 移除多余的分号
         .trim();
     } catch (error) {
-      console.error('SQL压缩失败:', error);
+      logger.error('SQL压缩失败:', error);
       return sql;
     }
   }

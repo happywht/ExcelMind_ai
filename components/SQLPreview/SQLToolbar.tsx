@@ -6,6 +6,7 @@
 import React from 'react';
 import { Code, Save, FileDown, Copy, Check, Undo2, Redo2, Sparkles } from 'lucide-react';
 import type { FormatButtonProps, SaveButtonProps } from './types';
+import { logger } from '@/utils/logger';
 
 /**
  * 格式化按钮
@@ -90,7 +91,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
 
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error('复制失败:', error);
+      logger.error('复制失败:', error);
     }
   };
 

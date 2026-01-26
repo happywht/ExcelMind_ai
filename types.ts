@@ -3,7 +3,10 @@ export enum AppView {
   SMART_OPS = 'SMART_OPS',
   FORMULA = 'FORMULA',
   KNOWLEDGE_CHAT = 'KNOWLEDGE_CHAT',
-  DOCUMENT_SPACE = 'DOCUMENT_SPACE', // 新增：文档空间
+  DOCUMENT_SPACE = 'DOCUMENT_SPACE', // 文档空间
+  BATCH_GENERATION = 'BATCH_GENERATION', // 新增：批量生成
+  TEMPLATE_MANAGEMENT = 'TEMPLATE_MANAGEMENT', // 新增：模板管理
+  DATA_QUALITY = 'DATA_QUALITY', // 新增：数据质量分析
 }
 
 export interface ChatMessage {

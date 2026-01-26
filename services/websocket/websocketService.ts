@@ -1,256 +1,472 @@
 /**
- * WebSocket服务 - Phase 2 实时通信
+ * 统一WebSocket服务 - Phase 2 WebSocket实现统一
  *
- * 职责：提供WebSocket实时消息推送功能
- * 功能：进度推送、状态更新、事件通知
+ * 职责：
+ * 1. 提供统一的WebSocket服务入口
+ * 2. 自动选择服务端或客户端实现
+ * 3. 管理WebSocket实例生命周期
+ * 4. 提供单例模式访问
  *
  * @module services/websocket/websocketService
- * @version 1.0.0
- * @description WebSocket实时通信服务
+ * @version 2.0.0
+ * @description 统一WebSocket实时通信服务
  */
 
-/**
- * WebSocket消息类型
- */
-export type WebSocketMessageType =
-  | 'analysis_started'
-  | 'analysis_progress'
-  | 'analysis_completed'
-  | 'analysis_error'
-  | 'recommendations_started'
-  | 'recommendations_completed'
-  | 'cleaning_started'
-  | 'cleaning_progress'
-  | 'cleaning_completed'
-  | 'cleaning_error';
+// ============================================================================
+// 导出统一接口
+// ============================================================================
+
+export * from './IWebSocket';
+
+// ============================================================================
+// 导出实现类
+// ============================================================================
+
+export { ServerWebSocket } from './ServerWebSocket';
+export { ClientWebSocket } from './ClientWebSocket';
+
+// ============================================================================
+// 导入类型定义
+// ============================================================================
+
+import {
+  IWebSocket,
+  ConnectOptions,
+  MessageHandler,
+  EventHandler,
+  SubscribeOptions,
+  BroadcastOptions,
+  WebSocketStats,
+  WebSocketState,
+} from './IWebSocket';
+import { ServerWebSocket } from './ServerWebSocket';
+import { ClientWebSocket } from './ClientWebSocket';
+
+// ============================================================================
+// WebSocket环境类型
+// ============================================================================
+
+export type WebSocketEnvironment = 'server' | 'client';
+
+// ============================================================================
+// 统一WebSocket服务类
+// ============================================================================
 
 /**
- * WebSocket消息
- */
-export interface WebSocketMessage<T = any> {
-  type: WebSocketMessageType;
-  payload: T;
-  timestamp?: number;
-}
-
-/**
- * WebSocket服务接口
- */
-export interface IWebSocketService {
-  /**
-   * 发送消息到指定客户端
-   */
-  send(clientId: string, message: WebSocketMessage): Promise<void>;
-
-  /**
-   * 广播消息到所有客户端
-   */
-  broadcast(message: WebSocketMessage): Promise<void>;
-
-  /**
-   * 订阅频道
-   */
-  subscribe(clientId: string, channel: string): Promise<void>;
-
-  /**
-   * 取消订阅频道
-   */
-  unsubscribe(clientId: string, channel: string): Promise<void>;
-
-  /**
-   * 处理连接
-   */
-  handleConnection(clientId: string): void;
-
-  /**
-   * 处理断开连接
-   */
-  handleDisconnection(clientId: string): void;
-}
-
-/**
- * WebSocket服务实现
+ * 统一WebSocket服务
  *
- * 提供内存级别的WebSocket消息管理
- * 实际WebSocket连接由上层应用服务器处理
+ * 根据环境自动选择服务端或客户端实现
  */
-export class WebSocketService implements IWebSocketService {
-  // 客户端连接映射（实际由服务器维护）
-  private connectedClients: Map<string, Set<string>>;
-  // 频道订阅映射
-  private channelSubscriptions: Map<string, Set<string>>;
-  // 消息队列（用于测试）
-  private messageQueues: Map<string, WebSocketMessage[]>;
+export class WebSocketService implements IWebSocket {
+  // ========================================================================
+  // 私有属性
+  // ========================================================================
+
+  private impl: IWebSocket;
+  private environment: WebSocketEnvironment;
+
+  // ========================================================================
+  // 构造函数
+  // ========================================================================
 
   /**
-   * 构造函数
-   */
-  constructor() {
-    this.connectedClients = new Map();
-    this.channelSubscriptions = new Map();
-    this.messageQueues = new Map();
-  }
-
-  /**
-   * 发送消息到指定客户端
+   * 构造WebSocket服务实例
    *
-   * @param clientId 客户端ID
-   * @param message 消息内容
+   * @param environment - 运行环境 ('server' | 'client')
+   * @param url - WebSocket URL（客户端需要）
+   * @param options - 连接选项
+   * @param wsServer - WebSocket服务器实例（服务端需要）
    */
-  async send(clientId: string, message: WebSocketMessage): Promise<void> {
-    // 添加时间戳
-    message.timestamp = message.timestamp || Date.now();
+  constructor(
+    environment: WebSocketEnvironment,
+    url?: string,
+    options?: ConnectOptions,
+    wsServer?: any
+  ) {
+    this.environment = environment;
 
-    // 在实际实现中，这里会通过WebSocket连接发送消息
-    // 目前我们将其放入消息队列供测试使用
-    if (!this.messageQueues.has(clientId)) {
-      this.messageQueues.set(clientId, []);
-    }
-    this.messageQueues.get(clientId)!.push(message);
-
-    // 记录日志
-    console.log(`[WebSocketService] 发送消息到客户端 ${clientId}:`, {
-      type: message.type,
-      timestamp: message.timestamp
-    });
-  }
-
-  /**
-   * 广播消息到所有客户端
-   *
-   * @param message 消息内容
-   */
-  async broadcast(message: WebSocketMessage): Promise<void> {
-    // 添加时间戳
-    message.timestamp = message.timestamp || Date.now();
-
-    // 发送给所有连接的客户端
-    for (const clientId of this.connectedClients.keys()) {
-      await this.send(clientId, message);
+    if (environment === 'server') {
+      if (!wsServer) {
+        throw new Error('WebSocketServer instance is required for server environment');
+      }
+      this.impl = new ServerWebSocket(wsServer);
+    } else {
+      if (!url) {
+        throw new Error('URL is required for client environment');
+      }
+      this.impl = new ClientWebSocket(url, options);
     }
   }
+
+  // ========================================================================
+  // 连接管理
+  // ========================================================================
+
+  /**
+   * 建立连接
+   */
+  async connect(url?: string, options?: ConnectOptions): Promise<void> {
+    return this.impl.connect(url, options);
+  }
+
+  /**
+   * 断开连接
+   */
+  async disconnect(): Promise<void> {
+    return this.impl.disconnect();
+  }
+
+  /**
+   * 检查是否已连接
+   */
+  isConnected(): boolean {
+    return this.impl.isConnected();
+  }
+
+  /**
+   * 获取连接ID
+   */
+  getConnectionId(): string {
+    return this.impl.getConnectionId();
+  }
+
+  /**
+   * 获取连接状态
+   */
+  getState(): WebSocketState {
+    return this.impl.getState();
+  }
+
+  // ========================================================================
+  // 订阅管理
+  // ========================================================================
 
   /**
    * 订阅频道
-   *
-   * @param clientId 客户端ID
-   * @param channel 频道名称
    */
-  async subscribe(clientId: string, channel: string): Promise<void> {
-    if (!this.channelSubscriptions.has(channel)) {
-      this.channelSubscriptions.set(channel, new Set());
-    }
-    this.channelSubscriptions.get(channel)!.add(clientId);
-
-    console.log(`[WebSocketService] 客户端 ${clientId} 订阅频道 ${channel}`);
+  subscribe(channel: string, handler: MessageHandler, options?: SubscribeOptions): void {
+    this.impl.subscribe(channel, handler, options);
   }
 
   /**
    * 取消订阅频道
-   *
-   * @param clientId 客户端ID
-   * @param channel 频道名称
    */
-  async unsubscribe(clientId: string, channel: string): Promise<void> {
-    const subscribers = this.channelSubscriptions.get(channel);
-    if (subscribers) {
-      subscribers.delete(clientId);
+  unsubscribe(channel: string): void {
+    this.impl.unsubscribe(channel);
+  }
+
+  /**
+   * 取消所有订阅
+   */
+  unsubscribeAll(): void {
+    this.impl.unsubscribeAll();
+  }
+
+  /**
+   * 获取订阅列表
+   */
+  getSubscriptions(): string[] {
+    return this.impl.getSubscriptions();
+  }
+
+  // ========================================================================
+  // 消息发送
+  // ========================================================================
+
+  /**
+   * 发送消息到指定频道
+   */
+  async send(channel: string, message: any): Promise<void> {
+    return this.impl.send(channel, message);
+  }
+
+  /**
+   * 广播消息
+   */
+  async broadcast(channel: string, message: any, options?: BroadcastOptions): Promise<void> {
+    return this.impl.broadcast(channel, message, options);
+  }
+
+  /**
+   * 发送消息到指定连接
+   */
+  async sendToConnection(connectionId: string, message: any): Promise<void> {
+    return this.impl.sendToConnection(connectionId, message);
+  }
+
+  /**
+   * 广播消息到所有连接
+   */
+  async broadcastToAll(message: any): Promise<void> {
+    return this.impl.broadcastToAll(message);
+  }
+
+  // ========================================================================
+  // 房间管理
+  // ========================================================================
+
+  /**
+   * 加入房间
+   */
+  async joinRoom(room: string): Promise<void> {
+    if (this.impl.joinRoom) {
+      return this.impl.joinRoom(room);
     }
-
-    console.log(`[WebSocketService] 客户端 ${clientId} 取消订阅频道 ${channel}`);
   }
 
   /**
-   * 处理新连接
-   *
-   * @param clientId 客户端ID
+   * 离开房间
    */
-  handleConnection(clientId: string): void {
-    if (!this.connectedClients.has(clientId)) {
-      this.connectedClients.set(clientId, new Set());
-    }
-    console.log(`[WebSocketService] 客户端 ${clientId} 已连接`);
-  }
-
-  /**
-   * 处理断开连接
-   *
-   * @param clientId 客户端ID
-   */
-  handleDisconnection(clientId: string): void {
-    // 从所有频道移除
-    for (const [channel, subscribers] of this.channelSubscriptions.entries()) {
-      subscribers.delete(clientId);
-    }
-
-    // 清理客户端数据
-    this.connectedClients.delete(clientId);
-    this.messageQueues.delete(clientId);
-
-    console.log(`[WebSocketService] 客户端 ${clientId} 已断开`);
-  }
-
-  /**
-   * 发送消息到频道
-   *
-   * @param channel 频道名称
-   * @param message 消息内容
-   */
-  async sendToChannel(channel: string, message: WebSocketMessage): Promise<void> {
-    const subscribers = this.channelSubscriptions.get(channel);
-    if (subscribers) {
-      for (const clientId of subscribers) {
-        await this.send(clientId, message);
-      }
+  async leaveRoom(room: string): Promise<void> {
+    if (this.impl.leaveRoom) {
+      return this.impl.leaveRoom(room);
     }
   }
 
   /**
-   * 获取客户端的消息队列（用于测试）
-   *
-   * @param clientId 客户端ID
-   * @returns 消息队列
+   * 发送消息到房间
    */
-  getMessageQueue(clientId: string): WebSocketMessage[] {
-    return this.messageQueues.get(clientId) || [];
+  async sendToRoom(room: string, message: any): Promise<void> {
+    if (this.impl.sendToRoom) {
+      return this.impl.sendToRoom(room, message);
+    }
   }
 
   /**
-   * 清空客户端的消息队列
-   *
-   * @param clientId 客户端ID
+   * 获取房间内的客户端列表
    */
-  clearMessageQueue(clientId: string): void {
-    this.messageQueues.delete(clientId);
+  getRoomClients(room: string): string[] {
+    if (this.impl.getRoomClients) {
+      return this.impl.getRoomClients(room);
+    }
+    return [];
+  }
+
+  // ========================================================================
+  // 事件处理
+  // ========================================================================
+
+  /**
+   * 注册事件处理器
+   */
+  on(event: 'connected' | 'disconnected' | 'error' | 'message', handler: EventHandler): void {
+    this.impl.on(event, handler);
   }
 
   /**
-   * 获取连接的客户端列表
-   *
-   * @returns 客户端ID数组
+   * 移除事件处理器
    */
-  getConnectedClients(): string[] {
-    return Array.from(this.connectedClients.keys());
+  off(event: string, handler?: EventHandler): void {
+    this.impl.off(event, handler);
   }
 
   /**
-   * 获取频道的订阅者列表
-   *
-   * @param channel 频道名称
-   * @returns 订阅者ID数组
+   * 移除所有事件处理器
    */
-  getChannelSubscribers(channel: string): string[] {
-    const subscribers = this.channelSubscriptions.get(channel);
-    return subscribers ? Array.from(subscribers) : [];
+  removeAllListeners(event?: string): void {
+    if (this.impl.removeAllListeners) {
+      this.impl.removeAllListeners(event);
+    }
+  }
+
+  // ========================================================================
+  // 统计和监控
+  // ========================================================================
+
+  /**
+   * 获取统计信息
+   */
+  getStats(): WebSocketStats {
+    return this.impl.getStats();
+  }
+
+  /**
+   * 获取服务器统计信息
+   */
+  getServerStats(): any {
+    if (this.impl.getServerStats) {
+      return this.impl.getServerStats();
+    }
+    return null;
+  }
+
+  /**
+   * 获取环境类型
+   */
+  getEnvironment(): WebSocketEnvironment {
+    return this.environment;
   }
 }
 
+// ============================================================================
+// 单例管理
+// ============================================================================
+
 /**
- * 创建WebSocket服务实例
+ * WebSocket服务单例管理器
+ */
+class WebSocketServiceManager {
+  private instances: Map<string, WebSocketService> = new Map();
+
+  /**
+   * 获取或创建WebSocket服务实例
+   *
+   * @param environment - 运行环境
+   * @param url - WebSocket URL（客户端需要）
+   * @param options - 连接选项
+   * @param wsServer - WebSocket服务器实例（服务端需要）
+   * @returns WebSocket服务实例
+   */
+  getInstance(
+    environment: WebSocketEnvironment,
+    url?: string,
+    options?: ConnectOptions,
+    wsServer?: any
+  ): WebSocketService {
+    const key = this.generateKey(environment, url, wsServer);
+
+    if (!this.instances.has(key)) {
+      const instance = new WebSocketService(environment, url, options, wsServer);
+      this.instances.set(key, instance);
+    }
+
+    return this.instances.get(key)!;
+  }
+
+  /**
+   * 销毁指定实例
+   *
+   * @param environment - 运行环境
+   * @param url - WebSocket URL
+   * @param wsServer - WebSocket服务器实例
+   */
+  async destroyInstance(
+    environment: WebSocketEnvironment,
+    url?: string,
+    wsServer?: any
+  ): Promise<void> {
+    const key = this.generateKey(environment, url, wsServer);
+    const instance = this.instances.get(key);
+
+    if (instance) {
+      await instance.disconnect();
+      this.instances.delete(key);
+    }
+  }
+
+  /**
+   * 销毁所有实例
+   */
+  async destroyAll(): Promise<void> {
+    const promises = Array.from(this.instances.values()).map(instance =>
+      instance.disconnect()
+    );
+    await Promise.all(promises);
+    this.instances.clear();
+  }
+
+  /**
+   * 生成实例键
+   */
+  private generateKey(
+    environment: WebSocketEnvironment,
+    url?: string,
+    wsServer?: any
+  ): string {
+    if (environment === 'server') {
+      return `server_${wsServer?.constructor.name || 'default'}`;
+    } else {
+      return `client_${url}`;
+    }
+  }
+}
+
+// ============================================================================
+// 全局单例实例
+// ============================================================================
+
+const wsServiceManager = new WebSocketServiceManager();
+
+// ============================================================================
+// 便捷工厂函数
+// ============================================================================
+
+/**
+ * 获取WebSocket服务实例
+ *
+ * @param environment - 运行环境
+ * @param url - WebSocket URL（客户端需要）
+ * @param options - 连接选项
+ * @param wsServer - WebSocket服务器实例（服务端需要）
+ * @returns WebSocket服务实例
+ */
+export function getWebSocketService(
+  environment: WebSocketEnvironment,
+  url?: string,
+  options?: ConnectOptions,
+  wsServer?: any
+): WebSocketService {
+  return wsServiceManager.getInstance(environment, url, options, wsServer);
+}
+
+/**
+ * 创建服务端WebSocket服务
+ *
+ * @param wsServer - WebSocket服务器实例
+ * @returns WebSocket服务实例
+ */
+export function createServerWebSocketService(wsServer: any): WebSocketService {
+  return getWebSocketService('server', undefined, undefined, wsServer);
+}
+
+/**
+ * 创建客户端WebSocket服务
+ *
+ * @param url - WebSocket服务器URL
+ * @param options - 连接选项
+ * @returns WebSocket服务实例
+ */
+export function createClientWebSocketService(
+  url: string,
+  options?: ConnectOptions
+): WebSocketService {
+  return getWebSocketService('client', url, options);
+}
+
+/**
+ * 销毁WebSocket服务实例
+ *
+ * @param environment - 运行环境
+ * @param url - WebSocket URL
+ * @param wsServer - WebSocket服务器实例
+ */
+export async function destroyWebSocketService(
+  environment: WebSocketEnvironment,
+  url?: string,
+  wsServer?: any
+): Promise<void> {
+  await wsServiceManager.destroyInstance(environment, url, wsServer);
+}
+
+/**
+ * 销毁所有WebSocket服务实例
+ */
+export async function destroyAllWebSocketServices(): Promise<void> {
+  await wsServiceManager.destroyAll();
+}
+
+// ============================================================================
+// 向后兼容的导出（保持旧API兼容性）
+// ============================================================================
+
+/**
+ * @deprecated 使用 getWebSocketService 或 createClientWebSocketService 代替
  */
 export function createWebSocketService(): WebSocketService {
-  return new WebSocketService();
+  console.warn('[WebSocketService] createWebSocketService() is deprecated, use getWebSocketService() instead');
+  // 返回一个默认的服务端实例
+  return new WebSocketService('server');
 }
 
-// 导出默认实例（单例）
-export const webSocketService = new WebSocketService();
+// 导出默认实例（单例）- 保持向后兼容
+export const webSocketService = new WebSocketService('server');

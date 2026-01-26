@@ -6,16 +6,30 @@
  * 版本: v2.0 - 支持多Sheet分析和跨Sheet映射
  */
 
+import { logger } from '@/utils/logger';
 import Anthropic from "@anthropic-ai/sdk";
 import { MappingScheme, FieldMapping, SheetInfo, CrossSheetMapping } from '../types/documentTypes';
 import { SAMPLING_CONFIG } from '../config/samplingConfig';
 
 // 配置智谱AI客户端
-const client = new Anthropic({
-  apiKey: process.env.ZHIPU_API_KEY || process.env.API_KEY || '',
-  baseURL: 'https://open.bigmodel.cn/api/anthropic',
-  dangerouslyAllowBrowser: true
-});
+// 环境检测：兼容浏览器和Node.js环境
+const isNodeEnv = typeof process !== 'undefined' && process.env !== undefined;
+let client: Anthropic | null = null;
+
+const getClient = (): Anthropic => {
+  if (!client) {
+    const apiKey = isNodeEnv
+      ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
+      : '';
+
+    client = new Anthropic({
+      apiKey,
+      baseURL: 'https://open.bigmodel.cn/api/anthropic',
+      dangerouslyAllowBrowser: isNodeEnv
+    });
+  }
+  return client;
+};
 
 /**
  * AI映射生成请求参数（V2 - 增强版）
@@ -57,7 +71,7 @@ export async function generateFieldMappingV2(params: GenerateMappingParamsV2): P
     });
 
     // 调用智谱AI
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: "glm-4.6",
       max_tokens: 8192, // 增加token限制以支持多Sheet分析
       messages: [{
@@ -75,7 +89,7 @@ export async function generateFieldMappingV2(params: GenerateMappingParamsV2): P
     return mappingScheme;
 
   } catch (error) {
-    console.error("多Sheet映射生成失败:", error);
+    logger.error("多Sheet映射生成失败:", error);
     throw new Error(`AI映射生成失败: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -357,7 +371,7 @@ function parseMultiSheetMappingResponse(text: string, allSheetsInfo: SheetInfo[]
     // 验证主Sheet是否存在
     const primarySheetExists = allSheetsInfo.some(sheet => sheet.sheetName === result.primarySheet);
     if (!primarySheetExists) {
-      console.warn(`AI选择的主Sheet "${result.primarySheet}" 不存在，使用第一个Sheet`);
+      logger.warn(`AI选择的主Sheet "${result.primarySheet}" 不存在，使用第一个Sheet`);
       result.primarySheet = allSheetsInfo[0]?.sheetName || 'Sheet1';
     }
 
@@ -381,7 +395,7 @@ function parseMultiSheetMappingResponse(text: string, allSheetsInfo: SheetInfo[]
       result.crossSheetMappings = result.crossSheetMappings.filter((mapping: CrossSheetMapping) => {
         const sourceExists = allSheetsInfo.some(sheet => sheet.sheetName === mapping.sourceSheet);
         if (!sourceExists) {
-          console.warn(`跨Sheet映射的来源Sheet "${mapping.sourceSheet}" 不存在，已忽略`);
+          logger.warn(`跨Sheet映射的来源Sheet "${mapping.sourceSheet}" 不存在，已忽略`);
           return false;
         }
         return true;
@@ -394,7 +408,7 @@ function parseMultiSheetMappingResponse(text: string, allSheetsInfo: SheetInfo[]
     return result as MappingScheme;
 
   } catch (error) {
-    console.warn("多Sheet映射JSON解析失败，使用降级策略:", error);
+    logger.error("多Sheet映射JSON解析失败，使用降级策略:", error);
     return createFallbackMapping(text, allSheetsInfo);
   }
 }
@@ -421,7 +435,7 @@ function parseMappingResponse(text: string): MappingScheme {
     return result as MappingScheme;
 
   } catch (error) {
-    console.warn("JSON解析失败，使用降级策略:", error);
+    logger.error("JSON解析失败，使用降级策略:", error);
 
     // 降级策略：返回基础映射
     return createFallbackMappingLegacy(text);

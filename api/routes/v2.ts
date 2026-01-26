@@ -9,9 +9,7 @@ import { Router } from 'express';
 import multer from 'multer';
 
 // 导入控制器
-import {
-  dataQualityController,
-} from '../controllers/dataQualityController';
+import { DataQualityController, createDataQualityController } from '../controllers/dataQualityController';
 import {
   templateController,
 } from '../controllers/templateController';
@@ -21,6 +19,11 @@ import {
 import {
   auditController,
 } from '../controllers/auditController';
+import { aiRouter } from './ai';
+
+// 导入服务
+import { createLocalStorageService } from '../../services/storage/LocalStorageService';
+import { WebSocketService } from '../../services/websocket/websocketService';
 
 // 导入中间件
 import {
@@ -62,41 +65,48 @@ export function createV2Router(): Router {
 
   const dataQualityRouter = Router();
 
+  // 创建DataQualityController实例
+  const storageService = createLocalStorageService({ prefix: 'dq_' });
+  // 注意：这里需要一个WebSocketService实例，暂时使用null作为占位符
+  // 实际使用时应该从服务器传入
+  const websocketService = null as any;
+  const dataQualityControllerInstance = createDataQualityController(storageService, websocketService);
+
   // 数据质量分析路由
   dataQualityRouter.post(
     '/analyze',
     requireAuth,
     requireExecute,
     PredefinedValidators.dataQualityAnalyze,
-    asyncHandler(dataQualityController.analyze.bind(dataQualityController))
+    asyncHandler(dataQualityControllerInstance.analyze.bind(dataQualityControllerInstance))
   );
 
   dataQualityRouter.get(
     '/analysis/:id',
     requireAuth,
     requireRead,
-    asyncHandler(dataQualityController.getAnalysis.bind(dataQualityController))
+    asyncHandler(dataQualityControllerInstance.getAnalysis.bind(dataQualityControllerInstance))
   );
 
   dataQualityRouter.post(
     '/recommendations',
     requireAuth,
     requireRead,
-    asyncHandler(dataQualityController.getRecommendations.bind(dataQualityController))
+    asyncHandler(dataQualityControllerInstance.getRecommendations.bind(dataQualityControllerInstance))
   );
 
   dataQualityRouter.post(
     '/auto-fix',
     requireAuth,
     requireWrite,
-    asyncHandler(dataQualityController.autoFix.bind(dataQualityController))
+    asyncHandler(dataQualityControllerInstance.autoFix.bind(dataQualityControllerInstance))
   );
 
   dataQualityRouter.get(
     '/statistics',
     requireAuth,
     requireRead,
-    asyncHandler(dataQualityController.getStatistics.bind(dataQualityController))
+    asyncHandler(dataQualityControllerInstance.getStatistics.bind(dataQualityControllerInstance))
   );
 
   // 转换规则路由（TODO: 实现转换规则控制器）
@@ -340,6 +350,12 @@ export function createV2Router(): Router {
   // qualityRouter.post('/fix-suggestions', requireAuth, requireRead, ...);
   // qualityRouter.post('/gates', requireAuth, requireWrite, ...);
   // router.use('/quality', qualityRouter);
+
+  // ========================================================================
+  // 6. AI服务代理模块
+  // ========================================================================
+
+  router.use('/ai', aiRouter);
 
   // ========================================================================
   // WebSocket 端点（TODO: 实现WebSocket服务器）

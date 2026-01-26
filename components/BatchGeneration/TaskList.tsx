@@ -8,8 +8,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, Eye } from 'lucide-react';
-import { batchGenerationAPI, TaskHistoryItem, TaskStatus } from '../../api/batchGenerationAPI';
+import { batchGenerationAPI, TaskHistoryItem, TaskStatus } from '../../services/batchGenerationAPI';
 import StatusIndicator from '../Shared/StatusIndicator';
+import { logger } from '@/utils/logger';
 
 interface TaskListProps {
   onSelectTask?: (taskId: string) => void;
@@ -36,7 +37,7 @@ const TaskList: React.FC<TaskListProps> = ({ onSelectTask, className }) => {
       });
       setTasks(response.items);
     } catch (error) {
-      console.error('加载任务列表失败:', error);
+      logger.error('加载任务列表失败:', error);
     } finally {
       setLoading(false);
     }

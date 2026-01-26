@@ -13,11 +13,12 @@
  * @module BatchGenerationScheduler
  */
 
+import { logger } from '@/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { TemplateManager } from './TemplateManager';
-import { WebSocketManager } from './websocket/websocketManager';
+import type { IWebSocket } from './websocket/IWebSocket';
 import type {
   BatchGenerationTask,
   BatchTaskConfig,
@@ -36,6 +37,14 @@ import type {
   TaskTimestamps,
   WebSocketEvent
 } from '../types/templateGeneration';
+import {
+  ValidationError,
+  TaskNotFoundError,
+  TaskStatusError,
+  TemplateNotFoundError,
+  DocumentGenerationError,
+  InternalServerError
+} from '../types/errors';
 
 // ============================================================================
 // 接口定义
@@ -71,38 +80,6 @@ interface QueueItem {
 }
 
 // ============================================================================
-// 错误类
-// ============================================================================
-
-/**
- * 任务未找到错误
- */
-export class TaskNotFoundError extends Error {
-  constructor(public readonly taskId: string) {
-    super(`任务不存在: ${taskId}`);
-    this.name = 'TaskNotFoundError';
-    Object.setPrototypeOf(this, TaskNotFoundError.prototype);
-  }
-}
-
-/**
- * 任务状态错误
- */
-export class TaskStatusError extends Error {
-  constructor(
-    public readonly taskId: string,
-    public readonly currentStatus: TaskStatus,
-    public readonly expectedStatus: TaskStatus
-  ) {
-    super(
-      `任务状态错误: ${taskId}, 当前: ${currentStatus}, 期望: ${expectedStatus}`
-    );
-    this.name = 'TaskStatusError';
-    Object.setPrototypeOf(this, TaskStatusError.prototype);
-  }
-}
-
-// ============================================================================
 // 核心服务类
 // ============================================================================
 
@@ -120,7 +97,7 @@ export class TaskStatusError extends Error {
 export class BatchGenerationScheduler {
   private templateManager: TemplateManager;
   private documentGenerator: IDocumentGenerator;
-  private websocketManager: WebSocketManager;
+  private websocket: IWebSocket;
 
   // 任务存储
   private tasks: Map<string, BatchGenerationTask> = new Map();
@@ -137,7 +114,7 @@ export class BatchGenerationScheduler {
   constructor(
     templateManager: TemplateManager,
     documentGenerator: IDocumentGenerator,
-    websocketManager: WebSocketManager,
+    websocket: IWebSocket,
     options?: {
       maxConcurrency?: number;
       progressInterval?: number;
@@ -145,7 +122,7 @@ export class BatchGenerationScheduler {
   ) {
     this.templateManager = templateManager;
     this.documentGenerator = documentGenerator;
-    this.websocketManager = websocketManager;
+    this.websocket = websocket;
 
     if (options?.maxConcurrency) {
       this.maxConcurrency = options.maxConcurrency;
@@ -166,15 +143,28 @@ export class BatchGenerationScheduler {
    * @returns 任务创建响应
    */
   async createTask(request: CreateBatchTaskRequest): Promise<CreateBatchTaskResponse> {
-    // 1. 验证模板存在
-    for (const templateId of request.templateIds) {
-      await this.templateManager.getTemplate(templateId);
+    // 1. 验证请求参数
+    if (!request.templateIds || request.templateIds.length === 0) {
+      throw new ValidationError(
+        'templateIds',
+        '至少需要一个模板ID',
+        request.templateIds
+      );
     }
 
-    // 2. 生成任务ID
+    // 2. 验证模板存在
+    for (const templateId of request.templateIds) {
+      try {
+        await this.templateManager.getTemplate(templateId);
+      } catch (error) {
+        throw new TemplateNotFoundError(templateId, error as Error);
+      }
+    }
+
+    // 3. 生成任务ID
     const taskId = this.generateTaskId();
 
-    // 3. 创建任务对象
+    // 4. 创建任务对象
     const task: BatchGenerationTask = {
       id: taskId,
       status: TaskStatus.PENDING,
@@ -197,13 +187,13 @@ export class BatchGenerationScheduler {
       }
     };
 
-    // 4. 存储任务
+    // 5. 存储任务
     this.tasks.set(taskId, task);
 
-    // 5. 加入队列
+    // 6. 加入队列
     this.enqueueTask(task);
 
-    // 6. 推送任务创建事件
+    // 7. 推送任务创建事件
     await this.broadcastEvent({
       type: 'status_changed',
       taskId,
@@ -212,10 +202,10 @@ export class BatchGenerationScheduler {
       timestamp: Date.now()
     });
 
-    // 7. 尝试启动任务处理
+    // 8. 尝试启动任务处理
     this.processQueue();
 
-    // 8. 估算任务持续时间
+    // 9. 估算任务持续时间
     const estimatedDuration = await this.estimateDuration(task);
 
     return {
@@ -389,7 +379,7 @@ export class BatchGenerationScheduler {
     // 自动启动任务
     if (task.status === TaskStatus.PENDING) {
       this.startTask(task.id).catch(error => {
-        console.error('启动任务失败:', error);
+        logger.error('启动任务失败:', error);
         this.handleTaskError(task, error);
       });
     }
@@ -556,13 +546,21 @@ export class BatchGenerationScheduler {
       } catch (error) {
         task.execution.failedDocuments++;
 
+        // 创建文档生成错误
+        const docError = new DocumentGenerationError(
+          error instanceof Error ? error.message : String(error),
+          template.metadata.id,
+          dataIndex,
+          error instanceof Error ? error : undefined
+        );
+
         // 推送错误事件
         await this.broadcastEvent({
           type: 'error',
           taskId: task.id,
           error: {
-            code: 'GENERATION_FAILED',
-            message: error instanceof Error ? error.message : String(error),
+            code: docError.code,
+            message: docError.message,
             details: { templateId: template.metadata.id, dataIndex }
           },
           timestamp: Date.now(),
@@ -571,7 +569,7 @@ export class BatchGenerationScheduler {
 
         // 检查是否继续
         if (!task.config.options.continueOnError) {
-          throw error;
+          throw docError;
         }
       }
     }
@@ -689,23 +687,27 @@ export class BatchGenerationScheduler {
    */
   private async loadExcelData(config: DataSourceConfig): Promise<Array<Record<string, any>>> {
     if (!config.source.file) {
-      throw new Error('Excel文件未提供');
+      throw new ValidationError('file', 'Excel文件未提供');
     }
 
-    // 使用Excel服务
-    const { readExcelFile } = await import('./excelService');
-    const workbook = await readExcelFile(
-      new Blob([config.source.file.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    );
+    try {
+      // 使用Excel服务
+      const { readExcelFile } = await import('./excelService');
+      const workbook = await readExcelFile(
+        new Blob([config.source.file.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      );
 
-    // 获取第一个sheet的数据
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
+      // 获取第一个sheet的数据
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
 
-    // 转换为JSON
-    const data = await import('xlsx').then(xlsx => xlsx.utils.sheet_to_json(worksheet));
+      // 转换为JSON
+      const data = await import('xlsx').then(xlsx => xlsx.utils.sheet_to_json(worksheet));
 
-    return data as Array<Record<string, any>>;
+      return data as Array<Record<string, any>>;
+    } catch (error) {
+      throw new InternalServerError('Excel文件解析失败', error as Error);
+    }
   }
 
   /**
@@ -713,32 +715,36 @@ export class BatchGenerationScheduler {
    */
   private async loadCsvData(config: DataSourceConfig): Promise<Array<Record<string, any>>> {
     if (!config.source.file) {
-      throw new Error('CSV文件未提供');
+      throw new ValidationError('file', 'CSV文件未提供');
     }
 
-    // 使用CSV解析库
-    const text = new TextDecoder().decode(config.source.file.buffer);
-    const lines = text.split('\n');
+    try {
+      // 使用CSV解析库
+      const text = new TextDecoder().decode(config.source.file.buffer);
+      const lines = text.split('\n');
 
-    if (lines.length === 0) {
-      return [];
+      if (lines.length === 0) {
+        return [];
+      }
+
+      const headers = lines[0].split(',');
+      const data: Array<Record<string, any>> = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        const row: Record<string, any> = {};
+
+        headers.forEach((header, index) => {
+          row[header.trim()] = values[index]?.trim();
+        });
+
+        data.push(row);
+      }
+
+      return data;
+    } catch (error) {
+      throw new InternalServerError('CSV文件解析失败', error as Error);
     }
-
-    const headers = lines[0].split(',');
-    const data: Array<Record<string, any>> = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',');
-      const row: Record<string, any> = {};
-
-      headers.forEach((header, index) => {
-        row[header.trim()] = values[index]?.trim();
-      });
-
-      data.push(row);
-    }
-
-    return data;
   }
 
   /**
@@ -859,7 +865,8 @@ export class BatchGenerationScheduler {
    * 广播WebSocket事件
    */
   private async broadcastEvent(event: WebSocketEvent): Promise<void> {
-    await this.websocketManager.broadcast(event.taskId, event);
+    // 使用统一接口广播到任务频道
+    await this.websocket.broadcast(event.taskId, event);
   }
 
   // ========================================================================

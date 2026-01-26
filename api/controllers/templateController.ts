@@ -5,6 +5,7 @@
  * 基于 API_SPECIFICATION_PHASE2.md 规范
  */
 
+import { logger } from '@/utils/logger';
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -135,6 +136,19 @@ export class TemplateController {
           description: '用于生成销售合同',
           status: 'active',
           tags: ['销售', '合同'],
+          file: {
+            fileName: '销售合同模板.docx',
+            fileSize: 45678,
+            uploadTime: '2026-01-20T10:00:00Z',
+            downloadUrl: '/api/v2/templates/tmpl_001/download',
+          },
+          metadata: {
+            placeholders: [],
+            hasLoops: false,
+            hasConditionals: false,
+            hasTables: false,
+            pageCount: 1,
+          },
           createdAt: '2026-01-20T10:00:00Z',
           updatedAt: '2026-01-25T10:30:00Z',
         },
@@ -145,6 +159,19 @@ export class TemplateController {
           description: '用于生成采购订单',
           status: 'active',
           tags: ['采购', '订单'],
+          file: {
+            fileName: '采购订单模板.docx',
+            fileSize: 34567,
+            uploadTime: '2026-01-18T10:00:00Z',
+            downloadUrl: '/api/v2/templates/tmpl_002/download',
+          },
+          metadata: {
+            placeholders: [],
+            hasLoops: false,
+            hasConditionals: false,
+            hasTables: false,
+            pageCount: 1,
+          },
           createdAt: '2026-01-18T10:00:00Z',
           updatedAt: '2026-01-22T10:30:00Z',
         },
@@ -505,7 +532,7 @@ export class TemplateController {
    * 统一错误处理
    */
   private handleError(error: any, res: Response, requestId: string): void {
-    console.error('[TemplateController] Error:', error);
+    logger.error('[TemplateController] Error:', error);
 
     let errorCode = ApiErrorCode.INTERNAL_ERROR;
     let httpStatus = 500;

@@ -12,6 +12,7 @@ import { generateFieldMapping } from '../services/documentMappingService';
 import { generateMultipleDocuments } from '../services/docxGeneratorService';
 import { TemplateFile, MappingScheme } from '../types/documentTypes';
 import { ExcelData } from '../types';
+import { logger } from '@/utils/logger';
 
 interface DocumentSpaceAdvancedProps {
   excelData: ExcelData;
@@ -186,7 +187,7 @@ export const DocumentSpaceAdvanced: React.FC<DocumentSpaceAdvancedProps> = ({ ex
     error: string | undefined
   ): Promise<any> => {
     // TODO: 实现AI修正逻辑
-    console.warn('映射验证失败，需要AI修正:', mapping, error);
+    logger.error('映射验证失败，需要AI修正:', mapping, error);
     return mapping;
   };
 

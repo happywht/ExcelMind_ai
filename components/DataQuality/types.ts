@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-import { DataQualityAnalysis, DataQualityIssue, CleaningSuggestion, CleaningResult } from '../../api/dataQualityAPI';
+import { DataQualityAnalysis, DataQualityIssue, CleaningSuggestion, CleaningResult } from '../../services/dataQualityAPI';
 
 export type {
   DataQualityAnalysis,

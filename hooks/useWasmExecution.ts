@@ -7,6 +7,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { PyodideStatus } from '../services/wasm/PyodideService';
 import {
@@ -135,11 +136,11 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
    */
   const initialize = useCallback(async () => {
     if (initialized || initializing) {
-      console.log('[useWasmExecution] Already initialized or initializing');
+      logger.debug('[useWasmExecution] Already initialized or initializing');
       return;
     }
 
-    console.log('[useWasmExecution] Starting initialization...');
+    logger.debug('[useWasmExecution] Starting initialization...');
     setInitializing(true);
     setPyodideStatus(PyodideStatus.LOADING);
 
@@ -153,7 +154,7 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
       });
 
       const initTime = Date.now() - startTime;
-      console.log(`[useWasmExecution] ✅ Initialized in ${initTime}ms`);
+      logger.debug(`[useWasmExecution] ✅ Initialized in ${initTime}ms`);
 
       setInitialized(true);
       setInitializing(false);
@@ -172,13 +173,13 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
 
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
-      console.error('[useWasmExecution] ❌ Initialization failed:', errorObj);
+      logger.error('[useWasmExecution] ❌ Initialization failed:', errorObj);
 
       setInitializing(false);
       setPyodideStatus(PyodideStatus.ERROR);
 
       if (configRef.current.fallbackToNode) {
-        console.warn('[useWasmExecution] Falling back to Node.js mode');
+        logger.warn('[useWasmExecution] Falling back to Node.js mode');
         setExecutionMode(WasmExecutionMode.NODE_PYTHON);
         setInitialized(true);
       } else {
@@ -198,8 +199,8 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
     code: string,
     datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } }
   ) => {
-    console.log('[useWasmExecution] Executing code...');
-    console.log('[useWasmExecution] Datasets:', Object.keys(datasets));
+    logger.debug('[useWasmExecution] Executing code...');
+    logger.debug('[useWasmExecution] Datasets:', Object.keys(datasets));
 
     setExecutionState({
       status: 'executing',
@@ -215,7 +216,7 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
       const result = await executePython(code, datasets);
 
       const executionTime = Date.now() - startTime;
-      console.log(`[useWasmExecution] ✅ Execution completed in ${executionTime}ms`);
+      logger.info(`[useWasmExecution] ✅ Execution completed in ${executionTime}ms`);
 
       // 更新性能指标
       setPerformance(prev => {
@@ -250,7 +251,7 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
       const executionTime = Date.now() - startTime;
       const errorObj = error instanceof Error ? error : new Error(String(error));
 
-      console.error('[useWasmExecution] ❌ Execution failed:', errorObj);
+      logger.error('[useWasmExecution] ❌ Execution failed:', errorObj);
 
       setExecutionState({
         status: 'error',
@@ -287,14 +288,14 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
    * 挂载 Excel 文件
    */
   const mountFile = useCallback(async (file: File) => {
-    console.log('[useWasmExecution] Mounting file:', file.name);
+    logger.debug('[useWasmExecution] Mounting file:', file.name);
 
     try {
       const path = await mountExcelFile(file);
-      console.log('[useWasmExecution] ✅ File mounted:', path);
+      logger.debug('[useWasmExecution] ✅ File mounted:', path);
       return path;
     } catch (error) {
-      console.error('[useWasmExecution] ❌ Failed to mount file:', error);
+      logger.error('[useWasmExecution] ❌ Failed to mount file:', error);
       throw error;
     }
   }, []);
@@ -303,12 +304,12 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
    * 下载输出文件
    */
   const downloadOutput = useCallback((fileName?: string) => {
-    console.log('[useWasmExecution] Downloading output...');
+    logger.debug('[useWasmExecution] Downloading output...');
     try {
       downloadResult(fileName);
-      console.log('[useWasmExecution] ✅ Download initiated');
+      logger.debug('[useWasmExecution] ✅ Download initiated');
     } catch (error) {
-      console.error('[useWasmExecution] ❌ Download failed:', error);
+      logger.error('[useWasmExecution] ❌ Download failed:', error);
     }
   }, []);
 
@@ -316,7 +317,7 @@ export function useWasmExecution(config?: Partial<UseWasmExecutionConfig>): UseW
    * 重置状态
    */
   const reset = useCallback(() => {
-    console.log('[useWasmExecution] Resetting state...');
+    logger.debug('[useWasmExecution] Resetting state...');
 
     setExecutionState({
       status: 'idle',

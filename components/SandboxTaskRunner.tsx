@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Play, Square, RefreshCw, Trash2, FileText, AlertCircle } from 'lucide-react';
+import { logger } from '@/utils/logger';
 
 // ============================================================================
 // 类型定义
@@ -68,7 +69,7 @@ export const SandboxTaskRunner: React.FC = () => {
       const result = await window.electronAPI.sandbox.getStats();
       setStats(result);
     } catch (error) {
-      console.error('加载统计信息失败:', error);
+      logger.error('加载统计信息失败:', error);
     }
   }, []);
 
@@ -88,7 +89,7 @@ export const SandboxTaskRunner: React.FC = () => {
       setValidationResult(result);
       return result;
     } catch (error) {
-      console.error('环境验证失败:', error);
+      logger.error('环境验证失败:', error);
       return null;
     }
   }, []);
@@ -219,7 +220,7 @@ export const SandboxTaskRunner: React.FC = () => {
         } : null);
       }
     } catch (error) {
-      console.error('中断任务失败:', error);
+      logger.error('中断任务失败:', error);
     }
   }, [currentTask]);
 
@@ -240,7 +241,7 @@ export const SandboxTaskRunner: React.FC = () => {
       setLogs(result.content);
       setShowLogs(true);
     } catch (error) {
-      console.error('加载日志失败:', error);
+      logger.error('加载日志失败:', error);
     }
   }, [currentTask]);
 
@@ -254,7 +255,7 @@ export const SandboxTaskRunner: React.FC = () => {
       alert(`清理完成\n释放空间: ${result.freedSpace}`);
       loadStats();
     } catch (error) {
-      console.error('清理缓存失败:', error);
+      logger.error('清理缓存失败:', error);
     }
   }, [loadStats]);
 

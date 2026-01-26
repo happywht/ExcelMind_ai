@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 /**
  * 文件摆渡机制
  * 用于在浏览器环境和 Pyodide 虚拟文件系统之间传输文件
@@ -97,10 +98,10 @@ export class FileFerryService {
       pyodide.FS.mkdirTree(VFS_PATHS.DATA_DIR);
       pyodide.FS.mkdirTree(VFS_PATHS.TEMP_DIR);
 
-      console.log('[FileFerry] 虚拟文件系统初始化完成');
+      logger.debug('[FileFerry] 虚拟文件系统初始化完成');
       return true;
     } catch (error) {
-      console.error('[FileFerry] 文件系统初始化失败:', error);
+      logger.error('[FileFerry] 文件系统初始化失败:', error);
       return false;
     }
   }
@@ -230,9 +231,9 @@ export class FileFerryService {
       //   }
       // });
 
-      console.log('[FileFerry] 临时文件清理完成');
+      logger.debug('[FileFerry] 临时文件清理完成');
     } catch (error) {
-      console.error('[FileFerry] 临时文件清理失败:', error);
+      logger.error('[FileFerry] 临时文件清理失败:', error);
     }
   }
 

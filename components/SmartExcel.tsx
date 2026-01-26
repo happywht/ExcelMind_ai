@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download, AlertCircle, CheckCircle, Zap } from 'lucide-react';
 import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel, executeTransformation } from '../services/excelService';
-import { generateDataProcessingCode } from '../services/zhipuService';
+import { generateDataProcessingCode } from '../services/aiProxyService';
 import { ExcelData, ProcessingLog } from '../types';
 import { AgenticOrchestrator } from '../services/agentic';
 import type { MultiStepTask, TaskResult, TaskStatus, LogEntry as AgenticLogEntry } from '../types/agenticTypes';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { SAMPLING_CONFIG } from '../config/samplingConfig';
+import { logger } from '@/utils/logger';
 
 export const SmartExcel: React.FC = () => {
   const [filesData, setFilesData] = useState<ExcelData[]>([]);
@@ -121,7 +122,7 @@ export const SmartExcel: React.FC = () => {
           const data = await readExcelFile(e.target.files[i]);
           newFiles.push(data);
         } catch (err) {
-          console.error(`Error reading file ${e.target.files[i].name}`, err);
+          logger.error(`Error reading file ${e.target.files[i].name}`, err);
         }
       }
       setFilesData(prev => [...prev, ...newFiles]);
@@ -366,7 +367,7 @@ export const SmartExcel: React.FC = () => {
       }
     });
 
-    console.log('执行AI生成的代码，代码长度:', code.length);
+    logger.debug('执行AI生成的代码，代码长度:', code.length);
     const resultDatasets = await executeTransformation(code, datasets as { [fileName: string]: any[] });
 
     if (!resultDatasets || typeof resultDatasets !== 'object') {
@@ -506,7 +507,7 @@ export const SmartExcel: React.FC = () => {
         window.URL.revokeObjectURL(url);
         setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'success', message: `成功打包并下载 ${count} 个文件。` }, ...prev]);
       } catch (e) {
-        console.error(e);
+        logger.error(e);
         setLogs(prev => [{ id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'System', status: 'error', message: '打包失败。' }, ...prev]);
       }
     }
@@ -889,3 +890,6 @@ export const SmartExcel: React.FC = () => {
     </div>
   );
 };
+
+// 添加默认导出以支持React.lazy()
+export default SmartExcel;

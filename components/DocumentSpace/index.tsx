@@ -20,3 +20,6 @@ export { default as SheetSelector } from './SheetSelector';
 
 // 类型定义
 export * from './types';
+
+// 默认导出以支持React.lazy()
+export { default } from './DocumentSpace';

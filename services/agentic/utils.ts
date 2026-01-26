@@ -4,6 +4,7 @@
  * 提供便捷的工具函数和封装
  */
 
+import { logger } from '@/utils/logger';
 import { AgenticOrchestrator } from './AgenticOrchestrator';
 import { DataFileInfo, TaskResult, OrchestratorConfig } from '../../types/agenticTypes';
 
@@ -154,7 +155,7 @@ export function createProgressLogger(prefix: string = '') {
     const percentage = state.progress?.percentage || 0;
     const message = state.progress?.message || '';
 
-    console.log(`[${timestamp}] ${prefix}${phase} (${percentage}%) - ${message}`);
+    logger.debug(`[${timestamp}] ${prefix}${phase} (${percentage}%) - ${message}`);
   };
 }
 

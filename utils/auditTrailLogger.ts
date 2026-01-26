@@ -4,6 +4,7 @@
  */
 
 import type {
+import { logger } from '@/utils/logger';
   AuditTrailEntry,
   AuditTrailDetails,
   AuditTrailReport,
@@ -49,7 +50,7 @@ export class AuditTrailLogger implements IAuditTrailLogger {
     // 控制台输出（开发模式）
     if (process.env.NODE_ENV === 'development') {
       const emoji = this.statusToEmoji(status);
-      console.log(`[AuditTrail] ${emoji} ${action}`, details);
+      logger.debug(`[AuditTrail] ${emoji} ${action}`, details);
     }
   }
 

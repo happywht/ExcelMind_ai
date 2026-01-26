@@ -7,6 +7,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   FolderOpen,
@@ -45,7 +46,7 @@ export const VirtualWorkspace: React.FC<{
         await vfs.initialize();
         setIsInitialized(true);
       } catch (error) {
-        console.error('Failed to initialize VFS:', error);
+        logger.error('Failed to initialize VFS:', error);
       }
     };
 
@@ -60,7 +61,7 @@ export const VirtualWorkspace: React.FC<{
         await vfs.uploadFile(file, FileRole.PRIMARY_SOURCE);
       }
     } catch (error) {
-      console.error('File upload failed:', error);
+      logger.error('File upload failed:', error);
       throw error;
     }
   }, [vfs]);
@@ -69,7 +70,7 @@ export const VirtualWorkspace: React.FC<{
     try {
       await vfs.deleteFile(fileId);
     } catch (error) {
-      console.error('File delete failed:', error);
+      logger.error('File delete failed:', error);
       throw error;
     }
   }, [vfs]);
@@ -78,27 +79,27 @@ export const VirtualWorkspace: React.FC<{
 
   const handleRestoreSession = useCallback(async (sessionId: string) => {
     // TODO: 实现会话恢复逻辑
-    console.log('Restoring session:', sessionId);
+    logger.debug('Restoring session:', sessionId);
   }, []);
 
   const handleDeleteSession = useCallback(async (sessionId: string) => {
     // TODO: 实现会话删除逻辑
-    console.log('Deleting session:', sessionId);
+    logger.debug('Deleting session:', sessionId);
   }, []);
 
   const handleClearAllSessions = useCallback(async () => {
     // TODO: 实现清除所有会话逻辑
-    console.log('Clearing all sessions');
+    logger.debug('Clearing all sessions');
   }, []);
 
   // ===== 执行进度处理 =====
 
   const handleStageClick = useCallback((stage: any) => {
-    console.log('Stage clicked:', stage);
+    logger.debug('Stage clicked:', stage);
   }, []);
 
   const handleLogEntryClick = useCallback((log: any) => {
-    console.log('Log entry clicked:', log);
+    logger.debug('Log entry clicked:', log);
   }, []);
 
   // ===== 渲染 =====
@@ -164,9 +165,9 @@ export const VirtualWorkspace: React.FC<{
 
         {activeTab === 'graph' && (
           <RelationshipGraph
-            onNodeClick={(node) => console.log('Node clicked:', node)}
-            onEdgeClick={(edge) => console.log('Edge clicked:', edge)}
-            onNodeDoubleClick={(node) => console.log('Node double clicked:', node)}
+            onNodeClick={(node) => logger.debug('Node clicked:', node)}
+            onEdgeClick={(edge) => logger.debug('Edge clicked:', edge)}
+            onNodeDoubleClick={(node) => logger.debug('Node double clicked:', node)}
           />
         )}
 

@@ -11,7 +11,7 @@ import {
   TaskProgress,
   CreateTaskResponse,
   WebSocketEvent
-} from '../../api/batchGenerationAPI';
+} from '../../services/batchGenerationAPI';
 
 export type {
   TaskStatus,

@@ -5,6 +5,7 @@
  * 基于 API_SPECIFICATION_PHASE2.md 规范
  */
 
+import { logger } from '@/utils/logger';
 import { Request, Response, NextFunction } from 'express';
 import { ApiErrorCode, createApiErrorResponse } from '../../types/errorCodes';
 import { v4 as uuidv4 } from 'uuid';
@@ -77,8 +78,9 @@ export class AuthMiddleware {
   apiKeyAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     // 如果明确禁用认证，跳过验证
     if (this.config.enabled === false) {
-      console.log('⚠️ 认证已禁用 - 跳过API密钥验证');
-      return next();
+      logger.info('⚠️ 认证已禁用 - 跳过API密钥验证');
+      next();
+      return;
     }
 
     const requestId = req.headers['x-request-id'] as string || uuidv4();
@@ -97,7 +99,8 @@ export class AuthMiddleware {
         ],
         requestId
       );
-      return res.status(401).json(errorResponse);
+      res.status(401).json(errorResponse);
+      return;
     }
 
     // 验证API密钥
@@ -114,7 +117,8 @@ export class AuthMiddleware {
         ],
         requestId
       );
-      return res.status(401).json(errorResponse);
+      res.status(401).json(errorResponse);
+      return;
     }
 
     // 将用户信息附加到请求
@@ -133,7 +137,8 @@ export class AuthMiddleware {
 
       // 如果明确禁用认证，跳过验证
       if (this.config.enabled === false) {
-        return next();
+        next();
+        return;
       }
 
       // 检查用户是否存在
@@ -148,7 +153,8 @@ export class AuthMiddleware {
           ],
           requestId
         );
-        return res.status(401).json(errorResponse);
+        res.status(401).json(errorResponse);
+        return;
       }
 
       // 检查权限
@@ -167,7 +173,8 @@ export class AuthMiddleware {
           ],
           requestId
         );
-        return res.status(403).json(errorResponse);
+        res.status(403).json(errorResponse);
+        return;
       }
 
       next();
@@ -183,7 +190,8 @@ export class AuthMiddleware {
 
       // 如果明确禁用认证，跳过验证
       if (this.config.enabled === false) {
-        return next();
+        next();
+        return;
       }
 
       // 检查用户是否存在
@@ -198,7 +206,8 @@ export class AuthMiddleware {
           ],
           requestId
         );
-        return res.status(401).json(errorResponse);
+        res.status(401).json(errorResponse);
+        return;
       }
 
       // 检查用户层级
@@ -217,7 +226,8 @@ export class AuthMiddleware {
           ],
           requestId
         );
-        return res.status(403).json(errorResponse);
+        res.status(403).json(errorResponse);
+        return;
       }
 
       next();
@@ -259,10 +269,16 @@ export class AuthMiddleware {
   /**
    * 验证API密钥
    */
-  private async validateApiKey(apiKey: string, req: Request): Promise<boolean> | boolean {
+  private validateApiKey(apiKey: string, req: Request): boolean {
     // 使用自定义验证函数
     if (this.config.customValidator) {
-      return this.config.customValidator(apiKey, req);
+      const result = this.config.customValidator(apiKey, req);
+      // 如果是Promise，需要处理，但这里简化为同步
+      if (result instanceof Promise) {
+        logger.warn('Custom validator returns Promise, using synchronous fallback');
+        return false;
+      }
+      return result;
     }
 
     // 使用默认验证逻辑

@@ -77,6 +77,9 @@ export class LocalStorageService implements IStorageService {
   private readonly listeners: Set<StorageEventListener>;
   private readonly serializer: Serializer<any>;
   private readonly deserializer: Deserializer<any>;
+  private readonly isNodeEnv: boolean;
+  private readonly isBrowserEnv: boolean;
+  private readonly nodeStorage: Map<string, string>;
 
   // 统计信息
   private stats = {
@@ -97,8 +100,21 @@ export class LocalStorageService implements IStorageService {
     this.serializer = defaultSerializer;
     this.deserializer = defaultDeserializer;
 
-    // 检测 localStorage 可用性
-    this.checkAvailability();
+    // 检测运行环境
+    this.isNodeEnv = typeof process !== 'undefined' && process.versions !== undefined && process.versions.node !== undefined;
+    this.isBrowserEnv = typeof window !== 'undefined' && 'localStorage' in window;
+
+    // Node.js环境使用内存存储
+    this.nodeStorage = new Map();
+
+    if (this.isNodeEnv) {
+      console.warn('[LocalStorageService] Running in Node.js environment, using in-memory storage');
+    } else if (this.isBrowserEnv) {
+      // 浏览器环境检测 localStorage 可用性
+      this.checkAvailability();
+    } else {
+      console.warn('[LocalStorageService] Unknown environment, using in-memory storage');
+    }
   }
 
   // ========================================================================
@@ -217,7 +233,17 @@ export class LocalStorageService implements IStorageService {
         this.memoryFallback.delete(key);
       }
 
-      localStorage.removeItem(fullKey);
+      if (this.isNodeEnv) {
+        // Node.js环境：删除内存存储
+        this.nodeStorage.delete(fullKey);
+      } else if (this.isBrowserEnv) {
+        // 浏览器环境：删除localStorage
+        localStorage.removeItem(fullKey);
+      } else {
+        // 降级到内存存储
+        this.memoryFallback.delete(fullKey);
+      }
+
       this.stats.totalDeletes++;
 
       // 触发事件
@@ -270,25 +296,56 @@ export class LocalStorageService implements IStorageService {
     try {
       const allKeys: string[] = [];
 
-      for (let i = 0; i < localStorage.length; i++) {
-        const fullKey = localStorage.key(i);
-        if (!fullKey) continue;
+      if (this.isNodeEnv) {
+        // Node.js环境：遍历内存存储
+        for (const fullKey of this.nodeStorage.keys()) {
+          if (!fullKey.startsWith(this.prefix)) continue;
 
-        // 过滤前缀
-        if (!fullKey.startsWith(this.prefix)) continue;
+          const originalKey = this.extractKey(fullKey);
 
-        // 提取原始键
-        const originalKey = this.extractKey(fullKey);
+          if (pattern && !this.matchPattern(originalKey, pattern)) {
+            continue;
+          }
 
-        // 模式匹配
-        if (pattern && !this.matchPattern(originalKey, pattern)) {
-          continue;
+          const item = this.getItem(fullKey);
+          if (item && !this.isExpired(item)) {
+            allKeys.push(originalKey);
+          }
         }
+      } else if (this.isBrowserEnv) {
+        // 浏览器环境：遍历localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+          const fullKey = localStorage.key(i);
+          if (!fullKey) continue;
 
-        // 检查是否过期
-        const item = this.getItem(fullKey);
-        if (item && !this.isExpired(item)) {
-          allKeys.push(originalKey);
+          if (!fullKey.startsWith(this.prefix)) continue;
+
+          const originalKey = this.extractKey(fullKey);
+
+          if (pattern && !this.matchPattern(originalKey, pattern)) {
+            continue;
+          }
+
+          const item = this.getItem(fullKey);
+          if (item && !this.isExpired(item)) {
+            allKeys.push(originalKey);
+          }
+        }
+      } else {
+        // 降级到内存存储
+        for (const fullKey of this.memoryFallback.keys()) {
+          if (!fullKey.startsWith(this.prefix)) continue;
+
+          const originalKey = this.extractKey(fullKey);
+
+          if (pattern && !this.matchPattern(originalKey, pattern)) {
+            continue;
+          }
+
+          const item = this.getItem(fullKey);
+          if (item && !this.isExpired(item)) {
+            allKeys.push(originalKey);
+          }
         }
       }
 
@@ -306,22 +363,52 @@ export class LocalStorageService implements IStorageService {
     try {
       const keysToDelete: string[] = [];
 
-      for (let i = 0; i < localStorage.length; i++) {
-        const fullKey = localStorage.key(i);
-        if (!fullKey) continue;
+      if (this.isNodeEnv) {
+        // Node.js环境：遍历内存存储
+        for (const fullKey of this.nodeStorage.keys()) {
+          if (!fullKey.startsWith(this.prefix)) continue;
 
-        if (!fullKey.startsWith(this.prefix)) continue;
+          if (namespace) {
+            const nsKey = this.buildKey('', namespace);
+            if (!fullKey.startsWith(nsKey)) continue;
+          }
 
-        // 检查命名空间
-        if (namespace) {
-          const nsKey = this.buildKey('', namespace);
-          if (!fullKey.startsWith(nsKey)) continue;
+          keysToDelete.push(fullKey);
         }
 
-        keysToDelete.push(fullKey);
-      }
+        keysToDelete.forEach(key => this.nodeStorage.delete(key));
+      } else if (this.isBrowserEnv) {
+        // 浏览器环境：遍历localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+          const fullKey = localStorage.key(i);
+          if (!fullKey) continue;
 
-      keysToDelete.forEach(key => localStorage.removeItem(key));
+          if (!fullKey.startsWith(this.prefix)) continue;
+
+          if (namespace) {
+            const nsKey = this.buildKey('', namespace);
+            if (!fullKey.startsWith(nsKey)) continue;
+          }
+
+          keysToDelete.push(fullKey);
+        }
+
+        keysToDelete.forEach(key => localStorage.removeItem(key));
+      } else {
+        // 降级到内存存储
+        for (const fullKey of this.memoryFallback.keys()) {
+          if (!fullKey.startsWith(this.prefix)) continue;
+
+          if (namespace) {
+            const nsKey = this.buildKey('', namespace);
+            if (!fullKey.startsWith(nsKey)) continue;
+          }
+
+          keysToDelete.push(fullKey);
+        }
+
+        keysToDelete.forEach(key => this.memoryFallback.delete(key));
+      }
 
       // 触发事件
       this.notifyListeners({
@@ -475,7 +562,19 @@ export class LocalStorageService implements IStorageService {
    */
   private getItem<T>(fullKey: string): StoredItem<T> | null {
     try {
-      const serialized = localStorage.getItem(fullKey);
+      let serialized: string | null = null;
+
+      if (this.isNodeEnv) {
+        // Node.js环境：使用内存存储
+        serialized = this.nodeStorage.get(fullKey) || null;
+      } else if (this.isBrowserEnv) {
+        // 浏览器环境：使用localStorage
+        serialized = localStorage.getItem(fullKey);
+      } else {
+        // 降级到内存存储
+        serialized = this.memoryFallback.get(fullKey) || null;
+      }
+
       if (!serialized) {
         return null;
       }
@@ -493,7 +592,17 @@ export class LocalStorageService implements IStorageService {
   private setItem<T>(fullKey: string, item: StoredItem<T>): void {
     try {
       const serialized = this.serializer(item);
-      localStorage.setItem(fullKey, serialized);
+
+      if (this.isNodeEnv) {
+        // Node.js环境：使用内存存储
+        this.nodeStorage.set(fullKey, serialized);
+      } else if (this.isBrowserEnv) {
+        // 浏览器环境：使用localStorage
+        localStorage.setItem(fullKey, serialized);
+      } else {
+        // 降级到内存存储
+        this.memoryFallback.set(fullKey, serialized);
+      }
     } catch (error) {
       console.error('[LocalStorageService] SetItem error:', error);
       throw error;
@@ -557,12 +666,25 @@ export class LocalStorageService implements IStorageService {
   private getUsedSpace(): number {
     let total = 0;
 
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
+    if (this.isNodeEnv) {
+      // Node.js环境：计算内存存储大小
+      for (const [key, value] of this.nodeStorage.entries()) {
+        total += key.length + value.length;
+      }
+    } else if (this.isBrowserEnv) {
+      // 浏览器环境：计算localStorage大小
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key) continue;
 
-      const value = localStorage.getItem(key);
-      if (value) {
+        const value = localStorage.getItem(key);
+        if (value) {
+          total += key.length + value.length;
+        }
+      }
+    } else {
+      // 降级到内存存储
+      for (const [key, value] of this.memoryFallback.entries()) {
         total += key.length + value.length;
       }
     }

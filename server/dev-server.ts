@@ -5,6 +5,16 @@
  * 支持热重载和详细日志
  */
 
+// 加载环境变量（必须在所有其他导入之前）
+import 'dotenv/config';
+import path from 'path';
+import { config } from 'dotenv';
+
+// 加载.env.local文件
+const envPath = path.resolve(process.cwd(), '.env.local');
+config({ path: envPath });
+
+import { logger } from '@/utils/logger';
 import { createServerWithWebSocket } from './app';
 
 // 环境变量
@@ -12,52 +22,59 @@ const PORT = process.env.API_PORT || 3001;
 const HOST = process.env.API_HOST || 'localhost';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// 验证关键环境变量
+if (!process.env.ZHIPU_API_KEY) {
+  logger.warn('[Startup] ZHIPU_API_KEY 未配置，AI功能将不可用');
+} else {
+  logger.debug('[Startup] ZHIPU_API_KEY 已加载');
+}
+
 /**
  * 启动服务器
  */
 async function startServer() {
   try {
-    console.log('='.repeat(60));
-    console.log('ExcelMind AI - Phase 2 API 服务器');
-    console.log('='.repeat(60));
-    console.log(`环境: ${NODE_ENV}`);
-    console.log(`启动中...`);
+    logger.debug('='.repeat(60));
+    logger.info('ExcelMind AI - Phase 2 API 服务器');
+    logger.debug('='.repeat(60));
+    logger.debug(`环境: ${NODE_ENV}`);
+    logger.debug(`启动中...`);
 
     // 创建服务器
     const { app, server, wss } = createServerWithWebSocket();
 
     // 启动 HTTP 服务器
     server.listen(PORT, HOST as string, () => {
-      console.log('');
-      console.log('✓ 服务器已启动');
-      console.log('');
-      console.log('  服务地址:');
-      console.log(`    HTTP:  http://${HOST}:${PORT}`);
-      console.log(`    WS:    ws://${HOST}:${PORT}/api/v2/stream`);
-      console.log('');
-      console.log('  健康检查:');
-      console.log(`    GET    http://${HOST}:${PORT}/health`);
-      console.log('');
-      console.log('  API 端点:');
-      console.log(`    数据质量: http://${HOST}:${PORT}/api/v2/data-quality`);
-      console.log(`    模板管理: http://${HOST}:${PORT}/api/v2/templates`);
-      console.log(`    批量生成: http://${HOST}:${PORT}/api/v2/generation`);
-      console.log(`    审计规则: http://${HOST}:${PORT}/api/v2/audit`);
-      console.log('');
-      console.log('  WebSocket 频道:');
-      console.log(`    - task_progress`);
-      console.log(`    - generation_status`);
-      console.log(`    - audit_alerts`);
-      console.log(`    - performance_alerts`);
-      console.log('');
-      console.log('按 Ctrl+C 停止服务器');
-      console.log('='.repeat(60));
+      logger.debug('');
+      logger.debug('✓ 服务器已启动');
+      logger.debug('');
+      logger.debug('  服务地址:');
+      logger.debug(`    HTTP:  http://${HOST}:${PORT}`);
+      logger.info(`    WS:    ws://${HOST}:${PORT}/api/v2/stream`);
+      logger.debug('');
+      logger.debug('  健康检查:');
+      logger.debug(`    GET    http://${HOST}:${PORT}/health`);
+      logger.debug('');
+      logger.info('  API 端点:');
+      logger.info(`    数据质量: http://${HOST}:${PORT}/api/v2/data-quality`);
+      logger.info(`    模板管理: http://${HOST}:${PORT}/api/v2/templates`);
+      logger.info(`    批量生成: http://${HOST}:${PORT}/api/v2/generation`);
+      logger.info(`    审计规则: http://${HOST}:${PORT}/api/v2/audit`);
+      logger.debug('');
+      logger.debug('  WebSocket 频道:');
+      logger.debug(`    - task_progress`);
+      logger.debug(`    - generation_status`);
+      logger.debug(`    - audit_alerts`);
+      logger.debug(`    - performance_alerts`);
+      logger.debug('');
+      logger.debug('按 Ctrl+C 停止服务器');
+      logger.debug('='.repeat(60));
     });
 
     // 处理优雅关闭
     const shutdown = async () => {
-      console.log('');
-      console.log('正在关闭服务器...');
+      logger.debug('');
+      logger.debug('正在关闭服务器...');
 
       // 关闭 WebSocket 服务器
       wss.clients.forEach((client) => {
@@ -66,13 +83,13 @@ async function startServer() {
 
       // 关闭 HTTP 服务器
       server.close(() => {
-        console.log('✓ 服务器已关闭');
+        logger.debug('✓ 服务器已关闭');
         process.exit(0);
       });
 
       // 强制退出
       setTimeout(() => {
-        console.error('强制退出');
+        logger.error('强制退出');
         process.exit(1);
       }, 10000);
     };
@@ -83,17 +100,17 @@ async function startServer() {
 
     // 监听未捕获的错误
     process.on('uncaughtException', (error) => {
-      console.error('未捕获的异常:', error);
+      logger.error('未捕获的异常:', error);
       shutdown();
     });
 
     process.on('unhandledRejection', (reason, promise) => {
-      console.error('未处理的 Promise 拒绝:', reason);
+      logger.error('未处理的 Promise 拒绝:', reason);
       shutdown();
     });
 
   } catch (error) {
-    console.error('服务器启动失败:', error);
+    logger.error('服务器启动失败:', error);
     process.exit(1);
   }
 }

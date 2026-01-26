@@ -1,13 +1,25 @@
+import { logger } from '@/utils/logger';
 import { GoogleGenAI } from "@google/genai";
 import { AIProcessResult } from '../types';
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// 环境检测：兼容浏览器和Node.js环境
+const isNodeEnv = typeof process !== 'undefined' && process.env !== undefined;
+const apiKey = isNodeEnv ? (process.env.API_KEY || '') : '';
+
+// 延迟初始化，避免模块加载时执行
+let ai: GoogleGenAI | null = null;
+
+const getAI = (): GoogleGenAI => {
+  if (!ai) {
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+};
 
 export const generateExcelFormula = async (description: string): Promise<string> => {
   try {
     const model = 'gemini-2.5-flash';
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       contents: `你是一个 Excel 公式生成专家。
       用户需求: "${description}"。
@@ -15,7 +27,7 @@ export const generateExcelFormula = async (description: string): Promise<string>
     });
     return response.text?.trim() || "生成公式失败";
   } catch (error) {
-    console.error("Formula Gen Error:", error);
+    logger.error("Formula Gen Error:", error);
     return "=ERROR()";
   }
 };
@@ -43,7 +55,7 @@ export const chatWithKnowledgeBase = async (
       parts: [{ text: query }]
     });
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       config: { systemInstruction },
       contents: contents,
@@ -51,7 +63,7 @@ export const chatWithKnowledgeBase = async (
 
     return response.text || "我无法生成回答。";
   } catch (error) {
-    console.error("Chat Error:", error);
+    logger.error("Chat Error:", error);
     return "抱歉，连接 AI 服务时出现错误。";
   }
 };
@@ -113,7 +125,7 @@ export const generateDataProcessingCode = async (
       }
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model,
       contents: userPrompt,
       config: {
@@ -129,7 +141,7 @@ export const generateDataProcessingCode = async (
     return result;
 
   } catch (error) {
-    console.error("Code Gen Error:", error);
+    logger.error("Code Gen Error:", error);
     return {
       code: "",
       explanation: "理解指令失败，AI 无法分析样本数据，请检查文件格式或重试。"

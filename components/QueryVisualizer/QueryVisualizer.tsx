@@ -13,6 +13,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useMemo, useCallback } from 'react';
 import { QueryResult } from '../../services/queryEngine/DataQueryEngine';
 import { TableView } from './TableView';
@@ -278,7 +279,7 @@ export const QueryVisualizer: React.FC<QueryVisualizerProps> = ({
                 checked={enableVirtualScroll}
                 onChange={(e) => {
                   // 这里可以更新配置
-                  console.log('Virtual scroll:', e.target.checked);
+                  logger.debug('Virtual scroll:', e.target.checked);
                 }}
                 className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
               />

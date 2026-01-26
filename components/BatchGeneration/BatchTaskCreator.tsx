@@ -6,6 +6,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
@@ -16,9 +17,9 @@ import {
   Zap,
   AlertCircle
 } from 'lucide-react';
-import { batchGenerationAPI } from '../../api/batchGenerationAPI';
+import { batchGenerationAPI } from '../../services/batchGenerationAPI';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { WS_BASE_URL } from '../../api/config';
+import { WS_BASE_URL } from '../../services/config';
 import { BatchTaskConfig, TaskStatus, TaskProgress } from './types';
 import StatusIndicator from '../Shared/StatusIndicator';
 import ProgressBar from '../Shared/ProgressBar';
@@ -48,10 +49,10 @@ const BatchTaskCreator: React.FC<BatchTaskCreatorProps> = ({ onTaskCreated, clas
     WS_BASE_URL,
     {
       onConnect: () => {
-        console.log('[BatchTaskCreator] WebSocket已连接');
+        logger.debug('[BatchTaskCreator] WebSocket已连接');
       },
       onDisconnect: () => {
-        console.log('[BatchTaskCreator] WebSocket已断开');
+        logger.debug('[BatchTaskCreator] WebSocket已断开');
       },
     }
   );
@@ -171,11 +172,11 @@ const BatchTaskCreator: React.FC<BatchTaskCreatorProps> = ({ onTaskCreated, clas
         try {
           await handleStartTask();
         } catch (error) {
-          console.error('启动任务失败:', error);
+          logger.error('启动任务失败:', error);
         }
       }, 500);
     } catch (error) {
-      console.error('创建任务失败:', error);
+      logger.error('创建任务失败:', error);
       alert('创建任务失败，请重试');
     } finally {
       setCreating(false);
@@ -195,7 +196,7 @@ const BatchTaskCreator: React.FC<BatchTaskCreatorProps> = ({ onTaskCreated, clas
         currentStep: '处理中',
       } : null);
     } catch (error) {
-      console.error('启动任务失败:', error);
+      logger.error('启动任务失败:', error);
       alert('启动任务失败');
     }
   }, [currentTaskId]);
@@ -210,7 +211,7 @@ const BatchTaskCreator: React.FC<BatchTaskCreatorProps> = ({ onTaskCreated, clas
         status: 'paused',
       } : null);
     } catch (error) {
-      console.error('暂停任务失败:', error);
+      logger.error('暂停任务失败:', error);
       alert('暂停任务失败');
     }
   }, [currentTaskId]);
@@ -225,7 +226,7 @@ const BatchTaskCreator: React.FC<BatchTaskCreatorProps> = ({ onTaskCreated, clas
         status: 'processing',
       } : null);
     } catch (error) {
-      console.error('恢复任务失败:', error);
+      logger.error('恢复任务失败:', error);
       alert('恢复任务失败');
     }
   }, [currentTaskId]);
@@ -246,7 +247,7 @@ const BatchTaskCreator: React.FC<BatchTaskCreatorProps> = ({ onTaskCreated, clas
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('下载失败:', error);
+      logger.error('下载失败:', error);
       alert('下载失败');
     }
   }, [currentTaskId]);

@@ -1,14 +1,72 @@
+import { logger } from '@/utils/logger';
 import Anthropic from "@anthropic-ai/sdk";
 import { AIProcessResult } from '../types';
 import { SAMPLING_CONFIG } from '../config/samplingConfig';
 import { APICircuitBreaker } from './infrastructure/degradation';
 
 // 配置智谱AI
-const client = new Anthropic({
-  apiKey: process.env.ZHIPU_API_KEY || process.env.API_KEY || '',
-  baseURL: 'https://open.bigmodel.cn/api/anthropic',
-  dangerouslyAllowBrowser: true // 允许在浏览器环境中使用
-});
+// 注意: 此服务应在服务器端运行,API密钥从环境变量读取
+// 不再允许在浏览器环境中直接使用,必须通过后端代理
+
+// 环境检测：兼容浏览器和Node.js环境
+const isNodeEnv = typeof process !== 'undefined' && process.env !== undefined;
+
+// 延迟初始化客户端，避免在模块加载时就访问process.env
+let client: Anthropic | null = null;
+
+const getClient = (): Anthropic => {
+  if (!client) {
+    const apiKey = isNodeEnv
+      ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
+      : '';
+
+    client = new Anthropic({
+      apiKey,
+      baseURL: 'https://open.bigmodel.cn/api/anthropic',
+      // 仅在Node.js环境允许直接调用
+      dangerouslyAllowBrowser: isNodeEnv
+    });
+  }
+  return client;
+};
+
+/**
+ * 验证AI服务配置
+ * 在服务启动时检查API密钥是否配置
+ * 仅在Node.js环境中执行验证
+ */
+export const validateAIServiceConfig = (): { valid: boolean; error?: string } => {
+  // 仅在Node.js环境验证配置
+  if (!isNodeEnv) {
+    return { valid: true }; // 浏览器环境跳过验证
+  }
+
+  const apiKey = process.env.ZHIPU_API_KEY || process.env.API_KEY;
+
+  if (!apiKey) {
+    return {
+      valid: false,
+      error: 'ZHIPU_API_KEY 未配置。请在环境变量中设置智谱AI API密钥。'
+    };
+  }
+
+  if (apiKey === 'your-secret-key-here' || apiKey.length < 10) {
+    return {
+      valid: false,
+      error: 'ZHIPU_API_KEY 配置无效。请检查环境变量设置。'
+    };
+  }
+
+  return { valid: true };
+};
+
+// 在模块加载时验证配置
+const configValidation = validateAIServiceConfig();
+if (!configValidation.valid) {
+  logger.error('❌ [zhipuService] AI服务配置错误:', configValidation.error);
+} else {
+  logger.info('✅ [zhipuService] AI服务配置验证通过');
+}
 
 // 创建熔断器实例（单例）
 let circuitBreaker: APICircuitBreaker | null = null;
@@ -62,7 +120,7 @@ export const generateExcelFormula = async (description: string): Promise<string>
 
 请生成最合适的Excel公式，不要包含markdown代码块或解释文字。`;
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: "glm-4.6",
       max_tokens: 1500, // 增加token限制以支持复杂公式
       messages: [{
@@ -86,7 +144,7 @@ export const generateExcelFormula = async (description: string): Promise<string>
 
     return formula;
   } catch (error) {
-    console.error("Formula Gen Error:", error);
+    logger.error("Formula Gen Error:", error);
 
     // 降级处理：返回一个基本的安全公式
     return generateFallbackFormula(description);
@@ -221,7 +279,7 @@ export const chatWithKnowledgeBase = async (
       content: query
     });
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: "glm-4.6",
       max_tokens: 4096,
       messages: messages
@@ -230,7 +288,7 @@ export const chatWithKnowledgeBase = async (
     const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
     return text || "我无法生成回答。";
   } catch (error) {
-    console.error("Chat Error:", error);
+    logger.error("Chat Error:", error);
     return "抱歉，连接 AI 服务时出现错误。";
   }
 };
@@ -294,7 +352,7 @@ export const generateDataProcessingCode = async (
 
   // 检查熔断器状态
   if (!breaker.allowRequest()) {
-    console.warn('[zhipuService] Circuit breaker is OPEN, using fallback');
+    logger.warn('[zhipuService] Circuit breaker is OPEN, using fallback');
     return {
       code: "",
       explanation: "AI 服务暂时不可用，请稍后重试。熔断器已开启，请等待系统自动恢复。"
@@ -484,11 +542,11 @@ print(json.dumps(files, ensure_ascii=False, default=str))
 {"explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。", "code": "你的 Python 代码字符串"}
 `;
 
-    console.log('[AI Service] Sending request to AI...');
-    console.log('[AI Service] User prompt:', userPrompt);
-    console.log('[AI Service] Files count:', filesPreview.length);
+    logger.debug('[AI Service] Sending request to AI...');
+    logger.info('[AI Service] User prompt:', userPrompt);
+    logger.debug('[AI Service] Files count:', filesPreview.length);
 
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: "glm-4.6",
       max_tokens: 4096,
       messages: [{
@@ -500,8 +558,8 @@ print(json.dumps(files, ensure_ascii=False, default=str))
     const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
     if (!text) throw new Error("No response from AI");
 
-    console.log('[AI Service] Raw AI response length:', text.length);
-    console.log('[AI Service] Raw AI response:', text);
+    logger.debug('[AI Service] Raw AI response length:', text.length);
+    logger.debug('[AI Service] Raw AI response:', text);
 
     // 清理和解析JSON响应
     let result: AIProcessResult;
@@ -529,17 +587,17 @@ print(json.dumps(files, ensure_ascii=False, default=str))
       // 5. 解析JSON
       result = JSON.parse(cleanText);
 
-      console.log('[AI Service] Parsed result explanation:', result.explanation);
-      console.log('[AI Service] Parsed result code length:', result.code?.length || 0);
-      console.log('[AI Service] Parsed result code (BEFORE cleanup):', result.code);
+      logger.debug('[AI Service] Parsed result explanation:', result.explanation);
+      logger.debug('[AI Service] Parsed result code length:', result.code?.length || 0);
+      logger.debug('[AI Service] Parsed result code (BEFORE cleanup):', result.code);
 
       // 6. 清理代码中的语法问题
       result.code = sanitizeGeneratedCode(result.code);
 
-      console.log('[AI Service] Parsed result code (AFTER cleanup):', result.code);
+      logger.debug('[AI Service] Parsed result code (AFTER cleanup):', result.code);
 
     } catch (parseError) {
-      console.warn('JSON解析失败，尝试从文本中提取内容:', parseError);
+      logger.error('JSON解析失败，尝试从文本中提取内容:', parseError);
 
       // 尝试手动解析
       try {
@@ -572,7 +630,7 @@ print(json.dumps(files, ensure_ascii=False, default=str))
 
         // 清理代码中的语法问题
         code = sanitizeGeneratedCode(code);
-        console.log('[AI Service] Manual parse - sanitized code:', code);
+        logger.debug('[AI Service] Manual parse - sanitized code:', code);
 
         result = {
           explanation: explanation || "AI 响应格式解析失败，原始响应：" + text.substring(0, 200) + "...",
@@ -596,7 +654,7 @@ print(json.dumps(files, ensure_ascii=False, default=str))
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error("Code Gen Error:", error);
+    logger.error("Code Gen Error:", error);
 
     // 记录失败到熔断器
     breaker.recordCall(false, duration);
@@ -606,4 +664,12 @@ print(json.dumps(files, ensure_ascii=False, default=str))
       explanation: "理解指令失败，AI 无法分析样本数据，请检查文件格式或重试。"
     };
   }
+};
+
+// 导出zhipuService对象，供控制器使用
+export const zhipuService = {
+  generateExcelFormula,
+  generateDataProcessingCode,
+  chatWithKnowledgeBase,
+  validateConfig: validateAIServiceConfig
 };

@@ -10,6 +10,7 @@
  * @version 1.0.0
  */
 
+import { logger } from '@/utils/logger';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
@@ -78,12 +79,12 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, onClose }) 
 
       // 如果有警告信息
       if (result.messages && result.messages.length > 0) {
-        console.warn('文档转换警告:', result.messages);
+        logger.warn('文档转换警告:', result.messages);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '未知错误';
       setError(`无法加载文档: ${errorMessage}`);
-      console.error('文档预览错误:', err);
+      logger.error('文档预览错误:', err);
     } finally {
       setIsLoading(false);
     }

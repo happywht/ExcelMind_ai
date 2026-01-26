@@ -12,13 +12,14 @@ import QualityGauge from '../Shared/QualityGauge';
 import IssueBadge from '../Shared/IssueBadge';
 import ProgressBar from '../Shared/ProgressBar';
 import StatusIndicator from '../Shared/StatusIndicator';
-import { dataQualityAPI } from '../../api/dataQualityAPI';
+import { dataQualityAPI } from '../../services/dataQualityAPI';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { API_BASE_URL, WS_BASE_URL } from '../../api/config';
+import { API_BASE_URL, WS_BASE_URL } from '../../services/config';
 import { DataQualityAnalysis, CleaningSuggestion, AnalysisProgress } from './types';
 import IssueList from './IssueList';
 import RecommendationPanel from './RecommendationPanel';
 import AutoFixDialog from './AutoFixDialog';
+import { logger } from '@/utils/logger';
 
 interface DataQualityDashboardProps {
   className?: string;
@@ -37,10 +38,10 @@ const DataQualityDashboard: React.FC<DataQualityDashboardProps> = ({ className }
     WS_BASE_URL,
     {
       onConnect: () => {
-        console.log('[DataQualityDashboard] WebSocket已连接');
+        logger.debug('[DataQualityDashboard] WebSocket已连接');
       },
       onDisconnect: () => {
-        console.log('[DataQualityDashboard] WebSocket已断开');
+        logger.debug('[DataQualityDashboard] WebSocket已断开');
       },
     }
   );
@@ -161,7 +162,7 @@ const DataQualityDashboard: React.FC<DataQualityDashboardProps> = ({ className }
       });
 
     } catch (error) {
-      console.error('数据质量分析失败:', error);
+      logger.error('数据质量分析失败:', error);
 
       setProgress({
         stage: 'error',
@@ -298,7 +299,7 @@ const DataQualityDashboard: React.FC<DataQualityDashboardProps> = ({ className }
       );
 
       // 处理清洗结果
-      console.log('清洗完成:', result);
+      logger.debug('清洗完成:', result);
 
       // 更新分析结果中的质量评分
       if (result.summary.finalQualityScore) {
@@ -316,7 +317,7 @@ const DataQualityDashboard: React.FC<DataQualityDashboardProps> = ({ className }
       // 显示成功消息
       alert(`清洗完成！质量评分提升 ${result.summary.qualityImprovement} 分`);
     } catch (error) {
-      console.error('执行清洗失败:', error);
+      logger.error('执行清洗失败:', error);
       alert(`执行清洗失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }, [analysis]);

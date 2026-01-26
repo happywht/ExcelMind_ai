@@ -11,6 +11,7 @@
  * @module server
  */
 
+import { logger } from '@/utils/logger';
 import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from './websocket/websocketServer';
@@ -65,7 +66,7 @@ export class AppServer {
       await new Promise<void>((resolve, reject) => {
         this.httpServer.once('error', reject);
         this.httpServer.listen(port, () => {
-          console.log(`HTTP服务器监听端口: ${port}`);
+          logger.debug(`HTTP服务器监听端口: ${port}`);
           resolve();
         });
       });
@@ -85,10 +86,10 @@ export class AppServer {
         this.integrateBatchScheduler();
       }
 
-      console.log(`所有服务器已成功启动 - HTTP: ${port}, WebSocket: ${wsServerPort}`);
+      logger.debug(`所有服务器已成功启动 - HTTP: ${port}, WebSocket: ${wsServerPort}`);
 
     } catch (error) {
-      console.error('启动服务器失败:', error);
+      logger.error('启动服务器失败:', error);
       throw error;
     }
   }
@@ -110,7 +111,7 @@ export class AppServer {
     // 停止HTTP服务器
     return new Promise((resolve) => {
       this.httpServer.close(() => {
-        console.log('HTTP服务器已关闭');
+        logger.debug('HTTP服务器已关闭');
         resolve();
       });
     });
@@ -159,7 +160,7 @@ export class AppServer {
       await this.progressBroadcaster!.onTaskCancelled(task);
     });
 
-    console.log('批量任务调度器已集成到WebSocket服务器');
+    logger.debug('批量任务调度器已集成到WebSocket服务器');
   }
 
   /**
@@ -189,7 +190,7 @@ export class AppServer {
 
     // 日志
     this.expressApp.use((req, res, next) => {
-      console.log(`${req.method} ${req.path}`);
+      logger.debug(`${req.method} ${req.path}`);
       next();
     });
 
@@ -281,23 +282,23 @@ async function startServer() {
 
   try {
     await server.start(httpPort, wsPort);
-    console.log(`服务器已启动 - HTTP: ${httpPort}, WebSocket: ${wsPort}`);
+    logger.debug(`服务器已启动 - HTTP: ${httpPort}, WebSocket: ${wsPort}`);
 
     // 优雅关闭
     process.on('SIGTERM', async () => {
-      console.log('收到SIGTERM信号，正在关闭服务器...');
+      logger.debug('收到SIGTERM信号，正在关闭服务器...');
       await server.stop();
       process.exit(0);
     });
 
     process.on('SIGINT', async () => {
-      console.log('收到SIGINT信号，正在关闭服务器...');
+      logger.debug('收到SIGINT信号，正在关闭服务器...');
       await server.stop();
       process.exit(0);
     });
 
   } catch (error) {
-    console.error('启动服务器失败:', error);
+    logger.error('启动服务器失败:', error);
     process.exit(1);
   }
 }

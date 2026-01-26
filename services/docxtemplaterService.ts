@@ -18,6 +18,7 @@
  * @version 2.0.0
  */
 
+import { logger } from '@/utils/logger';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import ImageModule from 'docxtemplater-image-module-free';
@@ -503,7 +504,7 @@ export async function batchGenerateWithDocxtemplater(
 
       } catch (error) {
         failed++;
-        console.error(`生成第${globalIndex + 1}个文档失败:`, error);
+        logger.error(`生成第${globalIndex + 1}个文档失败:`, error);
         return null;
       }
     });
@@ -791,7 +792,7 @@ export async function extractPlaceholdersFromTemplate(
     return unique.map(p => p.replace(/\{\{|\}\}/g, '').trim());
 
   } catch (error) {
-    console.error('提取占位符失败:', error);
+    logger.error('提取占位符失败:', error);
     return [];
   }
 }
@@ -825,7 +826,7 @@ export async function compareEngines(
     dtSize = blob1.size;
     dtSuccess = true;
   } catch (error) {
-    console.error('docxtemplater测试失败:', error);
+    logger.error('docxtemplater测试失败:', error);
   }
 
   // 测试遗留引擎 (如果存在)
@@ -846,7 +847,7 @@ export async function compareEngines(
     legacySize = blob2.size;
     legacySuccess = true;
   } catch (error) {
-    console.error('遗留引擎测试失败:', error);
+    logger.error('遗留引擎测试失败:', error);
   }
 
   return {
@@ -971,7 +972,7 @@ export class DocxtemplaterService {
 
             if (attempt > retryCount) {
               failed++;
-              console.error(`生成第${globalIndex + 1}个文档失败:`, error);
+              logger.error(`生成第${globalIndex + 1}个文档失败:`, error);
 
               // 报告进度
               onProgress?.(successful + failed, dataList.length);
@@ -1082,7 +1083,7 @@ export class DocxtemplaterService {
 
           return new Uint8Array(0);
         } catch (error) {
-          console.error(`加载图片失败 [${tagName}]:`, error);
+          logger.error(`加载图片失败 [${tagName}]:`, error);
           throw new DocxGenerationError(
             `无法加载图片: ${tagName}`,
             ErrorCode.IMAGE_LOAD_FAILED,
@@ -1157,7 +1158,7 @@ export class DocumentEngineFactory {
         options: { preserveFormatting: 'maximum' }
       });
     } catch (error) {
-      console.warn('docxtemplater生成失败，尝试使用备选引擎:', error);
+      logger.error('docxtemplater生成失败，尝试使用备选引擎:', error);
 
       // 降级到docx-templates
       try {
@@ -1167,7 +1168,7 @@ export class DocumentEngineFactory {
           data
         });
       } catch (fallbackError) {
-        console.error('备选引擎也失败了:', fallbackError);
+        logger.error('备选引擎也失败了:', fallbackError);
 
         // 抛出原始错误
         throw error instanceof DocxGenerationError
@@ -1306,7 +1307,7 @@ export class TemplateValidator {
       return complexityScore >= 3 ? 'complex' : 'simple';
 
     } catch (error) {
-      console.error('检测模板复杂度失败:', error);
+      logger.error('检测模板复杂度失败:', error);
       return 'simple';
     }
   }

@@ -9,6 +9,7 @@
  * @description 智能数据处理增强模块的建议引擎
  */
 
+import { logger } from '@/utils/logger';
 import {
   DataQualityReport,
   DataQualityIssue,
@@ -279,7 +280,7 @@ export class CleaningRecommendationEngine {
         const cacheKey = this.generateCacheKey(report, options);
         const cached = await this.cacheService.get(cacheKey);
         if (cached) {
-          console.log('[CleaningRecommendationEngine] 使用缓存的建议');
+          logger.debug('[CleaningRecommendationEngine] 使用缓存的建议');
           return cached;
         }
       }
@@ -321,11 +322,11 @@ export class CleaningRecommendationEngine {
       }
 
       const duration = Date.now() - startTime;
-      console.log(`[CleaningRecommendationEngine] 生成了 ${suggestions.length} 个建议，耗时 ${duration}ms`);
+      logger.debug(`[CleaningRecommendationEngine] 生成了 ${suggestions.length} 个建议，耗时 ${duration}ms`);
 
       return suggestions;
     } catch (error) {
-      console.error('[CleaningRecommendationEngine] 生成建议失败:', error);
+      logger.error('[CleaningRecommendationEngine] 生成建议失败:', error);
       throw error;
     }
   }
@@ -387,7 +388,7 @@ export class CleaningRecommendationEngine {
         executionEstimate
       };
     } catch (error) {
-      console.error(`[CleaningRecommendationEngine] 生成策略建议失败: ${template.name}`, error);
+      logger.error(`[CleaningRecommendationEngine] 生成策略建议失败: ${template.name}`, error);
       return null;
     }
   }
@@ -406,7 +407,7 @@ export class CleaningRecommendationEngine {
       const response = await this.aiService.analyze(prompt);
       return response || strategy.description;
     } catch (error) {
-      console.error('[CleaningRecommendationEngine] AI生成理由失败:', error);
+      logger.error('[CleaningRecommendationEngine] AI生成理由失败:', error);
       return strategy.description;
     }
   }
@@ -669,7 +670,7 @@ ${JSON.stringify(report.dataSample?.slice(0, 5), null, 2)}
       // 提取代码部分
       return this.extractCode(response);
     } catch (error) {
-      console.error('[CleaningRecommendationEngine] 生成执行代码失败:', error);
+      logger.error('[CleaningRecommendationEngine] 生成执行代码失败:', error);
       return '';
     }
   }

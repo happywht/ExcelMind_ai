@@ -5,7 +5,10 @@ import {
   FunctionSquare,
   MessageSquareText,
   Bot,
-  FileEdit
+  FileEdit,
+  Package,
+  FolderOpen,
+  CheckCircle
 } from 'lucide-react';
 import { AppView } from '../types';
 
@@ -21,6 +24,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
     { id: AppView.FORMULA, label: '公式生成器', icon: FunctionSquare },
     { id: AppView.KNOWLEDGE_CHAT, label: '审计助手', icon: MessageSquareText },
     { id: AppView.DOCUMENT_SPACE, label: '文档空间', icon: FileEdit },
+    // 新增功能菜单项
+    { id: AppView.BATCH_GENERATION, label: '批量生成', icon: Package },
+    { id: AppView.TEMPLATE_MANAGEMENT, label: '模板管理', icon: FolderOpen },
+    { id: AppView.DATA_QUALITY, label: '数据质量', icon: CheckCircle },
   ];
 
   return (

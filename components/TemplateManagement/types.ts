@@ -4,7 +4,7 @@
  * @version 2.0.0
  */
 
-import { TemplateConfig, TemplateMetadata, TemplatePlaceholder } from '../../api/templateAPI';
+import { TemplateConfig, TemplateMetadata, TemplatePlaceholder } from '../../services/templateAPI';
 
 export type {
   TemplateConfig,
