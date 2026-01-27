@@ -76,8 +76,8 @@ export class AuthMiddleware {
    * API密钥认证中间件
    */
   apiKeyAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    // 如果明确禁用认证，跳过验证
-    if (this.config.enabled === false) {
+    // 运行时动态检查认证开关（支持.env.local热重载）
+    if (this.config.enabled === false || process.env.AUTH_ENABLED === 'false') {
       logger.info('⚠️ 认证已禁用 - 跳过API密钥验证');
       next();
       return;
@@ -135,8 +135,8 @@ export class AuthMiddleware {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
       const requestId = req.headers['x-request-id'] as string || uuidv4();
 
-      // 如果明确禁用认证，跳过验证
-      if (this.config.enabled === false) {
+      // 运行时动态检查认证开关（支持.env.local热重载）
+      if (this.config.enabled === false || process.env.AUTH_ENABLED === 'false') {
         next();
         return;
       }
@@ -188,8 +188,8 @@ export class AuthMiddleware {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
       const requestId = req.headers['x-request-id'] as string || uuidv4();
 
-      // 如果明确禁用认证，跳过验证
-      if (this.config.enabled === false) {
+      // 运行时动态检查认证开关（支持.env.local热重载）
+      if (this.config.enabled === false || process.env.AUTH_ENABLED === 'false') {
         next();
         return;
       }

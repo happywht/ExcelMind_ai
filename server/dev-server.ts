@@ -6,16 +6,30 @@
  */
 
 // 加载环境变量（必须在所有其他导入之前）
-import 'dotenv/config';
 import path from 'path';
 import { config } from 'dotenv';
 
-// 加载.env.local文件
-const envPath = path.resolve(process.cwd(), '.env.local');
-config({ path: envPath });
+// 环境变量加载顺序（优先级从低到高）：
+// 1. .env (默认)
+// 2. .env.development (开发环境)
+// 3. .env.local (本地覆盖 - 优先级最高)
+//
+// 注意：.env.local 不会被提交到版本控制，适合存放敏感信息
+
+// 加载 .env 文件（如果存在）
+config();
+
+// 加载 .env.development 文件（如果存在）
+const envDevPath = path.resolve(process.cwd(), '.env.development');
+config({ path: envDevPath });
+
+// 加载 .env.local 文件（如果存在）- 优先级最高，会覆盖前面的配置
+const envLocalPath = path.resolve(process.cwd(), '.env.local');
+config({ path: envLocalPath, override: true });
 
 import { logger } from '@/utils/logger';
 import { createServerWithWebSocket } from './app';
+import { validateAIServiceConfig } from '../services/zhipuService';
 
 // 环境变量
 const PORT = process.env.API_PORT || 3001;
@@ -23,10 +37,23 @@ const HOST = process.env.API_HOST || 'localhost';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // 验证关键环境变量
-if (!process.env.ZHIPU_API_KEY) {
+const zhipuKey = process.env.ZHIPU_API_KEY;
+if (!zhipuKey) {
   logger.warn('[Startup] ZHIPU_API_KEY 未配置，AI功能将不可用');
 } else {
-  logger.debug('[Startup] ZHIPU_API_KEY 已加载');
+  // 只显示密钥的前8位和后4位，中间用星号代替，保护敏感信息
+  const maskedKey = zhipuKey.length > 12
+    ? `${zhipuKey.substring(0, 8)}${'*'.repeat(zhipuKey.length - 12)}${zhipuKey.substring(zhipuKey.length - 4)}`
+    : '****';
+  logger.info(`[Startup] ZHIPU_API_KEY 已加载: ${maskedKey}`);
+}
+
+// 验证AI服务配置
+const aiConfigValidation = validateAIServiceConfig();
+if (!aiConfigValidation.valid) {
+  logger.error(`[Startup] AI服务配置验证失败: ${aiConfigValidation.error}`);
+} else {
+  logger.info('[Startup] AI服务配置验证通过');
 }
 
 /**
