@@ -3,7 +3,9 @@ import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code,
 import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel, executeTransformation } from '../services/excelService';
 import { generateDataProcessingCode } from '../services/aiProxyService';
 import { ExcelData, ProcessingLog } from '../types';
-import { AgenticOrchestrator } from '../services/agentic';
+// ✅ 修复：不再直接导入 AgenticOrchestrator（它应该在服务器端运行）
+// ✅ 改为使用 API 客户端调用后端服务
+import { smartProcessApi } from '../services/api/smartProcessApi';
 import type { MultiStepTask, TaskResult, TaskStatus, LogEntry as AgenticLogEntry } from '../types/agenticTypes';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
@@ -26,7 +28,8 @@ export const SmartExcel: React.FC = () => {
   const [taskState, setTaskState] = useState<MultiStepTask | null>(null);
   const [agenticLogs, setAgenticLogs] = useState<AgenticLogEntry[]>([]);
   const [useAgenticMode, setUseAgenticMode] = useState(true); // 默认使用多步分析模式
-  const [orchestrator, setOrchestrator] = useState<AgenticOrchestrator | null>(null);
+  // ✅ 修复：移除 orchestrator 状态，现在通过 API 调用后端服务
+  // const [orchestrator, setOrchestrator] = useState<AgenticOrchestrator | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -35,25 +38,8 @@ export const SmartExcel: React.FC = () => {
   const handleProgressUpdate = useCallback((state: MultiStepTask) => {
     setTaskState(state);
 
-    // 将 Agentic 日志转换为 ProcessingLog 格式
-    const orchestratorInstance = orchestrator;
-    if (orchestratorInstance) {
-      const latestLogs = orchestratorInstance.getLogs().slice(-5); // 获取最新的5条日志
-      latestLogs.forEach(log => {
-        const statusMap: Record<string, 'success' | 'error' | 'pending'> = {
-          'info': 'pending',
-          'warn': 'pending',
-          'error': 'error',
-          'debug': 'pending'
-        };
-        setLogs(prev => [{
-          id: `${log.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
-          fileName: 'Agentic',
-          status: statusMap[log.level] || 'pending',
-          message: `[${state.progress.currentPhase}] ${log.message}`
-        }, ...prev]);
-      });
-    }
+    // ✅ 修复：不再需要从 orchestrator 获取日志（日志现在通过 API 返回）
+    // 日志将通过 API 轮询或在结果中返回
 
     // 更新进度日志
     if (state.progress.percentage > 0) {
@@ -64,7 +50,7 @@ export const SmartExcel: React.FC = () => {
         message: `进度: ${state.progress.percentage}% - ${state.progress.message}`
       }, ...prev]);
     }
-  }, [orchestrator]);
+  }, []);
 
   // 任务状态显示文本映射
   const statusTextMap: Record<TaskStatus, string> = useMemo(() => ({
@@ -85,14 +71,22 @@ export const SmartExcel: React.FC = () => {
   }, []);
 
   // 取消执行
-  const cancelExecution = useCallback(() => {
+  const cancelExecution = useCallback(async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    if (orchestrator) {
-      orchestrator.cancelTask();
-    }
+    // ✅ 修复：取消逻辑现在通过任务ID和 API 实现
+    // 如果有当前运行的任务，可以通过 API 取消
+    // TODO: 实现通过 API 取消任务的逻辑
+    // if (currentTaskId) {
+    //   try {
+    //     await smartProcessApi.cancel(currentTaskId);
+    //   } catch (error) {
+    //     logger.error('Failed to cancel task via API', error);
+    //   }
+    // }
+
     setIsProcessing(false);
     setLogs(prev => [{
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -100,7 +94,7 @@ export const SmartExcel: React.FC = () => {
       status: 'error',
       message: '用户取消了执行'
     }, ...prev]);
-  }, [orchestrator]);
+  }, []);
 
   // 当activeFileId改变时，设置activeSheetName为该文件的第一个sheet
   useEffect(() => {
@@ -151,28 +145,52 @@ export const SmartExcel: React.FC = () => {
       }));
 
       if (useAgenticMode) {
-        // 使用多步分析系统
+        // ✅ 修复：使用后端 API 调用智能处理服务（不再在前端实例化 AgenticOrchestrator）
         setLogs(prev => [{
           id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           fileName: 'System',
           status: 'pending',
-          message: '启动多步分析系统 (Observe-Think-Act-Evaluate)...'
+          message: '启动多步分析系统 (Observe-Think-Act-Evaluate)... 通过后端API服务'
         }, ...prev]);
 
-        // 创建新的编排器实例
-        const newOrchestrator = new AgenticOrchestrator({
-          maxRetries: 3,
-          qualityThreshold: 0.7,
-          enableAutoRepair: true,
-          logLevel: 'info'
+        // ✅ 调用后端 API（AgenticOrchestrator 在服务器端运行）
+        const apiResponse = await smartProcessApi.execute({
+          command: command,
+          files: dataFiles,
+          options: {
+            useAgenticMode: true,
+            maxRetries: 3,
+            qualityThreshold: 0.7,
+            enableAutoRepair: true
+          }
         });
-        setOrchestrator(newOrchestrator);
 
-        // 注册进度回调
-        newOrchestrator.updateProgress(handleProgressUpdate);
+        setLogs(prev => [{
+          id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          fileName: 'System',
+          status: 'pending',
+          message: `任务已创建 (ID: ${apiResponse.taskId})，正在处理...`
+        }, ...prev]);
 
-        // 执行多步分析
-        const result: TaskResult = await newOrchestrator.executeTask(command, dataFiles);
+        // ✅ 等待任务完成（使用轮询）
+        const result: TaskResult = await smartProcessApi.waitForCompletion(
+          apiResponse.taskId,
+          {
+            pollInterval: 2000, // 每2秒轮询一次
+            timeout: 300000, // 5分钟超时
+            onProgress: (status) => {
+              // 更新进度日志
+              if (status.status === 'processing') {
+                setLogs(prev => [{
+                  id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  fileName: 'System',
+                  status: 'pending',
+                  message: `处理中... (已用时: ${Math.round((status.elapsed || 0) / 1000)}s)`
+                }, ...prev]);
+              }
+            }
+          }
+        );
 
         // 处理结果
         if (result.success && result.data) {

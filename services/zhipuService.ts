@@ -16,15 +16,36 @@ let client: Anthropic | null = null;
 
 const getClient = (): Anthropic => {
   if (!client) {
+    // ✅ 安全检查：强制服务器端验证
+    // 检测是否在浏览器环境中运行
+    if (typeof window !== 'undefined') {
+      throw new Error(
+        '🚨 安全错误：zhipuService 只能在服务器端运行！\n' +
+        '检测到浏览器环境，这会导致 API 密钥暴露风险。\n\n' +
+        '正确做法：\n' +
+        '1. 前端应调用后端 API：/api/v2/ai/smart-process\n' +
+        '2. 后端 API 会实例化 AgenticOrchestrator\n' +
+        '3. AgenticOrchestrator 在服务器端调用 zhipuService\n\n' +
+        '请检查你的代码，确保不要在前端组件中直接导入或实例化 AgenticOrchestrator。'
+      );
+    }
+
     const apiKey = isNodeEnv
       ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
       : '';
 
+    if (!apiKey) {
+      throw new Error(
+        '❌ 配置错误：ZHIPU_API_KEY 未设置。\n' +
+        '请在服务器环境变量中配置智谱 AI API 密钥。'
+      );
+    }
+
     client = new Anthropic({
       apiKey,
       baseURL: 'https://open.bigmodel.cn/api/anthropic',
-      // 仅在Node.js环境允许直接调用
-      dangerouslyAllowBrowser: isNodeEnv
+      // ✅ 本地开发环境：允许浏览器环境运行
+      dangerouslyAllowBrowser: true // 本地开发可以放宽限制
     });
   }
   return client;

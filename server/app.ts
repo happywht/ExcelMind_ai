@@ -41,11 +41,37 @@ export function createApp(): Express {
   );
 
   // CORS 配置
+  // 开发环境：允许本地前端
+  // 生产环境：从环境变量读取允许的源
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
   const corsOptions = {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: function (origin: string | undefined, callback: any) {
+      // 允许无 origin 的请求（如服务器间调用、Postman 等）
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(new Error('不允许的跨域请求来源'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    // ✅ 添加所有业务需要的自定义头部
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Request-ID',
+      'X-Client-ID',      // 客户端标识
+      'X-API-Key',        // API 密钥认证
+      'X-Session-ID'      // 会话标识
+    ],
+    // 暴露给客户端的自定义头部
+    exposedHeaders: ['X-Request-ID', 'X-RateLimit-Remaining'],
+    maxAge: 86400, // 预检请求缓存 24 小时
   };
   app.use(cors(corsOptions));
 

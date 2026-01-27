@@ -20,6 +20,7 @@ import {
   auditController,
 } from '../controllers/auditController';
 import { aiRouter } from './ai';
+import { smartProcessRouter } from './smartProcess';
 
 // 导入服务
 import { createLocalStorageService } from '../../services/storage/LocalStorageService';
@@ -356,6 +357,12 @@ export function createV2Router(): Router {
   // ========================================================================
 
   router.use('/ai', aiRouter);
+
+  // ========================================================================
+  // 7. 智能处理模块 (NEW - Phase 2)
+  // ========================================================================
+
+  router.use('/ai/smart-process', smartProcessRouter);
 
   // ========================================================================
   // WebSocket 端点（TODO: 实现WebSocket服务器）
