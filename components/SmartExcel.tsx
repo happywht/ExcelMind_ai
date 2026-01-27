@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download, AlertCircle, CheckCircle, Zap } from 'lucide-react';
-import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel, executeTransformation } from '../services/excelService';
-import { generateDataProcessingCode } from '../services/aiProxyService';
+import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel } from '../services/excelService';
 import { ExcelData, ProcessingLog } from '../types';
 // ✅ 修复：不再直接导入 AgenticOrchestrator（它应该在服务器端运行）
 // ✅ 改为使用 API 客户端调用后端服务
@@ -305,148 +304,129 @@ export const SmartExcel: React.FC = () => {
       }
     } finally {
       setIsProcessing(false);
-      setOrchestrator(null);
+      // ✅ 修复：移除 setOrchestrator 调用（架构重构后不再需要）
     }
   };
 
-  // 原有的单步执行逻辑（降级方案）
+  // ✅ 修复：单步执行模式现在也使用 API（不再直接调用 executeTransformation）
   const handleLegacyExecution = async (dataFiles: any[]) => {
     setLogs(prev => [{
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       fileName: 'System',
       status: 'pending',
-      message: '使用单步执行模式...'
+      message: '使用快速执行模式（通过API）...'
     }, ...prev]);
 
-    // 准备文件预览
-    const filesPreview = dataFiles.map(f => {
-      const sheetsInfo: Record<string, {
-        headers: string[];
-        sampleRows: any[];
-        rowCount: number;
-        metadata?: any;
-      }> = {};
+    // ✅ 修复：直接调用 API，让后端处理所有逻辑（不再在前端生成代码）
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'pending',
+      message: '正在通过 API 执行任务...'
+    }, ...prev]);
 
-      Object.entries(f.sheets || {}).forEach(([sheetName, data]: [string, any]) => {
-        const headers = data.length > 0 ? Object.keys(data[0]) : [];
-        const sampleRows = data.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
-        const metadata = f.metadata ? f.metadata[sheetName] : undefined;
-
-        sheetsInfo[sheetName] = {
-          headers,
-          sampleRows,
-          rowCount: data.length,
-          metadata
-        };
-      });
-
-      const currentData = (f.sheets || {})[f.currentSheetName || ''] || [];
-      const currentHeaders = currentData.length > 0 ? Object.keys(currentData[0]) : [];
-      const currentSampleRows = currentData.slice(0, SAMPLING_CONFIG.AI_ANALYSIS.SAMPLE_ROWS);
-      const currentMetadata = f.metadata ? f.metadata[f.currentSheetName || ''] : undefined;
-
-      return {
-        fileName: f.fileName,
-        currentSheetName: f.currentSheetName,
-        headers: currentHeaders,
-        sampleRows: currentSampleRows,
-        metadata: currentMetadata,
-        sheets: sheetsInfo,
-        sheetNames: Object.keys(f.sheets || {})
-      };
+    // ✅ 调用后端 API（快速模式：禁用多步分析和自动修复）
+    const apiResponse = await smartProcessApi.execute({
+      command: command,
+      files: dataFiles,
+      options: {
+        maxRetries: 1, // 快速模式：只尝试1次，不重试
+        qualityThreshold: 0.0, // 快速模式：不做质量评估
+        enableAutoRepair: false, // 快速模式：不自动修复
+        logLevel: 'warn' // 减少日志输出
+      }
     });
 
     setLogs(prev => [{
       id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       fileName: 'System',
       status: 'pending',
-      message: 'AI 正在观察样本数据并规划逻辑...'
+      message: `任务已创建 (ID: ${apiResponse.taskId})，正在执行...`
     }, ...prev]);
 
-    const { code, explanation } = await generateDataProcessingCode(command, filesPreview);
-    setLastGeneratedCode(code);
-
-    setLogs(prev => [
-      { id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, fileName: 'AI', status: 'success', message: `逻辑规划: ${explanation}` },
-      ...prev
-    ]);
-
-    // 准备数据集
-    const datasets: { [fileName: string]: any[] | { [sheetName: string]: any[] } } = {};
-    filesData.forEach(f => {
-      const sheetNames = Object.keys(f.sheets);
-      if (sheetNames.length === 1) {
-        datasets[f.fileName] = f.sheets[f.currentSheetName] || [];
-      } else {
-        datasets[f.fileName] = {};
-        sheetNames.forEach(sheetName => {
-          (datasets[f.fileName] as { [sheetName: string]: any[] })[sheetName] = f.sheets[sheetName];
-        });
-      }
-    });
-
-    logger.debug('执行AI生成的代码，代码长度:', code.length);
-    const resultDatasets = await executeTransformation(code, datasets as { [fileName: string]: any[] });
-
-    if (!resultDatasets || typeof resultDatasets !== 'object') {
-      throw new Error('AI返回的数据格式错误');
-    }
-
-    const updatedFilesData = [...filesData];
-    let processedFiles = 0;
-
-    Object.entries(resultDatasets).forEach(([fileName, data]) => {
-      if (typeof data === 'object' && !Array.isArray(data)) {
-        const sheetsData = data as { [sheetName: string]: any[] };
-        const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
-
-        if (existingIndex >= 0) {
-          const f = updatedFilesData[existingIndex];
-          Object.entries(sheetsData).forEach(([sheetName, sheetData]) => {
-            if (Array.isArray(sheetData)) {
-              f.sheets[sheetName] = sheetData;
-            }
-          });
-          processedFiles++;
-        } else {
-          const firstSheetName = Object.keys(sheetsData)[0];
-          updatedFilesData.push({
-            id: fileName + '-' + Date.now(),
-            fileName: fileName,
-            sheets: sheetsData,
-            currentSheetName: firstSheetName
-          });
-          processedFiles++;
-        }
-      } else if (Array.isArray(data)) {
-        const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
-        if (existingIndex >= 0) {
-          const f = updatedFilesData[existingIndex];
-          f.sheets[f.currentSheetName] = data;
-          processedFiles++;
-        } else {
-          updatedFilesData.push({
-            id: fileName + '-' + Date.now(),
-            fileName: fileName,
-            sheets: { 'Sheet1': data },
-            currentSheetName: 'Sheet1'
-          });
-          processedFiles++;
+    // ✅ 等待任务完成
+    const result: TaskResult = await smartProcessApi.waitForCompletion(
+      apiResponse.taskId,
+      {
+        pollInterval: 1000, // 每1秒轮询一次
+        timeout: 60000, // 1分钟超时
+        onProgress: (status) => {
+          // 更新进度日志
+          if (status.status === 'processing') {
+            setLogs(prev => [{
+              id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              fileName: 'System',
+              status: 'pending',
+              message: `执行中... (已用时: ${Math.round((status.elapsed || 0) / 1000)}s)`
+            }, ...prev]);
+          }
         }
       }
-    });
+    );
 
-    if (processedFiles === 0) {
-      throw new Error('没有成功处理任何文件数据');
+    // 处理结果（与智能模式相同的逻辑）
+    if (result.success && result.data) {
+      const updatedFilesData = [...filesData];
+      let processedFiles = 0;
+
+      Object.entries(result.data).forEach(([fileName, data]) => {
+        // 处理多sheet结果（对象格式）
+        if (typeof data === 'object' && !Array.isArray(data)) {
+          const sheetsData = data as { [sheetName: string]: any[] };
+          const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+
+          if (existingIndex >= 0) {
+            const f = updatedFilesData[existingIndex];
+            Object.entries(sheetsData).forEach(([sheetName, sheetData]) => {
+              if (Array.isArray(sheetData)) {
+                f.sheets[sheetName] = sheetData;
+              }
+            });
+            processedFiles++;
+          } else {
+            const firstSheetName = Object.keys(sheetsData)[0];
+            updatedFilesData.push({
+              id: fileName + '-' + Date.now(),
+              fileName: fileName,
+              sheets: sheetsData,
+              currentSheetName: firstSheetName
+            });
+            processedFiles++;
+          }
+        }
+        // 处理单sheet结果（数组格式）
+        else if (Array.isArray(data)) {
+          const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
+          if (existingIndex >= 0) {
+            const f = updatedFilesData[existingIndex];
+            f.sheets[f.currentSheetName] = data;
+            processedFiles++;
+          } else {
+            updatedFilesData.push({
+              id: fileName + '-' + Date.now(),
+              fileName: fileName,
+              sheets: { 'Sheet1': data },
+              currentSheetName: 'Sheet1'
+            });
+            processedFiles++;
+          }
+        }
+      });
+
+      if (processedFiles === 0) {
+        throw new Error('没有成功处理任何文件数据');
+      }
+
+      setFilesData(updatedFilesData);
+      setLogs(prev => [{
+        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        fileName: 'System',
+        status: 'success',
+        message: `执行完成。处理了 ${processedFiles} 个文件。`
+      }, ...prev]);
+    } else {
+      throw new Error(result.error || '快速执行失败');
     }
-
-    setFilesData(updatedFilesData);
-    setLogs(prev => [{
-      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      fileName: 'System',
-      status: 'success',
-      message: `执行完成。处理了 ${processedFiles} 个文件。`
-    }, ...prev]);
   };
 
   const removeFile = (id: string, e: React.MouseEvent) => {
