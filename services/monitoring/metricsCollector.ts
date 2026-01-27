@@ -440,15 +440,33 @@ export class MetricsCollector {
 
   /**
    * 获取内存使用情况
+   *
+   * 修复：防止除以0或异常值导致7911.8%这样的错误
    */
   private getMemoryUsage(): { used: number; total: number; limit: number; percentage: number } {
     if (typeof performance !== 'undefined' && (performance as any).memory) {
       const memory = (performance as any).memory;
+      const used = memory.usedJSHeapSize || 0;
+      const total = memory.totalJSHeapSize || 0;
+      const limit = memory.jsHeapSizeLimit || 0;
+
+      // 修复：确保使用有效的内存值进行计算
+      // 优先使用 total，如果 limit 异常（为0或小于total）
+      const effectiveLimit = (limit > 0 && limit >= total) ? limit : total;
+
+      // 计算百分比，确保在合理范围内
+      let percentage = 0;
+      if (effectiveLimit > 0) {
+        percentage = (used / effectiveLimit) * 100;
+        // 限制在 0-100 范围内
+        percentage = Math.max(0, Math.min(100, percentage));
+      }
+
       return {
-        used: memory.usedJSHeapSize,
-        total: memory.totalJSHeapSize,
-        limit: memory.jsHeapSizeLimit,
-        percentage: (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100
+        used,
+        total,
+        limit,
+        percentage
       };
     }
 

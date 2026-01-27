@@ -33,10 +33,14 @@ import {
 
 import { AIProcessResult } from '../../types';
 
-import { generateDataProcessingCode } from '../zhipuService';
+import { generateDataProcessingCode, getCircuitBreaker } from '../zhipuService';
 import { executeTransformation } from '../excelService';
 import { DegradationManager } from '../infrastructure/degradation';
 import { StateManager } from '../infrastructure/storage';
+
+// 添加最大重试计数器，防止无限循环
+let globalRetryCount = 0;
+const MAX_GLOBAL_RETRIES = 10;
 
 /**
  * 默认配置
@@ -483,6 +487,46 @@ export class AgenticOrchestrator {
     const startTime = Date.now();
     const stepId = this.generateId();
 
+    // 检查全局重试计数器，防止无限循环
+    if (globalRetryCount >= MAX_GLOBAL_RETRIES) {
+      this.log('error', 'Max global retries reached, stopping execution', {
+        retryCount: globalRetryCount,
+        maxRetries: MAX_GLOBAL_RETRIES
+      });
+
+      return {
+        stepId,
+        success: false,
+        error: this.createError(
+          ErrorCategory.UNKNOWN_ERROR,
+          'MAX_RETRIES_EXCEEDED',
+          `已达到最大重试次数 ${MAX_GLOBAL_RETRIES}，停止执行以防止无限循环`
+        ),
+        executionTime: Date.now() - startTime
+      };
+    }
+
+    // 检查熔断器状态
+    const breaker = getCircuitBreaker();
+    const breakerState = breaker.getState();
+    if (breakerState.isOpen) {
+      this.log('error', 'Circuit breaker is OPEN, cannot proceed', {
+        failureCount: breakerState.failureCount,
+        failureRate: breakerState.failureRate
+      });
+
+      return {
+        stepId,
+        success: false,
+        error: this.createError(
+          ErrorCategory.AI_SERVICE_ERROR,
+          'CIRCUIT_BREAKER_OPEN',
+          '熔断器已打开，AI服务暂时不可用。请稍后重试或重置熔断器。'
+        ),
+        executionTime: Date.now() - startTime
+      };
+    }
+
     // 在 try 块外初始化变量，避免 catch 块中引用未定义的变量
     let codeGenerationResult: AIProcessResult | null = null;
     let filesPreview: any[] | null = null;
@@ -493,39 +537,62 @@ export class AgenticOrchestrator {
         throw new Error('No active task');
       }
 
+      // 数据验证：检查是否有文件数据
+      if (!this.currentTask.context.dataFiles || this.currentTask.context.dataFiles.length === 0) {
+        throw new Error('没有可用的文件数据。请先上传文件。');
+      }
+
       // 准备数据预览 - 修复：构建 zhipuService 期望的嵌套结构
-      filesPreview = this.currentTask.context.dataFiles.map(file => {
-        const preview: any = {
-          fileName: file.fileName,
-          currentSheetName: file.currentSheetName,
-          metadata: file.metadata
-        };
+      filesPreview = this.currentTask.context.dataFiles
+        .map(file => {
+          const preview: any = {
+            fileName: file.fileName,
+            currentSheetName: file.currentSheetName,
+            metadata: file.metadata
+          };
 
-        // 构建嵌套的 sheets 结构，包含每个 sheet 的 headers 和 sampleRows
-        if (file.sheets && Object.keys(file.sheets).length > 0) {
-          preview.sheets = {};
+          // 构建嵌套的 sheets 结构，包含每个 sheet 的 headers 和 sampleRows
+          if (file.sheets && Object.keys(file.sheets).length > 0) {
+            preview.sheets = {};
 
-          Object.entries(file.sheets).forEach(([sheetName, sheetData]) => {
-            if (Array.isArray(sheetData) && sheetData.length > 0) {
-              // 提取当前 sheet 的 headers 和 sampleRows
-              const headers = Object.keys(sheetData[0] || {});
-              const sampleRows = sheetData.slice(0, 5);
+            Object.entries(file.sheets).forEach(([sheetName, sheetData]) => {
+              if (Array.isArray(sheetData) && sheetData.length > 0) {
+                // 提取当前 sheet 的 headers 和 sampleRows
+                const headers = Object.keys(sheetData[0] || {});
+                const sampleRows = sheetData.slice(0, 5);
 
-              preview.sheets[sheetName] = {
-                headers,
-                sampleRows,
-                rowCount: sheetData.length
-              };
-            }
-          });
-        } else {
-          // 兼容单sheet模式
-          preview.headers = this.extractHeaders(file);
-          preview.sampleRows = this.extractSampleRows(file);
-        }
+                preview.sheets[sheetName] = {
+                  headers,
+                  sampleRows,
+                  rowCount: sheetData.length
+                };
+              }
+            });
+          } else {
+            // 兼容单sheet模式
+            preview.headers = this.extractHeaders(file);
+            preview.sampleRows = this.extractSampleRows(file);
+          }
 
-        return preview;
-      });
+          return preview;
+        })
+        .filter(preview => {
+          // 过滤掉没有任何有效数据的预览
+          const hasData =
+            (preview.sheets && Object.keys(preview.sheets).length > 0) ||
+            (preview.headers && preview.headers.length > 0);
+
+          if (!hasData) {
+            this.log('warn', `过滤空文件: ${preview.fileName}`);
+          }
+
+          return hasData;
+        });
+
+      // 数据验证：确保 filesPreview 不为空
+      if (!filesPreview || filesPreview.length === 0) {
+        throw new Error('文件数据为空或无法读取。请确保上传的Excel文件包含有效数据。');
+      }
 
       // 数据验证：确保 filesPreview 结构正确
       this.log('info', 'Validating filesPreview structure', {
@@ -591,6 +658,9 @@ export class AgenticOrchestrator {
         throw new Error('Code execution failed');
       }
 
+      // 成功执行，重置全局重试计数器
+      globalRetryCount = 0;
+
       const duration = Date.now() - startTime;
       this.log('info', 'Act step completed', {
         duration,
@@ -605,6 +675,9 @@ export class AgenticOrchestrator {
       };
 
     } catch (error) {
+      // 增加全局重试计数器
+      globalRetryCount++;
+
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : '';
 
@@ -612,6 +685,7 @@ export class AgenticOrchestrator {
       this.log('error', 'Act step failed with details', {
         message: errorMessage,
         stack: errorStack,
+        globalRetryCount,
         code: codeGenerationResult?.code?.substring(0, 500) || 'No code generated',
         datasets: Object.keys(datasets),
         filesPreview: filesPreview ? {
