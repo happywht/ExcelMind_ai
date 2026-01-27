@@ -67,9 +67,9 @@ export const validateAIServiceConfig = (): { valid: boolean; error?: string } =>
 let circuitBreaker: APICircuitBreaker | null = null;
 
 /**
- * 获取熔断器实例
+ * 获取熔断器实例（已导出，供外部模块使用）
  */
-const getCircuitBreaker = (): APICircuitBreaker => {
+export const getCircuitBreaker = (): APICircuitBreaker => {
   if (!circuitBreaker) {
     circuitBreaker = new APICircuitBreaker({
       failureThreshold: 50,    // 50% 失败率触发熔断
