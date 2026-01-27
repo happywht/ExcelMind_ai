@@ -108,6 +108,48 @@ export function createAIRouter(): Router {
     asyncHandler(aiController.chatWithKnowledgeBase.bind(aiController))
   );
 
+  // ========================================================================
+  // 熔断器管理路由
+  // ========================================================================
+
+  /**
+   * GET /api/v2/ai/circuit-breaker/status
+   * 获取熔断器当前状态
+   *
+   * 需要: 认证
+   */
+  router.get(
+    '/circuit-breaker/status',
+    requireAuth,
+    asyncHandler(aiController.getCircuitBreakerStatus.bind(aiController))
+  );
+
+  /**
+   * POST /api/v2/ai/circuit-breaker/reset
+   * 重置熔断器
+   *
+   * 需要: 认证 + 执行权限
+   */
+  router.post(
+    '/circuit-breaker/reset',
+    requireAuth,
+    requireExecute,
+    asyncHandler(aiController.resetCircuitBreaker.bind(aiController))
+  );
+
+  /**
+   * POST /api/v2/ai/circuit-breaker/close
+   * 手动关闭熔断器
+   *
+   * 需要: 认证 + 执行权限
+   */
+  router.post(
+    '/circuit-breaker/close',
+    requireAuth,
+    requireExecute,
+    asyncHandler(aiController.closeCircuitBreaker.bind(aiController))
+  );
+
   return router;
 }
 

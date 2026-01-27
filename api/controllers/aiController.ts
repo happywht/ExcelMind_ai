@@ -307,6 +307,67 @@ export class AIController {
       next(error);
     }
   }
+
+  /**
+   * 获取熔断器状态
+   * GET /api/v2/ai/circuit-breaker/status
+   */
+  async getCircuitBreakerStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const status = zhipuService.getCircuitBreakerState();
+
+      res.json({
+        success: true,
+        data: {
+          isOpen: status.isOpen,
+          failureCount: status.failureCount,
+          successCount: status.successCount,
+          totalCalls: status.totalCalls,
+          failureRate: status.failureRate,
+          lastFailureTime: status.lastFailureTime,
+          lastSuccessTime: status.lastSuccessTime,
+          openedAt: status.openedAt,
+          halfOpenRequests: status.halfOpenRequests
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 重置熔断器
+   * POST /api/v2/ai/circuit-breaker/reset
+   */
+  async resetCircuitBreaker(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      zhipuService.resetCircuitBreaker();
+
+      res.json({
+        success: true,
+        message: '熔断器已重置'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * 关闭熔断器
+   * POST /api/v2/ai/circuit-breaker/close
+   */
+  async closeCircuitBreaker(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      zhipuService.closeCircuitBreaker();
+
+      res.json({
+        success: true,
+        message: '熔断器已手动关闭'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 // 导出控制器实例(单例模式)

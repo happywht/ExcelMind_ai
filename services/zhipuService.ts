@@ -60,13 +60,8 @@ export const validateAIServiceConfig = (): { valid: boolean; error?: string } =>
   return { valid: true };
 };
 
-// 在模块加载时验证配置
-const configValidation = validateAIServiceConfig();
-if (!configValidation.valid) {
-  logger.error('❌ [zhipuService] AI服务配置错误:', configValidation.error);
-} else {
-  logger.info('✅ [zhipuService] AI服务配置验证通过');
-}
+// 注意：不在模块加载时验证配置，因为此时环境变量可能还未加载
+// 验证将在首次调用API时进行，或在服务器启动时手动调用 validateConfig()
 
 // 创建熔断器实例（单例）
 let circuitBreaker: APICircuitBreaker | null = null;
@@ -666,10 +661,46 @@ print(json.dumps(files, ensure_ascii=False, default=str))
   }
 };
 
+/**
+ * 熔断器管理函数
+ * 用于重置和获取熔断器状态
+ */
+
+/**
+ * 重置熔断器
+ * 将熔断器状态恢复为 CLOSED（正常工作）
+ */
+export const resetCircuitBreaker = (): void => {
+  const breaker = getCircuitBreaker();
+  breaker.reset();
+  logger.info('[CircuitBreaker] 熔断器已重置');
+};
+
+/**
+ * 获取熔断器当前状态
+ */
+export const getCircuitBreakerState = () => {
+  const breaker = getCircuitBreaker();
+  return breaker.getState();
+};
+
+/**
+ * 手动关闭熔断器
+ * 强制将熔断器设置为 CLOSED 状态
+ */
+export const closeCircuitBreaker = (): void => {
+  const breaker = getCircuitBreaker();
+  breaker.close();
+  logger.info('[CircuitBreaker] 熔断器已手动关闭');
+};
+
 // 导出zhipuService对象，供控制器使用
 export const zhipuService = {
   generateExcelFormula,
   generateDataProcessingCode,
   chatWithKnowledgeBase,
-  validateConfig: validateAIServiceConfig
+  validateConfig: validateAIServiceConfig,
+  resetCircuitBreaker,
+  getCircuitBreakerState,
+  closeCircuitBreaker
 };
