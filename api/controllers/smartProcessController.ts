@@ -98,8 +98,33 @@ export class SmartProcessController {
       });
 
       // 6. 异步执行任务(不阻塞HTTP响应)
+      // ✅ 添加超时检测机制，防止任务永远卡住
+      const TASK_TIMEOUT_MS = 5 * 60 * 1000;  // 5分钟超时
+
+      const taskTimeout = setTimeout(() => {
+        const task = taskStore.get(taskId);
+        if (task && task.status === 'processing') {
+          taskStore.set(taskId, {
+            taskId,
+            status: 'failed',
+            error: `任务执行超时（超过${TASK_TIMEOUT_MS / 1000}秒），可能存在无限循环或AI服务响应过慢`,
+            createdAt: task.createdAt,
+            updatedAt: new Date()
+          });
+
+          logger.error('[SmartProcess] Task timeout', {
+            requestId,
+            taskId,
+            duration: TASK_TIMEOUT_MS
+          });
+        }
+      }, TASK_TIMEOUT_MS);
+
       this.executeTaskAsync(orchestrator, taskId, command, dataFiles)
         .then(result => {
+          // ✅ 清除超时定时器
+          clearTimeout(taskTimeout);
+
           // 更新任务状态
           taskStore.set(taskId, {
             taskId,
@@ -116,6 +141,9 @@ export class SmartProcessController {
           });
         })
         .catch(error => {
+          // ✅ 清除超时定时器
+          clearTimeout(taskTimeout);
+
           // 更新任务状态为失败
           taskStore.set(taskId, {
             taskId,

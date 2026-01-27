@@ -245,13 +245,37 @@ export class AgenticOrchestrator {
     if (!actionResult.success) {
       // 尝试修复
       if (this.config.enableAutoRepair) {
-        const repairResult = await this.handleError(actionResult.error!);
-        if (!repairResult.canContinue) {
-          throw new Error('Failed to repair execution error');
+        try {
+          const repairResult = await this.handleError(actionResult.error!);
+
+          // ✅ 修复成功，使用修复后的结果继续
+          if (repairResult.success) {
+            this.log('info', 'Repair successful, continuing execution');
+
+            // 对修复结果进行评估
+            const evaluation = await this.evaluateStep(actionResult);
+
+            // 根据评估结果决定下一步
+            if (evaluation.nextAction === 'retry') {
+              // 不再重试，直接抛出异常
+              throw new Error('Repair successful but quality check failed, aborting task');
+            } else if (evaluation.nextAction === 'repair') {
+              // 需要进一步修复，但不再继续
+              throw new Error('Repair successful but requires additional intervention');
+            }
+
+            // 修复成功且评估通过，生成最终结果
+            return this.generateFinalResult(actionResult, evaluation);
+          }
+        } catch (repairError) {
+          // ✅ 修复失败，立即抛出异常
+          this.log('error', 'Repair failed, aborting task', { error: repairError });
+          throw new Error(`Failed to repair execution error: ${repairError instanceof Error ? repairError.message : String(repairError)}`);
         }
-      } else {
-        throw new Error(actionResult.error?.message || 'Execution failed');
       }
+
+      // ✅ 自动修复未启用或修复失败，直接抛出异常
+      throw new Error(actionResult.error?.message || 'Execution failed');
     }
 
     // 步骤4: Evaluate（评估）
@@ -487,9 +511,9 @@ export class AgenticOrchestrator {
     const startTime = Date.now();
     const stepId = this.generateId();
 
-    // 检查全局重试计数器，防止无限循环
+    // ✅ 在方法开始时检查全局重试计数器
     if (globalRetryCount >= MAX_GLOBAL_RETRIES) {
-      this.log('error', 'Max global retries reached, stopping execution', {
+      this.log('error', 'Max global retries reached at start of actStep', {
         retryCount: globalRetryCount,
         maxRetries: MAX_GLOBAL_RETRIES
       });
@@ -658,8 +682,9 @@ export class AgenticOrchestrator {
         throw new Error('Code execution failed');
       }
 
-      // 成功执行，重置全局重试计数器
-      globalRetryCount = 0;
+      // ✅ 成功执行后不再重置全局重试计数器
+      // 移除重置逻辑，确保计数器在整个任务执行期间有效
+      // globalRetryCount = 0;  // ❌ 这会导致计数器失效
 
       const duration = Date.now() - startTime;
       this.log('info', 'Act step completed', {
@@ -675,8 +700,28 @@ export class AgenticOrchestrator {
       };
 
     } catch (error) {
-      // 增加全局重试计数器
+      // ✅ 增加全局重试计数器
       globalRetryCount++;
+
+      // ✅ 立即检查是否超过最大重试次数
+      if (globalRetryCount >= MAX_GLOBAL_RETRIES) {
+        this.log('error', 'Max global retries reached in catch block', {
+          retryCount: globalRetryCount,
+          maxRetries: MAX_GLOBAL_RETRIES,
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+
+        return {
+          stepId,
+          success: false,
+          error: this.createError(
+            ErrorCategory.UNKNOWN_ERROR,
+            'MAX_RETRIES_EXCEEDED',
+            `已达到最大重试次数 ${MAX_GLOBAL_RETRIES}，停止执行以防止无限循环`
+          ),
+          executionTime: Date.now() - startTime
+        };
+      }
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : '';
@@ -1128,14 +1173,19 @@ export class AgenticOrchestrator {
 
   /**
    * 重试当前步骤
+   * ⚠️ 修复：不再重新执行整个任务流程，避免无限递归
    */
   private async retryCurrentStep(): Promise<any> {
     if (!this.currentTask) {
       throw new Error('No active task');
     }
 
-    // 重新执行任务流程
-    return this.executeTaskFlow();
+    // ❌ 移除无限递归：不再重新执行整个任务流程
+    // return this.executeTaskFlow();  // 这会导致无限循环
+
+    // ✅ 改为抛出异常，让上层调用者处理
+    this.log('warn', 'Retry strategy requested: Manual retry required');
+    throw new Error('Retry strategy: Cannot automatically retry, manual intervention required');
   }
 
   /**
