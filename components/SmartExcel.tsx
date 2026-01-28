@@ -11,6 +11,14 @@ import JSZip from 'jszip';
 import { SAMPLING_CONFIG } from '../config/samplingConfig';
 import { logger } from '@/utils/logger';
 
+// 数据质量功能导入
+import { ModeSwitcher, WorkMode } from './SmartExcel/ModeSwitcher';
+import { QualityRulePanel } from './SmartExcel/QualityRulePanel';
+import { QualityResultPanel } from './SmartExcel/QualityResultPanel';
+import { IssueHighlighter } from './SmartExcel/IssueHighlighter';
+import { QualityRule, RuleExecutionResult, BatchExecutionResult } from '../types/qualityRule';
+import { ruleRouter } from '../services/ruleRouter';
+
 export const SmartExcel: React.FC = () => {
   const [filesData, setFilesData] = useState<ExcelData[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
@@ -29,6 +37,14 @@ export const SmartExcel: React.FC = () => {
   const [useAgenticMode, setUseAgenticMode] = useState(true); // 默认使用多步分析模式
   // ✅ 修复：移除 orchestrator 状态，现在通过 API 调用后端服务
   // const [orchestrator, setOrchestrator] = useState<AgenticOrchestrator | null>(null);
+
+  // 数据质量检查状态
+  const [workMode, setWorkMode] = useState<WorkMode>('processing'); // 工作模式：数据处理 | 质量检查
+  const [qualityRules, setQualityRules] = useState<QualityRule[]>([]); // 质量规则列表
+  const [qualityResults, setQualityResults] = useState<RuleExecutionResult[]>([]); // 规则执行结果
+  const [batchResult, setBatchResult] = useState<BatchExecutionResult | null>(null); // 批量执行结果
+  const [executingQualityCheck, setExecutingQualityCheck] = useState(false); // 质量检查执行中
+  const [selectedIssue, setSelectedIssue] = useState<{row: number, column: string} | null>(null); // 选中的问题
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -67,6 +83,115 @@ export const SmartExcel: React.FC = () => {
   // 格式化质量分数
   const formatQualityScore = useCallback((score: number): string => {
     return `${Math.round(score * 100)}%`;
+  }, []);
+
+  // ==================== 数据质量检查功能 ====================
+
+  /**
+   * 处理规则执行
+   */
+  const handleExecuteQualityRules = useCallback(async (rules: QualityRule[]) => {
+    if (filesData.length === 0) {
+      alert('请先上传文件');
+      return;
+    }
+
+    // 获取当前活动文件的数据
+    const activeFile = filesData.find(f => f.id === activeFileId);
+    if (!activeFile || !activeSheetName) {
+      alert('请选择文件和工作表');
+      return;
+    }
+
+    const data = activeFile.sheets[activeSheetName];
+    if (!data || data.length === 0) {
+      alert('当前工作表没有数据');
+      return;
+    }
+
+    setExecutingQualityCheck(true);
+    setQualityResults([]);
+    setBatchResult(null);
+    setSelectedIssue(null);
+
+    // 添加日志
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'pending',
+      message: `开始执行质量检查，共 ${rules.length} 条规则...`
+    }, ...prev]);
+
+    try {
+      const result = await ruleRouter.executeRules(rules, data, {
+        sampleSize: data.length > 1000 ? 100 : 0, // 大数据量时采样
+        maxIssues: 100
+      });
+
+      setQualityResults(result.results);
+      setBatchResult(result);
+
+      // 统计结果
+      const passed = result.results.filter(r => r.pass).length;
+      const failed = result.results.filter(r => !r.pass).length;
+      const totalIssues = result.results.reduce((sum, r) => sum + r.issues.length, 0);
+
+      setLogs(prev => [{
+        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        fileName: 'System',
+        status: failed === 0 ? 'success' : 'error',
+        message: `质量检查完成！通过 ${passed}/${result.results.length}，发现 ${totalIssues} 个问题，耗时 ${Math.round(result.totalExecutionTime / 1000)}s`
+      }, ...prev]);
+    } catch (error) {
+      console.error('质量检查失败:', error);
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
+      setLogs(prev => [{
+        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        fileName: 'System',
+        status: 'error',
+        message: `质量检查失败: ${errorMsg}`
+      }, ...prev]);
+      alert(`质量检查失败: ${errorMsg}`);
+    } finally {
+      setExecutingQualityCheck(false);
+    }
+  }, [filesData, activeFileId, activeSheetName]);
+
+  /**
+   * 处理问题点击
+   */
+  const handleIssueClick = useCallback((row: number, column: string) => {
+    setSelectedIssue({ row, column });
+
+    // 滚动到该行
+    const tableRow = document.querySelector(`tr[data-row="${row}"]`);
+    if (tableRow) {
+      tableRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // 添加日志
+    setLogs(prev => [{
+      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      fileName: 'System',
+      status: 'pending',
+      message: `跳转到问题位置：行 ${row}，列 ${column}`
+    }, ...prev]);
+  }, []);
+
+  /**
+   * 处理规则变化
+   */
+  const handleRulesChange = useCallback((rules: QualityRule[]) => {
+    setQualityRules(rules);
+  }, []);
+
+  /**
+   * 关闭质量检查结果
+   */
+  const handleCloseQualityResults = useCallback(() => {
+    setQualityResults([]);
+    setBatchResult(null);
+    setSelectedIssue(null);
   }, []);
 
   // 取消执行
@@ -520,10 +645,23 @@ export const SmartExcel: React.FC = () => {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">智能多文件处理工作区</h2>
-          <p className="text-sm text-slate-500">上传多个文件，进行跨表核对、合并或筛选</p>
+          <h2 className="text-xl font-bold text-slate-800">
+            {workMode === 'processing' ? '智能多文件处理工作区' : '数据质量检查工作区'}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {workMode === 'processing'
+              ? '上传多个文件，进行跨表核对、合并或筛选'
+              : '使用质量规则检查数据，发现并修复问题'}
+          </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          {/* 模式切换器 */}
+          <ModeSwitcher
+            currentMode={workMode}
+            onModeChange={setWorkMode}
+            disabled={filesData.length === 0}
+          />
+
           <input
             type="file"
             multiple
@@ -543,32 +681,34 @@ export const SmartExcel: React.FC = () => {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        
-        {/* Left Panel: Files & Console */}
+
+        {/* Left Panel */}
         <div className="w-[400px] flex flex-col border-r border-slate-200 bg-white shadow-sm z-10">
-          
-          {/* File List Header Actions */}
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <div className="flex items-center gap-2">
-               <button onClick={handleSelectAll} className="text-slate-500 hover:text-emerald-600 transition-colors" title="全选/取消全选">
-                 {filesData.length > 0 && selectedFileIds.size === filesData.length ? (
-                   <CheckSquare className="w-5 h-5 text-emerald-600" />
-                 ) : (
-                   <Square className="w-5 h-5" />
-                 )}
-               </button>
-               <span className="text-sm font-semibold text-slate-700">文件列表 ({filesData.length})</span>
-            </div>
-            {selectedFileIds.size > 0 && (
-              <button 
-                onClick={handleBatchExport}
-                className="text-xs flex items-center gap-1 bg-emerald-600 text-white px-3 py-1 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
-              >
-                <Archive className="w-3.5 h-3.5" />
-                下载选中 ({selectedFileIds.size})
-              </button>
-            )}
-          </div>
+          {workMode === 'processing' ? (
+            <>
+              {/* 数据处理模式：文件列表和控制台 */}
+              {/* File List Header Actions */}
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                   <button onClick={handleSelectAll} className="text-slate-500 hover:text-emerald-600 transition-colors" title="全选/取消全选">
+                     {filesData.length > 0 && selectedFileIds.size === filesData.length ? (
+                       <CheckSquare className="w-5 h-5 text-emerald-600" />
+                     ) : (
+                       <Square className="w-5 h-5" />
+                     )}
+                   </button>
+                   <span className="text-sm font-semibold text-slate-700">文件列表 ({filesData.length})</span>
+                </div>
+                {selectedFileIds.size > 0 && (
+                  <button
+                    onClick={handleBatchExport}
+                    className="text-xs flex items-center gap-1 bg-emerald-600 text-white px-3 py-1 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    下载选中 ({selectedFileIds.size})
+                  </button>
+                )}
+              </div>
           
           {/* File List */}
           <div className="flex-1 overflow-y-auto p-4 border-b border-slate-100">
@@ -798,7 +938,7 @@ export const SmartExcel: React.FC = () => {
               logs.map((log) => (
                 <div key={log.id} className="mb-1.5 flex gap-2">
                   <span className={`uppercase font-bold ${
-                    log.status === 'success' ? 'text-green-400' : 
+                    log.status === 'success' ? 'text-green-400' :
                     log.status === 'error' ? 'text-red-400' : 'text-yellow-400'
                   }`}>[{log.status}]</span>
                   <span className="text-slate-300">{log.message}</span>
@@ -806,82 +946,139 @@ export const SmartExcel: React.FC = () => {
               ))
             )}
           </div>
+            </>
+          ) : (
+            <>
+              {/* 质量检查模式：规则管理面板 */}
+              <QualityRulePanel
+                onRulesChange={handleRulesChange}
+                onExecuteRules={handleExecuteQualityRules}
+                executing={executingQualityCheck}
+              />
+
+              {/* 质量检查日志（简化版） */}
+              <div className="h-32 bg-slate-900 overflow-y-auto p-3 text-xs font-mono border-t border-slate-200">
+                {logs.length === 0 ? (
+                  <span className="text-slate-600">等待质量检查...</span>
+                ) : (
+                  logs.map((log) => (
+                    <div key={log.id} className="mb-1.5 flex gap-2">
+                      <span className={`uppercase font-bold ${
+                        log.status === 'success' ? 'text-green-400' :
+                        log.status === 'error' ? 'text-red-400' : 'text-yellow-400'
+                      }`}>[{log.status}]</span>
+                      <span className="text-slate-300">{log.message}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Right Panel: Data Preview */}
+        {/* Right Panel */}
         <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
-          {activeFile && activeSheetData ? (
-            <div className="flex-1 flex flex-col m-4 bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
-               <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white">
-                 <div className="flex items-center gap-2">
-                   <h3 className="font-bold text-slate-700">{activeFile.fileName}</h3>
-                   {Object.keys(activeFile.sheets).length > 1 && (
-                     <select
-                       value={activeSheetName}
-                       onChange={(e) => setActiveSheetName(e.target.value)}
-                       className="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
-                     >
-                       {Object.keys(activeFile.sheets).map(sheetName => (
-                         <option key={sheetName} value={sheetName}>{sheetName}</option>
-                       ))}
-                     </select>
-                   )}
-                   {Object.keys(activeFile.sheets).length === 1 && (
-                     <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{activeSheetName}</span>
-                   )}
-                   <span className="text-xs text-slate-400">({activeSheetData.length} 行)</span>
-                 </div>
-                 <button
-                   onClick={() => exportMultipleSheetsToExcel(activeFile.sheets, activeFile.fileName)}
-                   className="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
-                   title="导出所有工作表"
-                 >
-                   <FileDown className="w-3.5 h-3.5" /> 导出文件 {Object.keys(activeFile.sheets).length > 1 && `(${Object.keys(activeFile.sheets).length}个工作表)`}
-                 </button>
-               </div>
+          {/* 质量检查模式：优先显示结果面板 */}
+          {workMode === 'quality' && qualityResults.length > 0 ? (
+            <QualityResultPanel
+              results={qualityResults}
+              batchResult={batchResult || undefined}
+              data={activeSheetData || []}
+              onIssueClick={handleIssueClick}
+              onClose={handleCloseQualityResults}
+            />
+          ) : activeFile && activeSheetData ? (
+            /* 数据预览（包裹在 IssueHighlighter 中） */
+            <IssueHighlighter
+              data={activeSheetData}
+              issues={qualityResults.flatMap(r => r.issues)}
+              highlightedCell={selectedIssue}
+              onCellClick={handleIssueClick}
+            >
+              {({ getCellStyle, getCellClassName, handleCellClick: handleClick }) => (
+                <div className="flex-1 flex flex-col m-4 bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+                  <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-700">{activeFile.fileName}</h3>
+                      {Object.keys(activeFile.sheets).length > 1 && (
+                        <select
+                          value={activeSheetName}
+                          onChange={(e) => setActiveSheetName(e.target.value)}
+                          className="text-xs px-2 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200 outline-none cursor-pointer hover:bg-emerald-100 transition-colors"
+                        >
+                          {Object.keys(activeFile.sheets).map(sheetName => (
+                            <option key={sheetName} value={sheetName}>{sheetName}</option>
+                          ))}
+                        </select>
+                      )}
+                      {Object.keys(activeFile.sheets).length === 1 && (
+                        <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{activeSheetName}</span>
+                      )}
+                      <span className="text-xs text-slate-400">({activeSheetData.length} 行)</span>
+                      {workMode === 'quality' && qualityResults.length > 0 && (
+                        <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">
+                          {qualityResults.reduce((sum, r) => sum + r.issues.length, 0)} 个问题
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => exportMultipleSheetsToExcel(activeFile.sheets, activeFile.fileName)}
+                      className="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
+                      title="导出所有工作表"
+                    >
+                      <FileDown className="w-3.5 h-3.5" /> 导出文件 {Object.keys(activeFile.sheets).length > 1 && `(${Object.keys(activeFile.sheets).length}个工作表)`}
+                    </button>
+                  </div>
 
-               <div className="flex-1 overflow-auto w-full">
-                 <table className="w-full text-left text-sm border-collapse">
-                   <thead>
-                     <tr>
-                       <th className="w-12 p-2 bg-slate-50 border-b border-r border-slate-200 text-center text-slate-400 text-xs font-mono sticky top-0 z-10">#</th>
-                       {activeSheetData.length > 0 && Object.keys(activeSheetData[0]).map((header) => (
-                         <th key={header} className="p-2 border-b border-r border-slate-100 bg-slate-50 sticky top-0 font-semibold text-slate-600 whitespace-nowrap min-w-[100px] z-10">
-                           {header}
-                         </th>
-                       ))}
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {activeSheetData.slice(0, 200).map((row, rIdx) => (
-                       <tr key={rIdx} className="hover:bg-blue-50/30 border-b border-slate-50 last:border-0 group">
-                         <td className="p-2 bg-slate-50 border-r border-slate-100 text-center text-slate-400 text-xs font-mono group-hover:bg-blue-50/30">{rIdx + 1}</td>
-                         {Object.values(row).map((cell: any, cIdx) => (
-                           <td key={cIdx} className="p-2 border-r border-slate-50 text-slate-600 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis">
-                             {String(cell)}
-                           </td>
-                         ))}
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-                 {activeSheetData.length === 0 && (
-                   <div className="p-10 text-center text-slate-400">
-                     此表无数据
-                   </div>
-                 )}
-                 {activeSheetData.length > 200 && (
-                   <div className="p-2 text-center text-xs text-slate-400 bg-slate-50 border-t border-slate-100">
-                     预览前 200 行 (共 {activeSheetData.length} 行)
-                   </div>
-                 )}
-               </div>
-            </div>
+                  <div className="flex-1 overflow-auto w-full">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="w-12 p-2 bg-slate-50 border-b border-r border-slate-200 text-center text-slate-400 text-xs font-mono sticky top-0 z-10">#</th>
+                          {activeSheetData.length > 0 && Object.keys(activeSheetData[0]).map((header) => (
+                            <th key={header} className="p-2 border-b border-r border-slate-100 bg-slate-50 sticky top-0 font-semibold text-slate-600 whitespace-nowrap min-w-[100px] z-10">
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeSheetData.slice(0, 200).map((row, rIdx) => (
+                          <tr key={rIdx} className="hover:bg-blue-50/30 border-b border-slate-50 last:border-0 group">
+                            <td className="p-2 bg-slate-50 border-r border-slate-100 text-center text-slate-400 text-xs font-mono group-hover:bg-blue-50/30">{rIdx + 1}</td>
+                            {Object.entries(row).map(([col, cell], cIdx) => (
+                              <td
+                                key={cIdx}
+                                style={getCellStyle(rIdx, col)}
+                                className={getCellClassName(rIdx, col)}
+                                onClick={() => handleClick(rIdx, col)}
+                              >
+                                {String(cell)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {activeSheetData.length === 0 && (
+                      <div className="p-10 text-center text-slate-400">
+                        此表无数据
+                      </div>
+                    )}
+                    {activeSheetData.length > 200 && (
+                      <div className="p-2 text-center text-xs text-slate-400 bg-slate-50 border-t border-slate-100">
+                        预览前 200 行 (共 {activeSheetData.length} 行)
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </IssueHighlighter>
           ) : (
-             <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
-                <Layers className="w-16 h-16 mb-4 opacity-20" />
-                <p className="font-medium">选择左侧文件以预览数据</p>
-             </div>
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+              <Layers className="w-16 h-16 mb-4 opacity-20" />
+              <p className="font-medium">选择左侧文件以预览数据</p>
+            </div>
           )}
         </div>
       </div>

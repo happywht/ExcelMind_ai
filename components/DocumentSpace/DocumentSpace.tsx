@@ -878,6 +878,7 @@ export const DocumentSpace: React.FC = () => {
         onTabChange={handleTabChange}
         onDocSelect={handleDocSelect}
         onSheetChange={handleSheetChange}
+        onTemplateFileChange={setTemplateFile}
       />
     </div>
   );

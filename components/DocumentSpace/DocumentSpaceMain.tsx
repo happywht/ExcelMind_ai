@@ -11,14 +11,15 @@
  * @version 2.0.0
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   FileText,
   Table,
   GitBranch,
   Eye,
   FileDown,
-  ChevronRight
+  ChevronRight,
+  Library
 } from 'lucide-react';
 import {
   TemplateFile,
@@ -32,6 +33,11 @@ import DataPreview from './DataPreview';
 import MappingEditor from './MappingEditor';
 import DocumentList from './DocumentList';
 import DocumentPreview from './DocumentPreview';
+import TemplateLibrary from './TemplateLibrary';
+import TemplateUploadToLibrary from './TemplateUploadToLibrary';
+import { LocalTemplateMetadata } from '../../types/templateStorage';
+import { createTemplateFile } from '../../services/templateService';
+import { templateStorage } from '../../services/templateStorage';
 
 interface DocumentSpaceMainProps {
   activeTab: DocumentSpaceTab;
@@ -44,6 +50,7 @@ interface DocumentSpaceMainProps {
   onTabChange: (tab: DocumentSpaceTab) => void;
   onDocSelect: (doc: GeneratedDocument | null) => void;
   onSheetChange: (sheetName: string) => void;
+  onTemplateFileChange: (templateFile: TemplateFile) => void;
 }
 
 const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
@@ -56,11 +63,62 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
   performanceMetrics,
   onTabChange,
   onDocSelect,
-  onSheetChange
+  onSheetChange,
+  onTemplateFileChange
 }) => {
+  // 模板上传弹窗状态
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+
+  // 处理从模板库使用模板
+  const handleUseTemplateFromLibrary = async (templateMetadata: LocalTemplateMetadata) => {
+    try {
+      // 从存储加载模板文件数据
+      const arrayBuffer = await templateStorage.loadTemplateFile(templateMetadata.id);
+
+      if (!arrayBuffer) {
+        console.error('[DocumentSpaceMain] Failed to load template file');
+        return;
+      }
+
+      // 创建File对象
+      const file = new File([arrayBuffer], templateMetadata.fileName, {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+
+      // 创建TemplateFile对象
+      const template = await createTemplateFile(file);
+
+      // 设置为当前模板文件
+      onTemplateFileChange(template);
+
+      // 自动跳转到upload Tab
+      onTabChange('upload');
+
+      // 显示成功提示（可选）
+      console.log('[DocumentSpaceMain] Template loaded from library:', templateMetadata.name);
+    } catch (error) {
+      console.error('[DocumentSpaceMain] Failed to use template from library:', error);
+    }
+  };
+
+  // 处理上传模板到库
+  const handleUploadTemplateToLibrary = () => {
+    setShowUploadDialog(true);
+  };
+
+  // 处理上传成功
+  const handleUploadSuccess = () => {
+    setShowUploadDialog(false);
+    // 可以在这里刷新模板库
+  };
 
   // Tab配置
   const tabs: TabConfig[] = [
+    {
+      id: 'templates',
+      label: '模板库',
+      icon: Library
+    },
     {
       id: 'template',
       label: '模板预览',
@@ -96,6 +154,14 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
   // 渲染Tab内容
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'templates':
+        return (
+          <TemplateLibrary
+            onUseTemplate={handleUseTemplateFromLibrary}
+            onUploadTemplate={handleUploadTemplateToLibrary}
+          />
+        );
+
       case 'template':
         return templateFile ? (
           <TemplatePreview templateFile={templateFile} />
@@ -238,6 +304,14 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
         <DocumentPreview
           document={selectedDoc}
           onClose={() => onDocSelect(null)}
+        />
+      )}
+
+      {/* 模板上传弹窗 */}
+      {showUploadDialog && (
+        <TemplateUploadToLibrary
+          onClose={() => setShowUploadDialog(false)}
+          onSuccess={handleUploadSuccess}
         />
       )}
 

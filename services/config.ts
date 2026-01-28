@@ -19,7 +19,18 @@ const getEnvVar = (key: string, defaultValue: string): string => {
   return defaultValue;
 };
 
-export const API_BASE_URL = getEnvVar('VITE_API_BASE_URL', '/api/v2');
+// 优化API_BASE_URL处理，确保URL格式正确
+export const API_BASE_URL = (() => {
+  const url = getEnvVar('VITE_API_BASE_URL', '/api/v2');
+
+  // 如果是完整URL，确保不以/结尾
+  if (url.startsWith('http')) {
+    return url.replace(/\/$/, '');
+  }
+
+  // 相对路径直接返回
+  return url;
+})();
 
 export const WS_BASE_URL = getEnvVar('VITE_WS_BASE_URL',
   API_BASE_URL.replace('http', 'ws'));

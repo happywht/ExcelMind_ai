@@ -16,6 +16,7 @@ import {
 
 export type DocumentSpaceTab =
   | 'upload'
+  | 'templates'
   | 'template'
   | 'data'
   | 'mapping'
@@ -180,6 +181,7 @@ export interface ProcessingStage {
 
 export const TAB_CONFIGS: TabConfig[] = [
   { id: 'upload', label: '上传', icon: () => null },
+  { id: 'templates', label: '模板库', icon: () => null },
   { id: 'template', label: '模板预览', icon: () => null },
   { id: 'data', label: '数据预览', icon: () => null },
   { id: 'mapping', label: '映射方案', icon: () => null },

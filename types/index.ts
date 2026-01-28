@@ -52,3 +52,6 @@ export * from './errorCodes';
 
 // 数据质量类型
 export * from './dataQuality';
+
+// 质量规则类型
+export * from './qualityRule';
