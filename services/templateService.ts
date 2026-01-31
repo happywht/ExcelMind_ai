@@ -48,6 +48,7 @@ export async function parseWordTemplate(file: File): Promise<TemplateParseResult
     return {
       placeholders,
       textContent,
+      htmlPreview, // ✅ 添加HTML预览，这是关键修复
       hasConditionalBlocks,
       hasLoops
     };
@@ -71,7 +72,7 @@ export async function createTemplateFile(file: File): Promise<TemplateFile> {
     name: file.name,
     size: file.size,
     arrayBuffer,
-    htmlPreview: parseResult.textContent, // 简化版预览（纯文本）
+    htmlPreview: parseResult.htmlPreview, // ✅ 修复：使用HTML预览而不是纯文本
     placeholders: parseResult.placeholders
   };
 }

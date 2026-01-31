@@ -110,6 +110,7 @@ export interface DocumentProcessingLog {
 export interface TemplateParseResult {
   placeholders: string[];
   textContent: string;
+  htmlPreview: string; // ✅ 添加HTML预览字段
   hasConditionalBlocks: boolean;
   hasLoops: boolean;
 }
