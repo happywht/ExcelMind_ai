@@ -330,9 +330,12 @@ class BatchGenerationAPI {
     taskId: string,
     token?: string
   ): WebSocket {
+    // 修复：使用绝对路径连接到后端WebSocket服务器
+    // 不要使用this.baseUrl（它是相对路径），而是直接连接到3001端口
+    const wsBaseUrl = 'ws://localhost:3001/api/v2/stream';
     const wsUrl = token
-      ? `${this.baseUrl.replace('http', 'ws')}/stream?token=${token}`
-      : `${this.baseUrl.replace('http', 'ws')}/stream`;
+      ? `${wsBaseUrl}?token=${token}`
+      : wsBaseUrl;
 
     const ws = new WebSocket(wsUrl);
 

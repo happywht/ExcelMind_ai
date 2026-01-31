@@ -31,8 +31,8 @@ import type {
   RelationshipGraphProps,
   ExtendedVirtualFileInfo,
 } from './types';
-import {
 import { logger } from '@/utils/logger';
+import {
   buildGraphNodes,
   getNodeColor,
   getRelationTypeColor,

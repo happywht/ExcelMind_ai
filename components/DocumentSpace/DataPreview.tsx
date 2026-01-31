@@ -3,26 +3,25 @@
  *
  * 功能：
  * - 工作表选择器
- * - 数据表格（可排序、筛选）
+ * - 虚拟化数据表格（可排序、筛选，支持大数据集）
  * - 数据统计（行数、列数）
- * - 前100行预览
+ * - 性能优化：使用虚拟化渲染，支持10000+行数据
  *
- * @version 2.0.0
+ * @version 3.0.0
+ * @performance 使用react-window实现虚拟化，大幅提升大数据集性能
  */
 
 import React, { useState, useMemo } from 'react';
 import {
-  Table,
   Sheet,
   ArrowUpDown,
   Search,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   Database,
   Rows,
   Columns
 } from 'lucide-react';
+import VirtualizedDataTable from './VirtualizedDataTable';
 
 interface DataPreviewProps {
   excelData: any;
@@ -39,8 +38,6 @@ const DataPreview: React.FC<DataPreviewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
 
   // 当前工作表数据
   const currentSheetData = useMemo(() => {
@@ -54,7 +51,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
     return Object.keys(currentSheetData[0]);
   }, [currentSheetData]);
 
-  // 过滤和排序后的数据
+  // 过滤和排序后的数据（虚拟化表格处理全部数据）
   const filteredAndSortedData = useMemo(() => {
     let data = [...currentSheetData];
 
@@ -85,15 +82,6 @@ const DataPreview: React.FC<DataPreviewProps> = ({
     return data;
   }, [currentSheetData, searchTerm, sortColumn, sortDirection, headers]);
 
-  // 分页数据
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredAndSortedData.slice(startIndex, startIndex + pageSize);
-  }, [filteredAndSortedData, currentPage]);
-
-  // 总页数
-  const totalPages = Math.ceil(filteredAndSortedData.length / pageSize);
-
   // 处理排序
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -102,6 +90,12 @@ const DataPreview: React.FC<DataPreviewProps> = ({
       setSortColumn(column);
       setSortDirection('asc');
     }
+  };
+
+  // 重置筛选
+  const handleResetFilters = () => {
+    setSortColumn(null);
+    setSearchTerm('');
   };
 
   // 工作表列表
@@ -177,10 +171,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
               {sheetNames.map(name => (
                 <button
                   key={name}
-                  onClick={() => {
-                    onSheetChange(name);
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => onSheetChange(name)}
                   className={`
                     px-4 py-2 rounded-lg text-sm font-medium transition-all
                     ${currentSheetName === name
@@ -205,10 +196,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="搜索数据..."
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
@@ -216,11 +204,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setSortColumn(null);
-                setSearchTerm('');
-                setCurrentPage(1);
-              }}
+              onClick={handleResetFilters}
               className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
             >
               <Filter className="w-4 h-4" />
@@ -234,130 +218,30 @@ const DataPreview: React.FC<DataPreviewProps> = ({
             找到 <span className="font-bold text-emerald-600">{filteredAndSortedData.length}</span> 条结果
           </div>
         )}
-      </div>
 
-      {/* 数据表格 */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse">
-          <thead className="bg-slate-50 sticky top-0 z-10">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 border-b border-slate-200 w-16">
-                #
-              </th>
-              {headers.map(header => (
-                <th
-                  key={header}
-                  onClick={() => handleSort(header)}
-                  className="px-4 py-3 text-left text-xs font-semibold text-slate-600 border-b border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors group"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{header}</span>
-                    {sortColumn === header ? (
-                      <ArrowUpDown className={`w-3 h-3 text-emerald-500 ${
-                        sortDirection === 'desc' ? 'rotate-180' : ''
-                      }`} />
-                    ) : (
-                      <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100" />
-                    )}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.length === 0 ? (
-              <tr>
-                <td colSpan={headers.length + 1} className="px-4 py-8 text-center text-slate-400">
-                  {searchTerm ? '没有找到匹配的数据' : '暂无数据'}
-                </td>
-              </tr>
-            ) : (
-              paginatedData.map((row, idx) => (
-                <tr
-                  key={idx}
-                  className="hover:bg-slate-50 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm text-slate-400 border-b border-slate-100">
-                    {(currentPage - 1) * pageSize + idx + 1}
-                  </td>
-                  {headers.map(header => (
-                    <td
-                      key={header}
-                      className="px-4 py-3 text-sm text-slate-700 border-b border-slate-100"
-                    >
-                      {row[header] !== null && row[header] !== undefined
-                        ? String(row[header])
-                        : <span className="text-slate-300">-</span>
-                      }
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* 分页 */}
-      {totalPages > 1 && (
-        <div className="p-4 border-t border-slate-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-500">
-              显示 {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredAndSortedData.length)} 条，
-              共 {filteredAndSortedData.length} 条
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`
-                        w-8 h-8 rounded-lg text-sm font-medium transition-colors
-                        ${currentPage === pageNum
-                          ? 'bg-emerald-500 text-white'
-                          : 'border border-slate-200 hover:bg-slate-50'
-                        }
-                      `}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+        {/* 数据统计提示 */}
+        <div className="mt-2 text-xs text-slate-500">
+          总数据: <span className="font-bold text-slate-700">{currentSheetData.length}</span> 行 |
+          {searchTerm && ` 筛选后: ${filteredAndSortedData.length} 行 |`}
+          {filteredAndSortedData.length > 1000 && (
+            <span className="text-emerald-600 ml-1">已启用虚拟化渲染，流畅浏览大数据集</span>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* 虚拟化数据表格 */}
+      <div className="flex-1 p-4 overflow-hidden">
+        <VirtualizedDataTable
+          data={filteredAndSortedData}
+          headers={headers}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          height={600}
+          rowHeight={40}
+          headerHeight={48}
+        />
+      </div>
     </div>
   );
 };

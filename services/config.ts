@@ -21,7 +21,9 @@ const getEnvVar = (key: string, defaultValue: string): string => {
 
 // 优化API_BASE_URL处理，确保URL格式正确
 export const API_BASE_URL = (() => {
-  const url = getEnvVar('VITE_API_BASE_URL', '/api/v2');
+  // 修复：使用相对路径 /api，而不是 /api/v2
+  // 前端API客户端会在其基础上添加具体的版本路径
+  const url = getEnvVar('VITE_API_BASE_URL', '/api');
 
   // 如果是完整URL，确保不以/结尾
   if (url.startsWith('http')) {

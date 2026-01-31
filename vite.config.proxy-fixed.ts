@@ -1,23 +1,20 @@
 /**
- * Vite 配置 - 修复 WebSocket 代理崩溃问题
+ * 增强版 Vite 配置 - 修复代理崩溃问题
  *
- * 修复日期: 2026-01-31
- * 问题: P0 级别 - Vite 代理中间件崩溃
- * 错误: TypeError: Cannot read properties of null (reading 'split')
+ * 修复内容：
+ * 1. WebSocket 代理路径规范化
+ * 2. http-proxy 中间件错误处理增强
+ * 3. URL 解析边界情况处理
+ * 4. HMR 与 WebSocket 冲突解决
  *
- * 修复内容:
- * 1. 增强 WebSocket 代理错误处理
- * 2. URL 解析边界情况防御
- * 3. HMR 与 WebSocket 冲突解决
- * 4. 代理路径规范化
- *
- * @version 2.0.1
+ * @version 2.0.0
  */
 
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
+import type { ProxyOptions } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -25,32 +22,32 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      // strictPort: true, // 暂时禁用，让 Vite 自动选择可用端口
+      // strictPort: true,
       host: '0.0.0.0',
 
       // ======================================================================
-      // 修复：增强版 API 代理配置
+      // 增强版代理配置 - 修复 WebSocket 崩溃
       // ======================================================================
       proxy: mode === 'development' ? {
+        // HTTP API 代理
         '/api': {
           target: 'http://localhost:3001',
           changeOrigin: true,
           secure: false,
           ws: true, // 启用 WebSocket 代理
+          rewrite: (path) => path,
+          configure: (proxy, options) => {
+            // ==================================================================
+            // 1. 增强 http-proxy 错误处理
+            // ==================================================================
 
-          // ==================================================================
-          // 关键修复：增强错误处理，防止代理崩溃
-          // ==================================================================
-          configure: (proxy, _options) => {
-            // ------------------------------------------------------------------
-            // 1. 全局错误处理 - 防止服务器崩溃
-            // ------------------------------------------------------------------
             proxy.on('error', (err, req, res) => {
               console.error('[Vite Proxy] ERROR:', {
                 message: err.message,
                 code: (err as any).code,
                 url: req.url,
                 method: req.method,
+                headers: req.headers
               });
 
               // 防止错误导致服务器崩溃
@@ -61,95 +58,144 @@ export default defineConfig(({ mode }) => {
                 res.end(JSON.stringify({
                   error: 'Proxy Error',
                   message: err.message,
+                  url: req.url
                 }));
               }
             });
 
-            // ------------------------------------------------------------------
-            // 2. 请求日志和验证
-            // ------------------------------------------------------------------
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              const isWebSocket = req.headers.upgrade?.toLowerCase() === 'websocket';
+            // ==================================================================
+            // 2. 请求预处理 - URL 规范化
+            // ==================================================================
 
-              console.log('[Vite Proxy]', req.method, req.url, '→', proxyReq.path, {
-                ws: isWebSocket,
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log('[Vite Proxy] Request:', {
+                method: req.method,
+                url: req.url,
+                target: proxyReq.path,
                 headers: {
+                  ...req.headers,
                   upgrade: req.headers.upgrade,
-                  connection: req.headers.connection,
+                  connection: req.headers.connection
                 }
               });
 
-              // WebSocket 路径修复
-              if (isWebSocket) {
-                // 确保目标服务器主机名正确
-                proxyReq.setHeader('Host', 'localhost:3001');
+              // 修复 WebSocket 升级请求的路径
+              if (req.headers.upgrade && req.headers.upgrade.toLowerCase() === 'websocket') {
+                // 确保路径格式正确
+                const originalPath = req.url || '';
+                const normalizedPath = originalPath.replace(/^\/api/, '/api');
+
+                console.log('[Vite Proxy] WebSocket Upgrade:', {
+                  originalPath,
+                  normalizedPath,
+                  targetPath: proxyReq.path
+                });
+
+                // 设置正确的 WebSocket 头
                 proxyReq.setHeader('Origin', 'http://localhost:3001');
+                proxyReq.setHeader('Host', 'localhost:3001');
               }
             });
 
-            // ------------------------------------------------------------------
-            // 3. 响应处理
-            // ------------------------------------------------------------------
-            proxy.on('proxyRes', (proxyRes, req, _res) => {
-              const isWebSocket = proxyRes.statusCode === 101;
+            // ==================================================================
+            // 3. 响应处理 - 防止协议解析错误
+            // ==================================================================
 
-              console.log('[Vite Proxy]', proxyRes.statusCode, req.url, {
-                ws: isWebSocket,
-                upgrade: proxyRes.headers.upgrade,
-              });
-
-              // WebSocket 连接成功日志
-              if (isWebSocket) {
-                console.log('[Vite Proxy] ✓ WebSocket connection established');
-              }
-            });
-
-            // ------------------------------------------------------------------
-            // 4. WebSocket 升级请求处理
-            // ------------------------------------------------------------------
-            proxy.on('upgrade', (req, socket, head) => {
-              console.log('[Vite Proxy] WebSocket Upgrade:', {
+            proxy.on('proxyRes', (proxyRes, req, res) => {
+              console.log('[Vite Proxy] Response:', {
+                statusCode: proxyRes.statusCode,
                 url: req.url,
-                headers: req.headers,
+                headers: {
+                  'content-type': proxyRes.headers['content-type'],
+                  'upgrade': proxyRes.headers['upgrade'],
+                  'connection': proxyRes.headers['connection']
+                }
               });
 
-              // 验证路径格式
+              // WebSocket 连接成功
+              if (proxyRes.statusCode === 101 && proxyRes.headers.upgrade) {
+                console.log('[Vite Proxy] ✓ WebSocket connection established:', req.url);
+              }
+            });
+
+            // ==================================================================
+            // 4. WebSocket 连接处理
+            // ==================================================================
+
+            proxy.on('upgrade', (req, socket, head) => {
+              console.log('[Vite Proxy] WebSocket Upgrade Request:', {
+                url: req.url,
+                headers: req.headers
+              });
+
+              // 验证 WebSocket 路径
               const wsPath = req.url || '';
               if (!wsPath.startsWith('/api')) {
                 console.warn('[Vite Proxy] Invalid WebSocket path:', wsPath);
                 socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
                 return;
               }
+
+              console.log('[Vite Proxy] ✓ WebSocket upgrade validated:', wsPath);
             });
 
-            // ------------------------------------------------------------------
-            // 5. WebSocket 代理请求处理
-            // ------------------------------------------------------------------
+            // ==================================================================
+            // 5. 连接错误处理
+            // ==================================================================
+
             proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
               console.log('[Vite Proxy] WebSocket Proxy Request:', {
                 url: req.url,
                 target: proxyReq.path,
+                headers: proxyReq.getHeaders()
               });
             });
 
-            // ------------------------------------------------------------------
+            proxy.on('close', (req, socket, head) => {
+              console.log('[Vite Proxy] Connection closed:', req.url);
+            });
+
+            // ==================================================================
             // 6. 超时处理
-            // ------------------------------------------------------------------
+            // ==================================================================
+
             proxy.on('timeout', (req, res, socket) => {
               console.warn('[Vite Proxy] Timeout:', req.url);
+
               if (socket) {
                 socket.destroy();
               }
             });
-
-            // ------------------------------------------------------------------
-            // 7. 连接关闭处理
-            // ------------------------------------------------------------------
-            proxy.on('close', (req, socket, head) => {
-              console.log('[Vite Proxy] Connection closed:', req.url);
-            });
           }
         },
+
+        // ======================================================================
+        // WebSocket 专用代理规则 (避免路径冲突)
+        // ======================================================================
+        '/api/v2/stream': {
+          target: 'ws://localhost:3001',
+          ws: true,
+          changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err, req, res) => {
+              console.error('[Vite WS Proxy] Error:', {
+                message: err.message,
+                url: req.url
+              });
+            });
+
+            proxy.on('upgrade', (req, socket, head) => {
+              console.log('[Vite WS Proxy] Upgrade:', req.url);
+            });
+
+            proxy.on('proxyReqWs', (proxyReq, req, socket, options, head) => {
+              console.log('[Vite WS Proxy] WebSocket request:', {
+                url: req.url,
+                target: proxyReq.path
+              });
+            });
+          }
+        }
       } : undefined,
 
       // ======================================================================
@@ -167,16 +213,15 @@ export default defineConfig(({ mode }) => {
         protocol: 'ws',
         host: 'localhost',
         port: 3000,
-        clientPort: 3000,
         overlay: true,
+        clientPort: 3000
       }
     },
 
-    base: './', // 使用相对路径，修复Electron中的资源加载问题
+    base: './',
 
     plugins: [
       react(),
-      // ✨ Bundle可视化插件
       visualizer({
         open: false,
         gzipSize: true,
@@ -185,15 +230,8 @@ export default defineConfig(({ mode }) => {
       })
     ],
 
-    // ❌ 移除: 不再将API密钥注入前端 (安全隐患)
-    // define: {
-    //   'process.env.API_KEY': JSON.stringify(env.ZHIPU_API_KEY),
-    //   'process.env.ZHIPU_API_KEY': JSON.stringify(env.ZHIPU_API_KEY)
-    // },
-
     resolve: {
       alias: {
-        // 配置路径别名，解决相对路径解析问题
         '@': path.resolve(__dirname, '.'),
         '@config': path.resolve(__dirname, './config'),
         '@services': path.resolve(__dirname, './services'),
@@ -206,72 +244,48 @@ export default defineConfig(({ mode }) => {
 
     build: {
       assetsDir: 'assets',
-      // ✨ 提高chunk大小警告阈值
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
-          // ✨ 优化代码分割策略
           manualChunks: (id) => {
-            // React核心库
             if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
               return 'react-vendor';
             }
-
-            // 路由库
             if (id.includes('node_modules/react-router')) {
               return 'router-vendor';
             }
-
-            // UI图标库
             if (id.includes('node_modules/lucide-react')) {
               return 'icons-vendor';
             }
-
-            // UI工具库
             if (id.includes('node_modules/clsx') ||
                 id.includes('node_modules/tailwind-merge') ||
                 id.includes('node_modules/@tanstack/react-query')) {
               return 'ui-utils-vendor';
             }
-
-            // Excel处理库（按需加载）
             if (id.includes('node_modules/xlsx')) {
               return 'xlsx-vendor';
             }
-
-            // Word处理库（按需加载）
             if (id.includes('node_modules/docx') ||
                 id.includes('node_modules/pizzip') ||
                 id.includes('node_modules/mammoth')) {
               return 'docx-vendor';
             }
-
-            // PDF处理库（按需加载）
             if (id.includes('node_modules/pdfjs-dist')) {
               return 'pdf-vendor';
             }
-
-            // 数据处理库
             if (id.includes('node_modules/alasql')) {
               return 'data-vendor';
             }
-
-            // 图表库
             if (id.includes('node_modules/recharts')) {
               return 'chart-vendor';
             }
-
-            // 代码编辑器
             if (id.includes('node_modules/@monaco-editor')) {
               return 'monaco-vendor';
             }
-
-            // 其他大型node_modules包
             if (id.includes('node_modules')) {
               return 'vendor';
             }
           },
-          // ✨ 优化chunk文件名
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',
           assetFileNames: 'assets/[ext]/[name]-[hash].[ext]'

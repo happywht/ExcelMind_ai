@@ -4,7 +4,6 @@
  */
 
 import type {
-import { logger } from '@/utils/logger';
   AuditTrailEntry,
   AuditTrailDetails,
   AuditTrailReport,
@@ -12,6 +11,7 @@ import { logger } from '@/utils/logger';
   IAuditTrailLogger,
   AuditTrailStatus
 } from '../types/auditTrailTypes';
+import { logger } from '@/utils/logger';
 
 /**
  * 审计轨迹日志器实现

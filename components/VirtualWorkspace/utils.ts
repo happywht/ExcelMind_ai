@@ -6,8 +6,8 @@
  */
 
 import { FileRole } from '../../services/infrastructure/vfs/VirtualFileSystem';
-import {
 import { logger } from '@/utils/logger';
+import {
   type ExtendedVirtualFileInfo,
   type FileTreeNode,
   type SortOption,

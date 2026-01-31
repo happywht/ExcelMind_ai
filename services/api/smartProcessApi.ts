@@ -12,11 +12,22 @@ import { TaskResult } from '../types/agenticTypes';
 
 /**
  * API基础URL配置
+ *
+ * 开发环境: 使用相对路径 /api，Vite代理会转发到后端
+ * 生产环境: 使用相对路径 /api 或完整URL（取决于部署配置）
  */
 const getApiBaseUrl = (): string => {
-  if (import.meta.env.DEV) {
-    return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+  // 优先使用环境变量配置
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
   }
+
+  // 开发环境默认使用相对路径
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+
+  // 生产环境使用相对路径（假设前后端部署在同一域）
   return '/api';
 };
 
