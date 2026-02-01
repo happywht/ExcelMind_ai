@@ -7,18 +7,22 @@
  * - 批量生成Word文档
  * - 实时性能监控
  *
- * @version 2.0.0 - Phase 2 集成版本
+ * @version 3.0.0 - Zustand状态管理版本
+ *
+ * 主要变更:
+ * - 使用Zustand store管理所有状态
+ * - 消除Props Drilling问题（从24个props减少到0个）
+ * - 子组件直接使用Zustand hooks
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import {
   readExcelFile
 } from '../../services/excelService';
 import {
-  createTemplateFile,
-  highlightPlaceholdersInHtml
+  createTemplateFile
 } from '../../services/templateService';
-import { generateFieldMappingV2, generateFieldMapping } from '../../services/documentMappingService';
+import { generateFieldMappingV2 } from '../../services/documentMappingService';
 import {
   DocxtemplaterService
 } from '../../services/docxtemplaterService';
@@ -41,58 +45,73 @@ import {
   initPerformanceMonitoring
 } from '../../services/monitoring';
 import {
-  GenerationMode,
-  AggregateConfig
-} from '../../types/documentTypes';
-import {
-  TemplateFile,
-  MappingScheme,
-  GeneratedDocument,
   DocumentProcessingLog,
   SheetInfo
 } from '../../types/documentTypes';
 import {
-  DocumentSpaceState,
-  DocumentSpaceTab,
-  PerformanceMetrics
-} from './types';
+  useDocumentSpace,
+  useDocumentSpaceActions,
+  useDocumentSpaceFiles,
+  useDocumentSpaceMapping,
+  useDocumentSpaceSheets,
+  useDocumentSpaceGeneration
+} from '../../stores/documentSpaceStore';
 
 import DocumentSpaceSidebar from './DocumentSpaceSidebar';
 import DocumentSpaceMain from './DocumentSpaceMain';
 
+/**
+ * DocumentSpace组件
+ *
+ * 使用Zustand管理状态，不再需要传递props
+ */
 export const DocumentSpace: React.FC = () => {
-  // ===== 状态管理 =====
+  // ===== 从Zustand Store获取状态和操作 =====
 
-  // 文件状态
-  const [templateFile, setTemplateFile] = useState<TemplateFile | null>(null);
-  const [dataFile, setDataFile] = useState<File | null>(null);
-  const [excelData, setExcelData] = useState<any>(null);
+  const {
+    // 状态
+    templateFile,
+    dataFile,
+    excelData,
+    userInstruction,
+    mappingScheme,
+    generatedDocs,
+    primarySheet,
+    enabledSheets,
+    generationMode,
+    aggregateConfig,
+    activeTab,
+    selectedDoc,
+    isProcessing,
+    processingStage,
+    progress,
+    logs,
+    performanceMetrics,
+    logsPerPage,
+    maxLogs
+  } = useDocumentSpace();
 
-  // AI和映射状态
-  const [userInstruction, setUserInstruction] = useState('');
-  const [mappingScheme, setMappingScheme] = useState<MappingScheme | null>(null);
-  const [generatedDocs, setGeneratedDocs] = useState<GeneratedDocument[]>([]);
-
-  // 多Sheet支持状态
-  const [primarySheet, setPrimarySheet] = useState<string>('');
-  const [enabledSheets, setEnabledSheets] = useState<string[]>([]);
-
-  // 生成模式状态
-  const [generationMode, setGenerationMode] = useState<GenerationMode>('individual');
-  const [aggregateConfig, setAggregateConfig] = useState<AggregateConfig>({ rules: [] });
-
-  // UI状态
-  const [activeTab, setActiveTab] = useState<DocumentSpaceTab>('upload');
-  const [selectedDoc, setSelectedDoc] = useState<GeneratedDocument | null>(null);
-
-  // 处理状态
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStage, setProcessingStage] = useState('');
-  const [progress, setProgress] = useState(0);
-
-  // 日志和监控
-  const [logs, setLogs] = useState<DocumentProcessingLog[]>([]);
-  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>({});
+  const {
+    // 操作方法
+    setTemplateFile,
+    setDataFile,
+    setExcelData,
+    setUserInstruction,
+    setMappingScheme,
+    setGeneratedDocs,
+    setActiveTab,
+    setSelectedDoc,
+    setPrimarySheet,
+    setEnabledSheets,
+    setGenerationMode,
+    setAggregateConfig,
+    startProcessing,
+    finishProcessing,
+    updateProgress,
+    addLog,
+    clearLogs,
+    updatePerformanceMetric
+  } = useDocumentSpaceActions();
 
   // Few-Shot引擎实例
   const fewShotEngine = useMemo(() => {
@@ -101,106 +120,36 @@ export const DocumentSpace: React.FC = () => {
     return engine;
   }, []);
 
-  // ===== 初始化监控系统 =====
+  // ===== 辅助函数：添加日志并记录性能 =====
 
-  useEffect(() => {
-    const monitoringSystem = initPerformanceMonitoring({
-      monitor: {
-        autoStart: true,
-        monitoringInterval: 1000,
-        enableAlerts: true
-      },
-      benchmarks: {
-        ai: {
-          simple: {
-            target: 3000,
-            warning: 5000,
-            error: 10000
-          },
-          complex: {
-            target: 5000,
-            warning: 8000,
-            error: 15000
-          }
-        },
-        document: {
-          single: {
-            target: 2000,
-            warning: 3000,
-            error: 5000
-          },
-          batch_10: {
-            target: 5000,
-            warning: 8000,
-            error: 12000
-          },
-          batch_100: {
-            target: 20000,
-            warning: 30000,
-            error: 45000
-          }
-        },
-        queries: {
-          simple: { target: 100, warning: 200, error: 500 },
-          filter: { target: 200, warning: 400, error: 800 },
-          aggregate: { target: 300, warning: 600, error: 1000 },
-          join: { target: 500, warning: 1000, error: 2000 }
-        },
-        resources: {
-          memory: { target: 50, warning: 70, error: 90 },
-          cpu: { target: 30, warning: 50, error: 75 }
-        }
-      }
-    });
-
-    return () => {
-      monitoringSystem.monitor.stopMonitoring();
-    };
-  }, []);
-
-  // ===== 日志管理 =====
-
-  const addLog = useCallback((
+  /**
+   * 添加日志并记录性能指标
+   */
+  const addLogWithMetrics = useCallback((
     stage: DocumentProcessingLog['stage'],
     status: DocumentProcessingLog['status'],
     message: string,
     details?: any
   ) => {
-    const log: DocumentProcessingLog = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      timestamp: Date.now(),
-      stage,
-      status,
-      message,
-      details
-    };
-
-    setLogs(prev => [log, ...prev]);
+    addLog({ stage, status, message, details });
 
     // 记录性能指标
-    if (status === 'success') {
-      const duration = details?.duration;
-      if (duration) {
-        setPerformanceMetrics(prev => ({
-          ...prev,
-          [stage]: duration
-        }));
-      }
+    if (status === 'success' && details?.duration) {
+      updatePerformanceMetric(stage as keyof typeof performanceMetrics, details.duration);
     }
-  }, []);
+  }, [addLog, updatePerformanceMetric, performanceMetrics]);
 
   // ===== 1. 模板上传处理 =====
 
   const handleTemplateUpload = useCallback(async (file: File) => {
     if (!file.name.endsWith('.docx')) {
-      addLog('template_upload', 'error', '请上传.docx格式的Word文档');
+      addLogWithMetrics('template_upload', 'error', '请上传.docx格式的Word文档');
       return;
     }
 
-    setIsProcessing(true);
-    setProcessingStage('template_upload');
-    setProgress(0);
-    addLog('template_upload', 'pending', '正在解析Word模板...');
+    startProcessing('template_upload');
+    updateProgress(0);
+    addLogWithMetrics('template_upload', 'pending', '正在解析Word模板...');
 
     const trackerId = PerformanceTracker.startTracking('template.upload');
     const startTime = performance.now();
@@ -208,13 +157,25 @@ export const DocumentSpace: React.FC = () => {
     try {
       // 解析模板
       const template = await createTemplateFile(file);
+
+      // ✅ 修复：先更新templateFile，再切换Tab
       setTemplateFile(template);
+
+      // 等待状态更新后再切换Tab
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       setActiveTab('template');
+
+      console.log('[DocumentSpace] Template uploaded and tab switched:', {
+        templateName: template.name,
+        placeholderCount: template.placeholders.length,
+        activeTab: 'template'
+      });
 
       const duration = performance.now() - startTime;
       PerformanceTracker.stopTracking(trackerId, duration);
 
-      addLog('template_upload', 'success',
+      addLogWithMetrics('template_upload', 'success',
         `模板 "${file.name}" 解析成功，检测到 ${template.placeholders.length} 个占位符`,
         { duration, placeholderCount: template.placeholders.length }
       );
@@ -230,28 +191,33 @@ export const DocumentSpace: React.FC = () => {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog('template_upload', 'error', `模板解析失败: ${errorMessage}`);
+      addLogWithMetrics('template_upload', 'error', `模板解析失败: ${errorMessage}`);
     } finally {
-      setIsProcessing(false);
-      setProgress(100);
+      finishProcessing();
+      updateProgress(100);
     }
-  }, [addLog]);
+  }, [addLogWithMetrics, startProcessing, updateProgress, setTemplateFile, setActiveTab, finishProcessing]);
 
   // ===== 2. 数据上传处理 =====
 
   const handleDataUpload = useCallback(async (file: File) => {
-    setIsProcessing(true);
-    setProcessingStage('data_upload');
-    setProgress(0);
-    addLog('data_upload', 'pending', '正在读取Excel数据...');
+    startProcessing('data_upload');
+    updateProgress(0);
+    addLogWithMetrics('data_upload', 'pending', '正在读取Excel数据...');
 
     const trackerId = PerformanceTracker.startTracking('data.upload');
     const startTime = performance.now();
 
     try {
       const data = await readExcelFile(file);
+
+      // ✅ 修复：先更新数据状态，再切换Tab
       setDataFile(file);
       setExcelData(data);
+
+      // 等待状态更新后再切换Tab
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       setActiveTab('data');
 
       // 自动设置主Sheet为第一个Sheet
@@ -260,12 +226,20 @@ export const DocumentSpace: React.FC = () => {
         setPrimarySheet(data.currentSheetName || sheetNames[0]);
       }
 
+      console.log('[DocumentSpace] Excel data uploaded and tab switched:', {
+        fileName: file.name,
+        sheetCount: sheetNames.length,
+        currentSheet: data.currentSheetName,
+        rowCount: data.sheets[data.currentSheetName]?.length || 0,
+        activeTab: 'data'
+      });
+
       const duration = performance.now() - startTime;
       PerformanceTracker.stopTracking(trackerId, duration);
       const sheetCount = Object.keys(data.sheets).length;
       const currentSheetData = data.sheets[data.currentSheetName] || [];
 
-      addLog('data_upload', 'success',
+      addLogWithMetrics('data_upload', 'success',
         `数据 "${file.name}" 读取成功，共${sheetCount}个工作表，当前工作表${currentSheetData.length}行数据`,
         { duration, sheetCount, rowCount: currentSheetData.length }
       );
@@ -281,25 +255,24 @@ export const DocumentSpace: React.FC = () => {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog('data_upload', 'error', `数据读取失败: ${errorMessage}`);
+      addLogWithMetrics('data_upload', 'error', `数据读取失败: ${errorMessage}`);
     } finally {
-      setIsProcessing(false);
-      setProgress(100);
+      finishProcessing();
+      updateProgress(100);
     }
-  }, [addLog]);
+  }, [addLogWithMetrics, startProcessing, updateProgress, setDataFile, setExcelData, setActiveTab, setPrimarySheet, primarySheet, finishProcessing]);
 
   // ===== 3. AI生成映射 =====
 
   const handleGenerateMapping = useCallback(async () => {
     if (!templateFile || !excelData || !userInstruction.trim()) {
-      addLog('mapping', 'error', '请先上传模板和数据，并输入指令');
+      addLogWithMetrics('mapping', 'error', '请先上传模板和数据，并输入指令');
       return;
     }
 
-    setIsProcessing(true);
-    setProcessingStage('ai_mapping');
-    setProgress(0);
-    addLog('mapping', 'pending', 'AI正在分析并生成映射方案...');
+    startProcessing('ai_mapping');
+    updateProgress(0);
+    addLogWithMetrics('mapping', 'pending', 'AI正在分析并生成映射方案...');
 
     const trackerId = PerformanceTracker.startTracking('ai.mapping');
     const startTime = performance.now();
@@ -326,7 +299,7 @@ export const DocumentSpace: React.FC = () => {
         5
       );
 
-      addLog('mapping', 'pending',
+      addLogWithMetrics('mapping', 'pending',
         `检索到 ${relevantExamples.length} 个相关示例，正在分析 ${allSheetsInfo.length} 个工作表...`
       );
 
@@ -346,7 +319,7 @@ export const DocumentSpace: React.FC = () => {
       });
 
       if (!validationResult.isValid) {
-        addLog('mapping', 'warning',
+        addLogWithMetrics('mapping', 'warning',
           `映射生成完成，但存在警告: ${validationResult.warnings.join(', ')}`
         );
       }
@@ -357,7 +330,7 @@ export const DocumentSpace: React.FC = () => {
       // 更新主Sheet状态（如果AI返回了不同的主Sheet选择）
       if (mapping.primarySheet && mapping.primarySheet !== primarySheet) {
         setPrimarySheet(mapping.primarySheet);
-        addLog('mapping', 'pending',
+        addLogWithMetrics('mapping', 'pending',
           `AI建议使用 "${mapping.primarySheet}" 作为主数据表`
         );
       }
@@ -371,7 +344,7 @@ export const DocumentSpace: React.FC = () => {
         ? `AI映射完成：${mapping.mappings.length}个映射，${crossSheetCount}个跨Sheet查找，${mapping.unmappedPlaceholders.length}个未映射`
         : `AI映射完成：${mapping.mappings.length}个映射，${mapping.unmappedPlaceholders.length}个未映射`;
 
-      addLog('mapping', 'success', successMessage,
+      addLogWithMetrics('mapping', 'success', successMessage,
         {
           duration,
           mappingCount: mapping.mappings.length,
@@ -397,19 +370,16 @@ export const DocumentSpace: React.FC = () => {
       });
 
       // 更新性能指标
-      setPerformanceMetrics(prev => ({
-        ...prev,
-        aiMapping: duration
-      }));
+      updatePerformanceMetric('aiMapping', duration);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog('mapping', 'error', `映射生成失败: ${errorMessage}`);
+      addLogWithMetrics('mapping', 'error', `映射生成失败: ${errorMessage}`);
     } finally {
-      setIsProcessing(false);
-      setProgress(100);
+      finishProcessing();
+      updateProgress(100);
     }
-  }, [templateFile, excelData, userInstruction, fewShotEngine, addLog]);
+  }, [templateFile, excelData, userInstruction, fewShotEngine, addLogWithMetrics, startProcessing, updateProgress, setMappingScheme, setActiveTab, setPrimarySheet, primarySheet, finishProcessing, updatePerformanceMetric]);
 
   // ===== 4. 生成文档 =====
 
@@ -418,6 +388,9 @@ export const DocumentSpace: React.FC = () => {
    * @param data 数据数组
    * @param keyField 作为键的字段名
    * @returns Map<键值, 数据行>
+   *
+   * 注意：此函数不依赖组件状态，因此使用空依赖数组
+   * 这样可以避免不必要的函数重新创建，提升性能
    */
   const buildLookupIndex = useCallback((data: any[], keyField: string): Map<string, any> => {
     const index = new Map<string, any>();
@@ -428,19 +401,18 @@ export const DocumentSpace: React.FC = () => {
       }
     });
     return index;
-  }, [excelData, primarySheet, enabledSheets]);
+  }, []); // 空依赖数组：函数逻辑仅依赖参数，不依赖组件状态
 
   // Aggregate mode document generation handler
   const handleAggregateGeneration = useCallback(async () => {
     if (!templateFile || !excelData || !mappingScheme) {
-      addLog('generating', 'error', 'Please generate mapping first');
+      addLogWithMetrics('generating', 'error', 'Please generate mapping first');
       return;
     }
 
-    setIsProcessing(true);
-    setProcessingStage('document_generation');
-    setProgress(0);
-    addLog('generating', 'pending', 'Using aggregate mode to generate documents...');
+    startProcessing('aggregate_generation');
+    updateProgress(0);
+    addLogWithMetrics('generating', 'pending', 'Using aggregate mode to generate documents...');
 
     const trackerId = PerformanceTracker.startTracking('document.generation');
     const startTime = performance.now();
@@ -463,10 +435,10 @@ export const DocumentSpace: React.FC = () => {
           configToUse.rules.push({ field: headers[0] || 'id', operation: 'count' as const, alias: '总数' });
         }
         setAggregateConfig(configToUse);
-        addLog('generating', 'info', `Auto-inferred aggregate config: ${configToUse.rules.length} rules`);
+        addLogWithMetrics('generating', 'info', `Auto-inferred aggregate config: ${configToUse.rules.length} rules`);
       }
 
-      addLog('generating', 'pending',
+      addLogWithMetrics('generating', 'pending',
         `Aggregate config: ${configToUse.rules.length} rules, ${primarySheetData.length} rows`
       );
 
@@ -474,12 +446,12 @@ export const DocumentSpace: React.FC = () => {
       const { executeAggregate } = await import('../../services/aggregateService');
       const aggregateResults = executeAggregate(primarySheetData, configToUse);
 
-      addLog('generating', 'pending',
+      addLogWithMetrics('generating', 'pending',
         `Aggregation complete, will generate ${aggregateResults.length} summary documents`
       );
 
       // Generate document for each aggregate result
-      const documents: GeneratedDocument[] = [];
+      const documents = [];
 
       for (let i = 0; i < aggregateResults.length; i++) {
         const aggregateData = aggregateResults[i];
@@ -521,8 +493,8 @@ export const DocumentSpace: React.FC = () => {
         });
 
         const percentage = Math.round(((i + 1) / aggregateResults.length) * 100);
-        setProgress(percentage);
-        addLog('generating', 'pending',
+        updateProgress(percentage);
+        addLogWithMetrics('generating', 'pending',
           `Generating summary document: ${i + 1}/${aggregateResults.length} (${percentage}%)`
         );
       }
@@ -533,7 +505,7 @@ export const DocumentSpace: React.FC = () => {
       const duration = performance.now() - startTime;
       PerformanceTracker.stopTracking(trackerId, duration);
 
-      addLog('generating', 'success',
+      addLogWithMetrics('generating', 'success',
         `Aggregate mode: Successfully generated ${documents.length} summary documents`,
         {
           duration,
@@ -555,19 +527,16 @@ export const DocumentSpace: React.FC = () => {
         }
       });
 
-      setPerformanceMetrics(prev => ({
-        ...prev,
-        documentGeneration: duration
-      }));
+      updatePerformanceMetric('documentGeneration', duration);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog('generating', 'error', `Aggregate document generation failed: ${errorMessage}`);
+      addLogWithMetrics('generating', 'error', `Aggregate document generation failed: ${errorMessage}`);
     } finally {
-      setIsProcessing(false);
-      setProgress(100);
+      finishProcessing();
+      updateProgress(100);
     }
-  }, [templateFile, excelData, mappingScheme, aggregateConfig, addLog]);
+  }, [templateFile, excelData, mappingScheme, aggregateConfig, addLogWithMetrics, startProcessing, updateProgress, setAggregateConfig, setGeneratedDocs, setActiveTab, finishProcessing, updatePerformanceMetric]);
 
 
   const handleGenerateDocs = useCallback(async () => {
@@ -577,14 +546,13 @@ export const DocumentSpace: React.FC = () => {
     }
 
     if (!templateFile || !excelData || !mappingScheme) {
-      addLog('generating', 'error', '请先生成映射方案');
+      addLogWithMetrics('generating', 'error', '请先生成映射方案');
       return;
     }
 
-    setIsProcessing(true);
-    setProcessingStage('document_generation');
-    setProgress(0);
-    addLog('generating', 'pending', '正在批量生成Word文档...');
+    startProcessing('document_generation');
+    updateProgress(0);
+    addLogWithMetrics('generating', 'pending', '正在批量生成Word文档...');
 
     const trackerId = PerformanceTracker.startTracking('document.generation');
     const startTime = performance.now();
@@ -595,7 +563,7 @@ export const DocumentSpace: React.FC = () => {
       const primarySheetData = excelData.sheets[sheetToUse] || [];
       const baseFileName = templateFile.name.replace('.docx', '');
 
-      addLog('generating', 'pending',
+      addLogWithMetrics('generating', 'pending',
         `使用主数据表 "${sheetToUse}" (${primarySheetData.length}行) 生成文档...`
       );
 
@@ -604,7 +572,7 @@ export const DocumentSpace: React.FC = () => {
                                      mappingScheme.crossSheetMappings.length > 0;
 
       if (hasCrossSheetMappings) {
-        addLog('generating', 'info',
+        addLogWithMetrics('generating', 'info',
           `检测到 ${mappingScheme.crossSheetMappings!.length} 个跨Sheet映射，正在构建查找索引...`
         );
       }
@@ -620,11 +588,11 @@ export const DocumentSpace: React.FC = () => {
             const index = buildLookupIndex(sourceSheet, crossMapping.lookupKey);
             crossSheetIndexes.set(crossMapping.sourceSheet, index);
             totalIndexedRows += sourceSheet.length;
-            addLog('generating', 'info',
+            addLogWithMetrics('generating', 'info',
               `为Sheet "${crossMapping.sourceSheet}" 构建索引 (${sourceSheet.length}行，键字段: ${crossMapping.lookupKey})`
             );
           } else {
-            addLog('generating', 'warning',
+            addLogWithMetrics('generating', 'warning',
               `找不到来源Sheet: ${crossMapping.sourceSheet}`
             );
           }
@@ -653,7 +621,7 @@ export const DocumentSpace: React.FC = () => {
 
             if (!lookupValue) {
               // 关联字段不存在或为空
-              addLog('generating', 'warning',
+              addLogWithMetrics('generating', 'warning',
                 `第${rowIndex + 1}行: 关联字段 "${crossMapping.lookupKey}" 为空，无法查找跨Sheet数据`
               );
               mappedData[key] = '';
@@ -678,7 +646,7 @@ export const DocumentSpace: React.FC = () => {
               // 未找到匹配数据
               if (rowIndex < 3) {
                 // 只在前几行记录警告，避免日志过多
-                addLog('generating', 'warning',
+                addLogWithMetrics('generating', 'warning',
                   `第${rowIndex + 1}行: 在Sheet "${crossMapping.sourceSheet}" 中找不到关联键 "${lookupValue}" 对应的数据`
                 );
               }
@@ -693,7 +661,7 @@ export const DocumentSpace: React.FC = () => {
       // 报告跨Sheet查找统计
       if (hasCrossSheetMappings && crossSheetLookupTotal > 0) {
         const successRate = ((crossSheetLookupSuccess / crossSheetLookupTotal) * 100).toFixed(1);
-        addLog('generating', 'info',
+        addLogWithMetrics('generating', 'info',
           `跨Sheet查找统计: 成功 ${crossSheetLookupSuccess}/${crossSheetLookupTotal} (${successRate}%)`
         );
       }
@@ -708,8 +676,8 @@ export const DocumentSpace: React.FC = () => {
           batchSize: 10,
           onProgress: (current, total) => {
             const percentage = Math.round((current / total) * 100);
-            setProgress(percentage);
-            addLog('generating', 'pending',
+            updateProgress(percentage);
+            addLogWithMetrics('generating', 'pending',
               `正在生成文档: ${current}/${total} (${percentage}%)`
             );
           }
@@ -731,7 +699,7 @@ export const DocumentSpace: React.FC = () => {
         successMessage += ` (使用 ${mappingScheme.crossSheetMappings!.length} 个跨Sheet映射${successRate})`;
       }
 
-      addLog('generating', 'success', successMessage,
+      addLogWithMetrics('generating', 'success', successMessage,
         {
           duration,
           documentCount: documents.length,
@@ -761,26 +729,23 @@ export const DocumentSpace: React.FC = () => {
       });
 
       // 更新性能指标
-      setPerformanceMetrics(prev => ({
-        ...prev,
-        documentGeneration: duration
-      }));
+      updatePerformanceMetric('documentGeneration', duration);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog('generating', 'error', `文档生成失败: ${errorMessage}`);
+      addLogWithMetrics('generating', 'error', `文档生成失败: ${errorMessage}`);
     } finally {
-      setIsProcessing(false);
-      setProgress(100);
+      finishProcessing();
+      updateProgress(100);
     }
-  }, [templateFile, excelData, mappingScheme, addLog, buildLookupIndex, generationMode]);
+  }, [templateFile, excelData, mappingScheme, generationMode, buildLookupIndex, addLogWithMetrics, startProcessing, updateProgress, setGeneratedDocs, setActiveTab, finishProcessing, updatePerformanceMetric, handleAggregateGeneration]);
 
   // ===== 5. 下载单个文档 =====
 
-  const handleDownloadDoc = useCallback((doc: GeneratedDocument) => {
+  const handleDownloadDoc = useCallback((doc: typeof generatedDocs[0]) => {
     downloadDocument(doc.blob, doc.fileName);
-    addLog('download', 'success', `已下载 ${doc.fileName}`);
-  }, [addLog]);
+    addLogWithMetrics('download', 'success', `已下载 ${doc.fileName}`);
+  }, [addLogWithMetrics]);
 
   // ===== 6. 批量下载 =====
 
@@ -790,24 +755,24 @@ export const DocumentSpace: React.FC = () => {
     try {
       const zipName = `批量文档_${Date.now()}.zip`;
       await downloadDocumentsAsZip(generatedDocs, zipName);
-      addLog('download', 'success', `已下载打包的 ${generatedDocs.length} 个文档`);
+      addLogWithMetrics('download', 'success', `已下载打包的 ${generatedDocs.length} 个文档`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog('download', 'error', `下载失败: ${errorMessage}`);
+      addLogWithMetrics('download', 'error', `下载失败: ${errorMessage}`);
     }
-  }, [generatedDocs, addLog]);
+  }, [generatedDocs, addLogWithMetrics]);
 
   // ===== 7. Tab切换 =====
 
-  const handleTabChange = useCallback((tab: DocumentSpaceTab) => {
+  const handleTabChange = useCallback((tab: typeof activeTab) => {
     setActiveTab(tab);
-  }, []);
+  }, [setActiveTab]);
 
   // ===== 8. 文档选择 =====
 
-  const handleDocSelect = useCallback((doc: GeneratedDocument | null) => {
+  const handleDocSelect = useCallback((doc: typeof selectedDoc) => {
     setSelectedDoc(doc);
-  }, []);
+  }, [setSelectedDoc]);
 
   // ===== 9. 工作表切换 =====
 
@@ -817,44 +782,39 @@ export const DocumentSpace: React.FC = () => {
         ...excelData,
         currentSheetName: sheetName
       });
-      addLog('sheet_change', 'success', `切换到工作表: ${sheetName}`);
+      addLogWithMetrics('sheet_change', 'success', `切换到工作表: ${sheetName}`);
     }
-  }, [excelData, addLog]);
+  }, [excelData, setExcelData, addLogWithMetrics]);
 
-  // ===== 计算属性 =====
+  // ===== 10. 设置模板文件（用于模板库） =====
 
-  const canGenerateMapping = useMemo(() => {
-    return templateFile && excelData && userInstruction.trim() && !isProcessing;
-  }, [templateFile, excelData, userInstruction, isProcessing]);
+  const handleTemplateFileChange = useCallback((template: typeof templateFile) => {
+    if (template) {
+      setTemplateFile(template);
+    }
+  }, [setTemplateFile]);
 
-  const canGenerateDocs = useMemo(() => {
-    return mappingScheme && !isProcessing;
-  }, [mappingScheme, isProcessing]);
+  // ===== 计算可用字段 =====
+
+  const availableFields = useMemo(() => {
+    if (!excelData?.sheets || !excelData.currentSheetName) {
+      return [];
+    }
+
+    const currentSheet = excelData.sheets[excelData.currentSheetName];
+    if (!currentSheet || currentSheet.length === 0) {
+      return [];
+    }
+
+    return Object.keys(currentSheet[0] || {});
+  }, [excelData]);
 
   // ===== 渲染 =====
 
   return (
     <div className="flex h-full bg-slate-50">
-      {/* 左侧边栏 */}
+      {/* 左侧边栏 - 无需传递任何props */}
       <DocumentSpaceSidebar
-        templateFile={templateFile}
-        dataFile={dataFile}
-        excelData={excelData}
-        userInstruction={userInstruction}
-        mappingScheme={mappingScheme}
-        generatedDocs={generatedDocs}
-        isProcessing={isProcessing}
-        processingStage={processingStage}
-        progress={progress}
-        logs={logs}
-        performanceMetrics={performanceMetrics}
-        primarySheet={primarySheet}
-        enabledSheets={enabledSheets}
-        availableFields={excelData ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {}) : []}
-        generationMode={generationMode}
-        aggregateConfig={aggregateConfig}
-        onGenerationModeChange={setGenerationMode}
-        onAggregateConfigChange={setAggregateConfig}
         onTemplateUpload={handleTemplateUpload}
         onDataUpload={handleDataUpload}
         onInstructionChange={setUserInstruction}
@@ -864,21 +824,20 @@ export const DocumentSpace: React.FC = () => {
         onGenerateDocs={handleGenerateDocs}
         onDownloadDoc={handleDownloadDoc}
         onDownloadAll={handleDownloadAll}
+        onGenerationModeChange={setGenerationMode}
+        onAggregateConfigChange={setAggregateConfig}
+        onClearLogs={clearLogs}
+        logsPerPage={logsPerPage}
+        maxLogs={maxLogs}
+        availableFields={availableFields}
       />
 
-      {/* 右侧主内容区 */}
+      {/* 右侧主内容区 - 无需传递任何props */}
       <DocumentSpaceMain
-        activeTab={activeTab}
-        templateFile={templateFile}
-        excelData={excelData}
-        mappingScheme={mappingScheme}
-        generatedDocs={generatedDocs}
-        selectedDoc={selectedDoc}
-        performanceMetrics={performanceMetrics}
         onTabChange={handleTabChange}
         onDocSelect={handleDocSelect}
         onSheetChange={handleSheetChange}
-        onTemplateFileChange={setTemplateFile}
+        onTemplateFileChange={handleTemplateFileChange}
       />
     </div>
   );

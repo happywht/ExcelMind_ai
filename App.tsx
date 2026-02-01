@@ -3,11 +3,21 @@ import { Sidebar } from './components/Sidebar';
 import { AppView } from './types';
 import { Activity, Zap, ShieldCheck, FileEdit, Package, FolderOpen, CheckCircle } from 'lucide-react';
 
+// 🔧 开发模式：暴露Zustand Store用于调试
+if (import.meta.env.DEV) {
+  import('./stores/documentSpaceStore').then(({ useDocumentSpaceStore }) => {
+    (window as any).__ZUSTAND_STORE__ = useDocumentSpaceStore;
+    console.log('✅ Zustand Store 已暴露到 window.__ZUSTAND_STORE__');
+  });
+}
+
 // ✨ 懒加载核心功能组件
 const SmartExcel = lazy(() => import('./components/SmartExcel'));
 const FormulaGen = lazy(() => import('./components/FormulaGen'));
 const KnowledgeChat = lazy(() => import('./components/KnowledgeChat'));
-const DocumentSpace = lazy(() => import('./components/DocumentSpace/index'));
+
+// DocumentSpace - 文档空间组件
+const DocumentSpace = lazy(() => import('./components/DocumentSpace').then(module => ({ default: module.DocumentSpace })));
 
 // ✨ 懒加载新增功能组件
 const TaskListV2 = lazy(() => import('./components/BatchGeneration/TaskList'));

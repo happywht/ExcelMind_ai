@@ -41,11 +41,12 @@ const getClient = (): Anthropic => {
       );
     }
 
+    // ⚠️ 安全警告: 仅在个人使用场景下设置 dangerouslyAllowBrowser: true
+    // 如果部署到公网,请务必修改为通过后端代理调用
     client = new Anthropic({
       apiKey,
       baseURL: 'https://open.bigmodel.cn/api/anthropic',
-      // ✅ 本地开发环境：允许浏览器环境运行
-      dangerouslyAllowBrowser: true // 本地开发可以放宽限制
+      dangerouslyAllowBrowser: true // 个人使用软件,允许浏览器环境
     });
   }
   return client;

@@ -18,14 +18,23 @@ let client: Anthropic | null = null;
 
 const getClient = (): Anthropic => {
   if (!client) {
+    // ⚠️ 个人使用场景: 支持浏览器环境直接调用AI服务
+    // 安全提示: 不要将包含API密钥的代码部署到公网
     const apiKey = isNodeEnv
       ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
-      : '';
+      : import.meta.env.VITE_ANTHROPIC_API_KEY || ''; // 从环境变量读取
+
+    if (!apiKey) {
+      throw new Error(
+        '❌ 配置错误：ANTHROPIC_API_KEY 未设置。\n' +
+        '请在 .env.development 或 .env.production 中配置智谱AI API密钥。'
+      );
+    }
 
     client = new Anthropic({
       apiKey,
       baseURL: 'https://open.bigmodel.cn/api/anthropic',
-      dangerouslyAllowBrowser: isNodeEnv
+      dangerouslyAllowBrowser: true // 个人使用,允许浏览器环境
     });
   }
   return client;

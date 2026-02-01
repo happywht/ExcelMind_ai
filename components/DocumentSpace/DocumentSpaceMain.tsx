@@ -8,7 +8,12 @@
  * - 映射编辑器
  * - 文档列表
  *
- * @version 2.0.0
+ * @version 3.0.0 - Zustand状态管理版本
+ *
+ * 主要变更:
+ * - 使用Zustand hooks获取状态
+ * - Props从11个减少到5个（仅保留回调函数）
+ * - 所有状态从Zustand store获取
  */
 
 import React, { useMemo, useState } from 'react';
@@ -26,6 +31,7 @@ import {
   MappingScheme,
   GeneratedDocument
 } from '../../types/documentTypes';
+import { useDocumentSpace } from '../../stores/documentSpaceStore';
 import { DocumentSpaceTab, PerformanceMetrics, TabConfig } from './types';
 
 import TemplatePreview from './TemplatePreview';
@@ -40,32 +46,44 @@ import { createTemplateFile } from '../../services/templateService';
 import { templateStorage } from '../../services/templateStorage';
 
 interface DocumentSpaceMainProps {
-  activeTab: DocumentSpaceTab;
-  templateFile: TemplateFile | null;
-  excelData: any;
-  mappingScheme: MappingScheme | null;
-  generatedDocs: GeneratedDocument[];
-  selectedDoc: GeneratedDocument | null;
-  performanceMetrics: PerformanceMetrics;
   onTabChange: (tab: DocumentSpaceTab) => void;
   onDocSelect: (doc: GeneratedDocument | null) => void;
   onSheetChange: (sheetName: string) => void;
   onTemplateFileChange: (templateFile: TemplateFile) => void;
 }
 
+/**
+ * DocumentSpaceMain组件
+ *
+ * 使用Zustand hooks获取状态，减少props传递
+ */
 const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
-  activeTab,
-  templateFile,
-  excelData,
-  mappingScheme,
-  generatedDocs,
-  selectedDoc,
-  performanceMetrics,
   onTabChange,
   onDocSelect,
   onSheetChange,
   onTemplateFileChange
 }) => {
+  // ===== 从Zustand Store获取状态 =====
+
+  const {
+    // UI状态
+    activeTab,
+    selectedDoc,
+
+    // 文件状态
+    templateFile,
+    excelData,
+
+    // 映射状态
+    mappingScheme,
+
+    // 文档状态
+    generatedDocs,
+
+    // 性能指标
+    performanceMetrics
+  } = useDocumentSpace();
+
   // 模板上传弹窗状态
   const [showUploadDialog, setShowUploadDialog] = useState(false);
 
@@ -153,6 +171,15 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
 
   // 渲染Tab内容
   const renderTabContent = () => {
+    // 🔍 调试日志：追踪Tab渲染状态
+    console.log('[DocumentSpaceMain] Rendering tab:', activeTab, {
+      hasTemplateFile: !!templateFile,
+      hasExcelData: !!excelData,
+      templateFileName: templateFile?.name,
+      excelDataFileName: excelData?.fileName,
+      currentSheet: excelData?.currentSheetName
+    });
+
     switch (activeTab) {
       case 'templates':
         return (
@@ -163,21 +190,27 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
         );
 
       case 'template':
-        return templateFile ? (
-          <TemplatePreview templateFile={templateFile} />
-        ) : (
-          renderEmptyState('模板', FileText, '请先上传Word模板文件')
-        );
+        // ✅ 修复：添加更详细的条件检查
+        if (!templateFile) {
+          console.warn('[DocumentSpaceMain] Template tab active but no template file');
+          return renderEmptyState('模板', FileText, '请先上传Word模板文件');
+        }
+        console.log('[DocumentSpaceMain] Rendering TemplatePreview with:', templateFile.name);
+        return <TemplatePreview templateFile={templateFile} />;
 
       case 'data':
-        return excelData ? (
+        // ✅ 修复：添加更详细的条件检查
+        if (!excelData) {
+          console.warn('[DocumentSpaceMain] Data tab active but no excel data');
+          return renderEmptyState('数据', Table, '请先上传Excel数据文件');
+        }
+        console.log('[DocumentSpaceMain] Rendering DataPreview with:', excelData.fileName);
+        return (
           <DataPreview
             excelData={excelData}
             currentSheetName={excelData.currentSheetName}
             onSheetChange={onSheetChange}
           />
-        ) : (
-          renderEmptyState('数据', Table, '请先上传Excel数据文件')
         );
 
       case 'mapping':
