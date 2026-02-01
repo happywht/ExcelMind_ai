@@ -185,7 +185,9 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
           <MappingEditor
             mappingScheme={mappingScheme}
             templatePlaceholders={templateFile?.placeholders || []}
-            excelHeaders={excelData ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {}) : []}
+            excelHeaders={excelData?.sheets
+              ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
+              : []}
             onMappingChange={() => {}}
           />
         ) : (

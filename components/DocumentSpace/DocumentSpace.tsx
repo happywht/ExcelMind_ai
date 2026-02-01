@@ -250,6 +250,12 @@ export const DocumentSpace: React.FC = () => {
 
     try {
       const data = await readExcelFile(file);
+
+      // 验证数据结构
+      if (!data || !data.sheets) {
+        throw new Error('Excel数据解析失败：返回数据格式不正确');
+      }
+
       setDataFile(file);
       setExcelData(data);
       setActiveTab('data');
@@ -281,7 +287,11 @@ export const DocumentSpace: React.FC = () => {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[handleDataUpload] Error:', error);
       addLog('data_upload', 'error', `数据读取失败: ${errorMessage}`);
+      // 清除可能的不完整数据
+      setExcelData(null);
+      setDataFile(null);
     } finally {
       setIsProcessing(false);
       setProgress(100);
@@ -291,7 +301,7 @@ export const DocumentSpace: React.FC = () => {
   // ===== 3. AI生成映射 =====
 
   const handleGenerateMapping = useCallback(async () => {
-    if (!templateFile || !excelData || !userInstruction.trim()) {
+    if (!templateFile || !excelData || !excelData.sheets || !userInstruction.trim()) {
       addLog('mapping', 'error', '请先上传模板和数据，并输入指令');
       return;
     }
@@ -850,7 +860,9 @@ export const DocumentSpace: React.FC = () => {
         performanceMetrics={performanceMetrics}
         primarySheet={primarySheet}
         enabledSheets={enabledSheets}
-        availableFields={excelData ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {}) : []}
+        availableFields={excelData?.sheets
+          ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
+          : []}
         generationMode={generationMode}
         aggregateConfig={aggregateConfig}
         onGenerationModeChange={setGenerationMode}
