@@ -138,7 +138,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           {/* 批量下载按钮 */}
           <button
             onClick={onDownloadAll}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-medium hover:from-purple-600 hover:to-pink-600 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+            className="px-6 py-3 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
           >
             <Archive className="w-5 h-5" />
             下载全部(ZIP)
@@ -166,8 +166,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <button
                 onClick={() => setViewMode('list')}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${viewMode === 'list'
-                    ? 'bg-white text-slate-800 shadow-md'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'bg-white text-slate-800 shadow-md'
+                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
                   }`}
               >
                 列表
@@ -175,8 +175,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${viewMode === 'grid'
-                    ? 'bg-white text-slate-800 shadow-md'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                  ? 'bg-white text-slate-800 shadow-md'
+                  : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
                   }`}
               >
                 网格

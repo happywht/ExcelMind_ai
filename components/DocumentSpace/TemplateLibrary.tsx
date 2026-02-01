@@ -92,7 +92,7 @@ const TemplateLibrary: React.FC<TemplateLibraryProps> = ({
                     </div>
                     <button
                         onClick={onUploadTemplate}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg transition-all"
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 hover:shadow-lg transition-all"
                     >
                         <Upload className="w-4 h-4" />
                         上传模板

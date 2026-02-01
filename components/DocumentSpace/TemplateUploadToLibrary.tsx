@@ -186,7 +186,7 @@ const TemplateUploadToLibrary: React.FC<TemplateUploadToLibraryProps> = ({
                     <button
                         onClick={handleUpload}
                         disabled={uploading || !file || !name.trim()}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 hover:shadow-lg transition-all disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed"
                     >
                         {uploading ? (
                             <>

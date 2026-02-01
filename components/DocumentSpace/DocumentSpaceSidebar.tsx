@@ -320,7 +320,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           <button
             onClick={onGenerateMapping}
             disabled={!templateFile || !dataFile || !userInstruction.trim() || isProcessing}
-            className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:from-orange-600 hover:to-red-600 disabled:from-slate-300 disabled:to-slate-400 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+            className="w-full py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
           >
             {isProcessing && processingStage === 'ai_mapping' ? (
               <>
@@ -464,7 +464,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           <button
             onClick={onGenerateDocs}
             disabled={isProcessing}
-            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-teal-600 disabled:from-slate-300 disabled:to-slate-400 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+            className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
           >
             {isProcessing && processingStage === 'document_generation' ? (
               <>

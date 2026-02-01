@@ -113,7 +113,7 @@ const GenerationModeSelector: React.FC<GenerationModeSelectorProps> = ({
             className={`
               px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
               ${mode === 'individual'
-                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                ? 'bg-blue-500 text-white shadow-md'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -135,7 +135,7 @@ const GenerationModeSelector: React.FC<GenerationModeSelectorProps> = ({
             className={`
               px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
               ${mode === 'aggregate'
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                ? 'bg-purple-500 text-white shadow-md'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -300,8 +300,8 @@ const GenerationModeSelector: React.FC<GenerationModeSelectorProps> = ({
                   {aggregateConfig.rules.length === 0
                     ? '请至少添加一条聚合规则。'
                     : aggregateConfig.groupBy && aggregateConfig.groupBy.length > 0
-                    ? `已配置${aggregateConfig.rules.length}条聚合规则，按${aggregateConfig.groupBy.join('、')}分组，将生成多个汇总文档。`
-                    : `已配置${aggregateConfig.rules.length}条聚合规则，将生成单个汇总文档。`
+                      ? `已配置${aggregateConfig.rules.length}条聚合规则，按${aggregateConfig.groupBy.join('、')}分组，将生成多个汇总文档。`
+                      : `已配置${aggregateConfig.rules.length}条聚合规则，将生成单个汇总文档。`
                   }
                 </p>
               </div>
