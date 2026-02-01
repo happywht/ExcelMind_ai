@@ -165,21 +165,19 @@ const DocumentList: React.FC<DocumentListProps> = ({
             <div className="flex bg-slate-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-white text-slate-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${viewMode === 'list'
+                    ? 'bg-white text-slate-800 shadow-md'
+                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                  }`}
               >
                 列表
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  viewMode === 'grid'
-                    ? 'bg-white text-slate-700 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${viewMode === 'grid'
+                    ? 'bg-white text-slate-800 shadow-md'
+                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                  }`}
               >
                 网格
               </button>
@@ -255,14 +253,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onSelect(doc)}
-                      className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-2 text-blue-600 bg-blue-50 hover:text-blue-700 hover:bg-blue-100 rounded-lg transition-all shadow-sm"
                       title="预览"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onDownload(doc)}
-                      className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 hover:shadow-md transition-all flex items-center gap-2 shadow-sm"
                     >
                       <Download className="w-4 h-4" />
                       下载

@@ -36,7 +36,8 @@ import {
 } from '../../types/documentTypes';
 import { PerformanceMetrics } from './types';
 import SheetSelector from './SheetSelector';
-import GenerationModeSelector from './GenerationModeSelector';import { GenerationMode, AggregateConfig } from '../../types/documentTypes';
+import GenerationModeSelector from './GenerationModeSelector'; import { GenerationMode, AggregateConfig } from '../../types/documentTypes';
+import CollapsibleSection from './CollapsibleSection';
 
 interface DocumentSpaceSidebarProps {
   templateFile: TemplateFile | null;
@@ -163,52 +164,55 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
       {/* 内容区 */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
-        {/* 性能监控卡片 */}
+
+        {/* 性能监控卡片 - 可折叠 */}
         {(performanceMetrics.templateUpload ||
           performanceMetrics.aiMapping ||
           performanceMetrics.documentGeneration) && (
-          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-4 border border-slate-200">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-4 h-4 text-blue-500" />
-              <h3 className="font-semibold text-slate-700 text-sm">性能监控</h3>
-            </div>
-            <div className="space-y-2 text-xs">
-              {performanceMetrics.templateUpload && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">模板解析</span>
-                  <div className="flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-yellow-500" />
-                    <span className="font-medium text-slate-800">
-                      {formatTime(performanceMetrics.templateUpload)}
-                    </span>
-                  </div>
+            <CollapsibleSection
+              title="性能监控"
+              icon={<Activity className="w-4 h-4 text-blue-500" />}
+              defaultOpen={false}
+            >
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-3 border border-slate-200">
+                <div className="space-y-2 text-xs">
+                  {performanceMetrics.templateUpload && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">模板解析</span>
+                      <div className="flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-yellow-500" />
+                        <span className="font-medium text-slate-800">
+                          {formatTime(performanceMetrics.templateUpload)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {performanceMetrics.aiMapping && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">AI映射</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-blue-500" />
+                        <span className="font-medium text-slate-800">
+                          {formatTime(performanceMetrics.aiMapping)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {performanceMetrics.documentGeneration && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-600">文档生成</span>
+                      <div className="flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-green-500" />
+                        <span className="font-medium text-slate-800">
+                          {formatTime(performanceMetrics.documentGeneration)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              {performanceMetrics.aiMapping && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">AI映射</span>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-blue-500" />
-                    <span className="font-medium text-slate-800">
-                      {formatTime(performanceMetrics.aiMapping)}
-                    </span>
-                  </div>
-                </div>
-              )}
-              {performanceMetrics.documentGeneration && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">文档生成</span>
-                  <div className="flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-green-500" />
-                    <span className="font-medium text-slate-800">
-                      {formatTime(performanceMetrics.documentGeneration)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            </CollapsibleSection>
+          )}
 
         {/* 进度条 */}
         {isProcessing && (
@@ -240,7 +244,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
             <FileText className="w-4 h-4" />
             Word模板
           </h3>
-          <label className="flex items-center justify-center gap-3 w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-all duration-200">
+          <label className="flex items-center justify-center gap-3 w-full h-24 border-2 border-dashed border-orange-300 bg-orange-50 rounded-lg cursor-pointer hover:border-orange-500 hover:bg-orange-100 transition-all duration-200 shadow-sm">
             <input
               type="file"
               accept=".docx"
@@ -248,8 +252,8 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
               className="hidden"
               disabled={isProcessing}
             />
-            <Upload className="w-5 h-5 text-slate-400" />
-            <span className="text-sm text-slate-500">
+            <Upload className="w-6 h-6 text-orange-500" />
+            <span className="text-sm text-slate-700 font-medium">
               {templateFile ? templateFile.name : '点击上传.docx模板'}
             </span>
           </label>
@@ -267,7 +271,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
             <Table className="w-4 h-4" />
             Excel数据
           </h3>
-          <label className="flex items-center justify-center gap-3 w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-200">
+          <label className="flex items-center justify-center gap-3 w-full h-24 border-2 border-dashed border-emerald-300 bg-emerald-50 rounded-lg cursor-pointer hover:border-emerald-500 hover:bg-emerald-100 transition-all duration-200 shadow-sm">
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -275,8 +279,8 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
               className="hidden"
               disabled={isProcessing}
             />
-            <Upload className="w-5 h-5 text-slate-400" />
-            <span className="text-sm text-slate-500">
+            <Upload className="w-6 h-6 text-emerald-500" />
+            <span className="text-sm text-slate-700 font-medium">
               {dataFile ? dataFile.name : '点击上传Excel数据'}
             </span>
           </label>
@@ -310,7 +314,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
             value={userInstruction}
             onChange={(e) => onInstructionChange(e.target.value)}
             placeholder="例如：把销售额大于10万的产品信息填入模板，生成产品介绍文档"
-            className="w-full h-32 px-4 py-3 bg-orange-50 border-2 border-orange-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm"
+            className="w-full h-32 px-4 py-3 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm hover:border-orange-400"
             disabled={isProcessing}
           />
           <button
@@ -332,7 +336,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           </button>
         </div>
 
-{/* Generation Mode Selector */}
+        {/* Generation Mode Selector */}
         {mappingScheme && (
           <GenerationModeSelector
             mode={generationMode}
@@ -501,7 +505,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
                   </div>
                   <button
                     onClick={() => onDownloadDoc(doc)}
-                    className="text-xs bg-emerald-500 text-white px-3 py-1.5 rounded hover:bg-emerald-600 transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-xs bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:shadow-md transition-all flex items-center gap-1 shadow-sm"
                   >
                     <Download className="w-3 h-3" />
                     下载

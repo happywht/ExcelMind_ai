@@ -188,7 +188,7 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
             excelHeaders={excelData?.sheets
               ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
               : []}
-            onMappingChange={() => {}}
+            onMappingChange={() => { }}
           />
         ) : (
           renderEmptyState('映射方案', GitBranch, '请先生成映射方案')
@@ -244,7 +244,7 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
     <div className="flex-1 flex items-center justify-center">
       <div className="text-center text-slate-400">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-100 rounded-full mb-4">
-          <Icon className="w-10 h-10 opacity-50" />
+          <Icon className="w-10 h-10 text-slate-400" />
         </div>
         <h3 className="text-lg font-medium text-slate-600 mb-2">{title}</h3>
         <p className="text-sm text-slate-400">{message}</p>
@@ -332,12 +332,12 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
                   onClick={() => !tab.disabled && onTabChange(tab.id)}
                   disabled={tab.disabled}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                    flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
                     ${isActive
-                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md'
-                      : 'text-slate-600 hover:bg-slate-100'
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105'
+                      : 'text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-800'
                     }
-                    ${tab.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    ${tab.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
                   `}
                 >
                   <Icon className="w-4 h-4" />
