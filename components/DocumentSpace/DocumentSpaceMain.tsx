@@ -18,7 +18,6 @@ import {
   GitBranch,
   Eye,
   FileDown,
-  ChevronRight,
   Library
 } from 'lucide-react';
 import {
@@ -349,9 +348,6 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
                     `}>
                       {tab.badge}
                     </span>
-                  )}
-                  {idx < availableTabs.length - 1 && (
-                    <ChevronRight className="w-4 h-4 text-slate-300" />
                   )}
                 </button>
               );
