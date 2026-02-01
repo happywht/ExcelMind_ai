@@ -337,7 +337,7 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
                       ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105'
                       : 'text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-800'
                     }
-                    ${tab.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+                    ${tab.disabled ? 'opacity-40 cursor-not-allowed !text-slate-600' : 'cursor-pointer'}
                   `}
                 >
                   <Icon className="w-4 h-4" />
