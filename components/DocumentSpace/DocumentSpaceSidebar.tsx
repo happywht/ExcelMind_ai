@@ -26,7 +26,8 @@ import {
   Eye,
   Activity,
   Clock,
-  Zap
+  Zap,
+  Terminal
 } from 'lucide-react';
 import {
   TemplateFile,
@@ -347,13 +348,13 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
             disabled={isProcessing}
           />
         )}
-        {/* 映射方案显示 */}
+        {/* 映射方案显示 - 可折叠 */}
         {mappingScheme && (
-          <div className="space-y-3">
-            <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
-              映射方案
-            </h3>
+          <CollapsibleSection
+            title="映射方案"
+            icon={<CheckCircle className="w-4 h-4 text-emerald-500" />}
+            defaultOpen={true}
+          >
             <div className="bg-slate-50 rounded-lg p-3 space-y-3 border border-slate-200">
               {/* 主Sheet信息 */}
               {mappingScheme.primarySheet && (
@@ -456,7 +457,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
                 </div>
               )}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* 生成文档按钮 */}
@@ -480,49 +481,54 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           </button>
         )}
 
-        {/* 已生成文档列表 */}
+        {/* 已生成文档列表 - 可折叠 */}
         {generatedDocs.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-slate-700">已生成文档</h3>
-              <button
-                onClick={onDownloadAll}
-                className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1 shadow-sm"
-              >
-                <Download className="w-3 h-3" />
-                下载全部
-              </button>
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {generatedDocs.map((doc, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-emerald-300 transition-all group"
+          <CollapsibleSection
+            title="已生成文档"
+            icon={<FileText className="w-4 h-4 text-emerald-500" />}
+            defaultOpen={true}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={onDownloadAll}
+                  className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1 shadow-sm"
                 >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileText className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <span className="text-sm text-slate-700 truncate">{doc.fileName}</span>
-                  </div>
-                  <button
-                    onClick={() => onDownloadDoc(doc)}
-                    className="text-xs bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:shadow-md transition-all flex items-center gap-1 shadow-sm"
+                  <Download className="w-3 h-3" />
+                  下载全部
+                </button>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {generatedDocs.map((doc, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-emerald-300 transition-all group"
                   >
-                    <Download className="w-3 h-3" />
-                    下载
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <FileText className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span className="text-sm text-slate-700 truncate">{doc.fileName}</span>
+                    </div>
+                    <button
+                      onClick={() => onDownloadDoc(doc)}
+                      className="text-xs bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:shadow-md transition-all flex items-center gap-1 shadow-sm"
+                    >
+                      <Download className="w-3 h-3" />
+                      下载
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
-        {/* 日志输出 */}
+        {/* 日志输出 - 可折叠 */}
         {logs.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              处理日志
-            </h3>
+          <CollapsibleSection
+            title="处理日志"
+            icon={<Terminal className="w-4 h-4 text-slate-500" />}
+            defaultOpen={false}
+          >
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {logs.slice(0, 20).map((log) => (
                 <div
@@ -543,7 +549,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
                 </div>
               ))}
             </div>
-          </div>
+          </CollapsibleSection>
         )}
       </div>
     </div>
