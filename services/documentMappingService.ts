@@ -18,14 +18,21 @@ let client: Anthropic | null = null;
 
 const getClient = (): Anthropic => {
   if (!client) {
+    // 环境检测：兼容浏览器和Node.js环境
     const apiKey = isNodeEnv
       ? (process.env.ZHIPU_API_KEY || process.env.API_KEY || '')
-      : '';
+      : (import.meta.env.VITE_ANTHROPIC_API_KEY || '');
+
+    if (!apiKey) {
+      throw new Error('AI服务API密钥未配置。请检查环境变量：\n' +
+        '- Node.js环境: ZHIPU_API_KEY 或 API_KEY\n' +
+        '- 浏览器环境: VITE_ANTHROPIC_API_KEY');
+    }
 
     client = new Anthropic({
       apiKey,
       baseURL: 'https://open.bigmodel.cn/api/anthropic',
-      dangerouslyAllowBrowser: isNodeEnv
+      dangerouslyAllowBrowser: true // 允许浏览器环境调用（个人使用可接受）
     });
   }
   return client;
