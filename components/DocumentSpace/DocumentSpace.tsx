@@ -56,6 +56,7 @@ import {
   useDocumentSpaceSheets,
   useDocumentSpaceGeneration
 } from '../../stores/documentSpaceStore';
+import { logger } from '../../utils/logger';
 
 import DocumentSpaceSidebar from './DocumentSpaceSidebar';
 import DocumentSpaceMain from './DocumentSpaceMain';
@@ -142,8 +143,12 @@ export const DocumentSpace: React.FC = () => {
   // ===== 1. 模板上传处理 =====
 
   const handleTemplateUpload = useCallback(async (file: File) => {
+    logger.info('[DocumentSpace] 开始上传模板', { fileName: file.name, fileSize: file.size });
+
     if (!file.name.endsWith('.docx')) {
-      addLogWithMetrics('template_upload', 'error', '请上传.docx格式的Word文档');
+      const errorMsg = '请上传.docx格式的Word文档';
+      logger.warn('[DocumentSpace] 模板上传失败', { fileName: file.name, reason: errorMsg });
+      addLogWithMetrics('template_upload', 'error', errorMsg);
       return;
     }
 
@@ -201,6 +206,8 @@ export const DocumentSpace: React.FC = () => {
   // ===== 2. 数据上传处理 =====
 
   const handleDataUpload = useCallback(async (file: File) => {
+    logger.info('[DocumentSpace] 开始上传数据', { fileName: file.name, fileSize: file.size });
+
     startProcessing('data_upload');
     updateProgress(0);
     addLogWithMetrics('data_upload', 'pending', '正在读取Excel数据...');
@@ -265,8 +272,16 @@ export const DocumentSpace: React.FC = () => {
   // ===== 3. AI生成映射 =====
 
   const handleGenerateMapping = useCallback(async () => {
+    logger.info('[DocumentSpace] 开始生成映射', {
+      hasTemplate: !!templateFile,
+      hasData: !!excelData,
+      instructionLength: userInstruction.trim().length
+    });
+
     if (!templateFile || !excelData || !userInstruction.trim()) {
-      addLogWithMetrics('mapping', 'error', '请先上传模板和数据，并输入指令');
+      const errorMsg = '请先上传模板和数据，并输入指令';
+      logger.warn('[DocumentSpace] 映射生成失败', { reason: errorMsg });
+      addLogWithMetrics('mapping', 'error', errorMsg);
       return;
     }
 
@@ -540,13 +555,23 @@ export const DocumentSpace: React.FC = () => {
 
 
   const handleGenerateDocs = useCallback(async () => {
+    // ✅ 添加开始日志
+    logger.info('[DocumentSpace] 开始生成文档', {
+      generationMode,
+      hasTemplate: !!templateFile,
+      hasData: !!excelData,
+      hasMapping: !!mappingScheme
+    });
+
     // Route to appropriate handler based on generation mode
     if (generationMode === 'aggregate') {
       return handleAggregateGeneration();
     }
 
     if (!templateFile || !excelData || !mappingScheme) {
-      addLogWithMetrics('generating', 'error', '请先生成映射方案');
+      const errorMsg = '请先生成映射方案';
+      logger.warn('[DocumentSpace] 生成文档失败', { reason: errorMsg });
+      addLogWithMetrics('generating', 'error', errorMsg);
       return;
     }
 
@@ -562,6 +587,14 @@ export const DocumentSpace: React.FC = () => {
       const sheetToUse = mappingScheme.primarySheet || excelData.currentSheetName;
       const primarySheetData = excelData.sheets[sheetToUse] || [];
       const baseFileName = templateFile.name.replace('.docx', '');
+
+      // ✅ 添加详细处理日志
+      logger.debug('[DocumentSpace] 准备批量生成', {
+        sheetToUse,
+        dataRowCount: primarySheetData.length,
+        mappingCount: mappingScheme.mappings.length,
+        hasCrossSheetMappings: !!(mappingScheme.crossSheetMappings && mappingScheme.crossSheetMappings.length > 0)
+      });
 
       addLogWithMetrics('generating', 'pending',
         `使用主数据表 "${sheetToUse}" (${primarySheetData.length}行) 生成文档...`
@@ -667,6 +700,13 @@ export const DocumentSpace: React.FC = () => {
       }
 
       // 使用docxtemplater批量生成
+      logger.info('[DocumentSpace] 调用批量生成服务', {
+        templateSize: templateFile.arrayBuffer.byteLength,
+        dataCount: mappedDataList.length,
+        concurrency: 3,
+        batchSize: 10
+      });
+
       const documents = await DocxtemplaterService.batchGenerate({
         templateBuffer: templateFile.arrayBuffer,
         dataList: mappedDataList,
@@ -677,11 +717,17 @@ export const DocumentSpace: React.FC = () => {
           onProgress: (current, total) => {
             const percentage = Math.round((current / total) * 100);
             updateProgress(percentage);
+            logger.debug('[DocumentSpace] 生成进度', { current, total, percentage });
             addLogWithMetrics('generating', 'pending',
               `正在生成文档: ${current}/${total} (${percentage}%)`
             );
           }
         }
+      });
+
+      logger.info('[DocumentSpace] 批量生成完成', {
+        documentCount: documents.length,
+        duration: performance.now() - startTime
       });
 
       setGeneratedDocs(documents);
@@ -733,6 +779,14 @@ export const DocumentSpace: React.FC = () => {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      // ✅ 添加详细的错误日志
+      logger.error('[DocumentSpace] 文档生成失败', {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+        templateFile: templateFile?.name,
+        dataFile: dataFile?.name,
+        mappingCount: mappingScheme?.mappings.length
+      });
       addLogWithMetrics('generating', 'error', `文档生成失败: ${errorMessage}`);
     } finally {
       finishProcessing();

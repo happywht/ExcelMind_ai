@@ -37,9 +37,13 @@ export async function generateWordDocument(params: GenerateDocumentParams): Prom
   const { templateBuffer, data, outputFileName = 'output.docx' } = params;
 
   try {
+    // ✅ 修复：使用浏览器兼容的 Uint8Array 而不是 Node.js 的 Buffer
+    // 在浏览器环境中，Buffer 不存在，必须使用 Uint8Array
+    const templateBytes = new Uint8Array(templateBuffer);
+
     // 使用docx-templates生成文档
     const report = await createReport({
-      template: Buffer.from(templateBuffer),
+      template: templateBytes,  // ✅ 浏览器兼容
       data: data,
       cmdDelimiter: ['{{', '}}']  // 确保占位符格式一致
     });
