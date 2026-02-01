@@ -151,7 +151,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
       {/* 标题 */}
       <div className="p-6 border-b border-slate-200">
         <div className="flex items-center gap-3 mb-2">
-          <div className="bg-gradient-to-br from-orange-500 to-red-500 p-2 rounded-lg shadow-lg">
+          <div className="bg-orange-500 p-2 rounded-lg shadow-lg">
             <FileEdit className="w-6 h-6 text-white" />
           </div>
           <div>

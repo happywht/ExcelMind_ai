@@ -333,10 +333,10 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
                   className={`
                     flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
                     ${isActive
-                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105'
-                      : 'text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-800'
+                      ? 'bg-orange-500 text-white shadow-lg scale-105'
+                      : 'text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900'
                     }
-                    ${tab.disabled ? 'opacity-40 cursor-not-allowed !text-slate-600' : 'cursor-pointer'}
+                    ${tab.disabled ? 'opacity-40 cursor-not-allowed !text-slate-500' : 'cursor-pointer'}
                   `}
                 >
                   <Icon className="w-4 h-4" />
