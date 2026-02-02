@@ -160,9 +160,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({
           </div>
         </div>
 
-        {/* 工作表选择器 */}
         {sheetNames.length > 1 && (
-          <div className="mt-4">
+          <div className="px-4 py-3 border-b border-slate-200 bg-white">
             <label className="text-base font-medium text-slate-700 mb-2 block">
               选择工作表
             </label>
