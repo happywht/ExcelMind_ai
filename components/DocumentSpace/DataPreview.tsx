@@ -117,20 +117,19 @@ const DataPreview: React.FC<DataPreviewProps> = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 头部信息 */}
-      <div className="flex-shrink-0 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-emerald-500 p-2 rounded-lg">
-                <Database className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800">
-                  {excelData?.fileName || '数据文件'}
-                </h2>
-                <p className="text-base text-slate-500">Excel数据预览</p>
-              </div>
-            </div>
+      <div className="flex-shrink-0 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-500 p-1.5 rounded-lg">
+            <Database className="w-4 h-4 text-white" />
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="font-semibold text-slate-800">
+              {excelData?.fileName || '数据文件'}
+            </span>
+            <span className="text-slate-400">·</span>
+            <span className="text-slate-600">{statistics.rowCount} 行</span>
+            <span className="text-slate-400">·</span>
+            <span className="text-slate-600">{statistics.columnCount} 列</span>
 
             {/* 统计信息 */}
             <div className="flex items-center gap-6">
