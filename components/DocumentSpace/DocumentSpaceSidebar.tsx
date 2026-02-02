@@ -318,23 +318,6 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
             className="w-full h-32 px-4 py-3 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm hover:border-orange-400"
             disabled={isProcessing}
           />
-          <button
-            onClick={onGenerateMapping}
-            disabled={!templateFile || !dataFile || !userInstruction.trim() || isProcessing}
-            className="w-full py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-          >
-            {isProcessing && processingStage === 'ai_mapping' ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                AI分析中...
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4" />
-                生成映射方案
-              </>
-            )}
-          </button>
         </div>
 
         {/* Generation Mode Selector */}
@@ -460,27 +443,6 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           </CollapsibleSection>
         )}
 
-        {/* 生成文档按钮 */}
-        {mappingScheme && (
-          <button
-            onClick={onGenerateDocs}
-            disabled={isProcessing}
-            className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-          >
-            {isProcessing && processingStage === 'document_generation' ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                生成中... ({progress}%)
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                生成Word文档
-              </>
-            )}
-          </button>
-        )}
-
         {/* 已生成文档列表 - 可折叠 */}
         {generatedDocs.length > 0 && (
           <CollapsibleSection
@@ -550,6 +512,49 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
               ))}
             </div>
           </CollapsibleSection>
+        )}
+      </div>
+
+      {/* 固定底部操作栏 */}
+      <div className="p-4 border-t border-slate-200 bg-white space-y-2 shadow-lg">
+        {/* 生成映射方案按钮 */}
+        <button
+          onClick={onGenerateMapping}
+          disabled={!templateFile || !dataFile || !userInstruction.trim() || isProcessing}
+          className="w-full py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+        >
+          {isProcessing && processingStage === 'ai_mapping' ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              AI分析中...
+            </>
+          ) : (
+            <>
+              <Wand2 className="w-4 h-4" />
+              生成映射方案
+            </>
+          )}
+        </button>
+
+        {/* 生成Word文档按钮 */}
+        {mappingScheme && (
+          <button
+            onClick={onGenerateDocs}
+            disabled={isProcessing}
+            className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+          >
+            {isProcessing && processingStage === 'document_generation' ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                生成中... ({progress}%)
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                生成Word文档
+              </>
+            )}
+          </button>
         )}
       </div>
     </div>
