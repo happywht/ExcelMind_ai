@@ -88,7 +88,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 头部信息 */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200 p-6">
+      <div className="flex-shrink-0 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200 p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-4">
@@ -96,8 +96,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 <FileArchive className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">生成文档</h2>
-                <p className="text-sm text-slate-500">批量生成的Word文档</p>
+                <h2 className="text-2xl font-bold text-slate-800">生成文档</h2>
+                <p className="text-base text-slate-500">批量生成的Word文档</p>
               </div>
             </div>
 

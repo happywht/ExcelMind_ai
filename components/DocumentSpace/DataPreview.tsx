@@ -117,7 +117,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 头部信息 */}
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 p-6">
+      <div className="flex-shrink-0 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-4">
@@ -125,10 +125,10 @@ const DataPreview: React.FC<DataPreviewProps> = ({
                 <Database className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-800">
+                <h2 className="text-2xl font-bold text-slate-800">
                   {excelData?.fileName || '数据文件'}
                 </h2>
-                <p className="text-sm text-slate-500">Excel数据预览</p>
+                <p className="text-base text-slate-500">Excel数据预览</p>
               </div>
             </div>
 
@@ -164,7 +164,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
         {/* 工作表选择器 */}
         {sheetNames.length > 1 && (
           <div className="mt-4">
-            <label className="text-sm font-medium text-slate-700 mb-2 block">
+            <label className="text-base font-medium text-slate-700 mb-2 block">
               选择工作表
             </label>
             <div className="flex flex-wrap gap-2">
@@ -173,7 +173,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
                   key={name}
                   onClick={() => onSheetChange(name)}
                   className={`
-                    px-4 py-2 rounded-lg text-sm font-medium transition-all
+                    px-4 py-2 rounded-lg text-base font-medium transition-all duration-200
                     ${currentSheetName === name
                       ? 'bg-emerald-500 text-white shadow-md'
                       : 'bg-white text-slate-600 border border-slate-200 hover:border-emerald-300'
@@ -189,7 +189,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
       </div>
 
       {/* 工具栏 */}
-      <div className="p-4 border-b border-slate-200 bg-white">
+      <div className="flex-shrink-0 p-4 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -205,7 +205,7 @@ const DataPreview: React.FC<DataPreviewProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-base font-medium hover:bg-slate-200 hover:shadow-sm transition-all duration-200 flex items-center gap-2"
             >
               <Filter className="w-4 h-4" />
               重置筛选
