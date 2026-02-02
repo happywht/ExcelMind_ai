@@ -141,12 +141,12 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
       {/* 主数据表选择区 */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         {/* 头部 */}
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-3 py-2">
+        <div className="bg-slate-50/50 border-b border-slate-200 px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="bg-emerald-500 p-1 rounded-md">
-              <Database className="w-3.5 h-3.5 text-white" />
+            <div className="bg-emerald-100 p-1.5 rounded-lg">
+              <Database className="w-4 h-4 text-emerald-600" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-800">主数据表</h3>
+            <h3 className="text-sm font-bold text-slate-800">主数据表</h3>
           </div>
         </div>
 
@@ -226,13 +226,13 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
       {auxiliarySheetList.length > 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           {/* 头部 */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-3 py-2">
+          <div className="bg-slate-50/50 border-b border-slate-200 px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="bg-blue-500 p-1 rounded-md">
-                  <FileText className="w-3.5 h-3.5 text-white" />
+                <div className="bg-blue-100 p-1.5 rounded-lg">
+                  <FileText className="w-4 h-4 text-blue-600" />
                 </div>
-                <h3 className="text-sm font-semibold text-slate-800">辅助数据表</h3>
+                <h3 className="text-sm font-bold text-slate-800">辅助数据表</h3>
               </div>
 
               {/* 全选按钮 */}

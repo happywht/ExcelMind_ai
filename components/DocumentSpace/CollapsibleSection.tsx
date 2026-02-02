@@ -30,19 +30,19 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         <div className="space-y-2">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-150 rounded-lg transition-all shadow-sm hover:shadow-md"
+                className="w-full flex items-center justify-between p-3 rounded-xl transition-all hover:bg-slate-50 group border border-transparent hover:border-slate-200"
             >
                 <div className="flex items-center gap-2">
-                    <div className="flex-shrink-0">{icon}</div>
-                    <span className="font-semibold text-slate-700 text-sm">{title}</span>
+                    <div className="flex-shrink-0 text-slate-400 group-hover:text-emerald-500 transition-colors">{icon}</div>
+                    <span className="font-semibold text-slate-700 text-sm group-hover:text-slate-900">{title}</span>
                     {badge !== undefined && (
-                        <span className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded-full text-xs font-bold">
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold">
                             {badge}
                         </span>
                     )}
                 </div>
                 <ChevronDown
-                    className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
+                    className={`w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
                         }`}
                 />
             </button>

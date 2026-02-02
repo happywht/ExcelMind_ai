@@ -111,20 +111,20 @@ const GenerationModeSelector: React.FC<GenerationModeSelectorProps> = ({
             onClick={() => onModeChange('individual')}
             disabled={disabled}
             className={`
-              px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
+              relative px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border
               ${mode === 'individual'
-                ? 'bg-blue-500 text-white shadow-md'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-slate-50'
               }
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
             <div className="flex items-center justify-center gap-2">
-              <Layers className="w-4 h-4" />
+              <Layers className={`w-4 h-4 ${mode === 'individual' ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span>逐行生成</span>
-              {mode === 'individual' && <Check className="w-4 h-4 ml-auto" />}
+              {mode === 'individual' && <Check className="w-4 h-4 ml-auto text-emerald-600" />}
             </div>
-            <p className="text-xs mt-1 opacity-80">
+            <p className={`text-xs mt-1 text-left ${mode === 'individual' ? 'text-emerald-600/80' : 'text-slate-400'}`}>
               为每一行数据生成一个文档
             </p>
           </button>
@@ -133,32 +133,31 @@ const GenerationModeSelector: React.FC<GenerationModeSelectorProps> = ({
             onClick={() => onModeChange('aggregate')}
             disabled={disabled}
             className={`
-              px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200
+              relative px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 border
               ${mode === 'aggregate'
-                ? 'bg-purple-500 text-white shadow-md'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-slate-50'
               }
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
             <div className="flex items-center justify-center gap-2">
-              <Layers className="w-4 h-4" />
+              <Layers className={`w-4 h-4 ${mode === 'aggregate' ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span>聚合汇总</span>
-              {mode === 'aggregate' && <Check className="w-4 h-4 ml-auto" />}
+              {mode === 'aggregate' && <Check className="w-4 h-4 ml-auto text-emerald-600" />}
             </div>
-            <p className="text-xs mt-1 opacity-80">
+            <p className={`text-xs mt-1 text-left ${mode === 'aggregate' ? 'text-emerald-600/80' : 'text-slate-400'}`}>
               生成统计汇总文档
             </p>
           </button>
         </div>
       </div>
 
-      {/* 聚合配置（仅在聚合模式下显示） */}
       {mode === 'aggregate' && (
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+        <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-semibold text-slate-700 text-sm flex items-center gap-2">
-              <Info className="w-4 h-4 text-purple-500" />
+              <Info className="w-4 h-4 text-emerald-500" />
               聚合规则配置
             </h4>
             <button

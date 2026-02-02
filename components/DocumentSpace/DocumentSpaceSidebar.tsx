@@ -148,16 +148,16 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
   };
 
   return (
-    <div className="w-96 bg-white border-r border-slate-200 flex flex-col overflow-hidden">
+    <div className="w-[400px] bg-white border-r border-slate-200 flex flex-col overflow-hidden shadow-sm z-10">
       {/* 标题 */}
-      <div className="p-6 border-b border-slate-200">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-orange-500 p-2 rounded-lg shadow-lg">
-            <FileEdit className="w-6 h-6 text-white" />
+      <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-500 p-2 rounded-xl shadow-sm">
+            <FileEdit className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">文档空间</h2>
-            <p className="text-sm text-slate-500">智能文档填充</p>
+            <h2 className="text-lg font-bold text-slate-800">文档空间</h2>
+            <p className="text-xs text-slate-500">智能文档填充工作台</p>
           </div>
         </div>
       </div>
@@ -239,13 +239,21 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           </div>
         )}
 
-        {/* 模板上传 */}
+        {/* 模板上传 - SmartExcel风格 */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Word模板
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <div className="bg-slate-100 p-1.5 rounded-lg">
+              <FileText className="w-4 h-4 text-slate-500" />
+            </div>
+            Word模板文件
           </h3>
-          <label className="flex items-center justify-center gap-3 w-full h-24 border-2 border-dashed border-orange-300 bg-orange-50 rounded-lg cursor-pointer hover:border-orange-500 hover:bg-orange-100 transition-all duration-200 shadow-sm">
+          <label className={`
+            group relative flex items-center justify-center w-full h-24 
+            border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300
+            ${templateFile
+              ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-500'
+              : 'bg-slate-50/50 border-slate-200 hover:border-emerald-400 hover:bg-white'}
+          `}>
             <input
               type="file"
               accept=".docx"
@@ -253,26 +261,47 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
               className="hidden"
               disabled={isProcessing}
             />
-            <Upload className="w-6 h-6 text-orange-500" />
-            <span className="text-sm text-slate-700 font-medium">
-              {templateFile ? templateFile.name : '点击上传.docx模板'}
-            </span>
+
+            {templateFile ? (
+              <div className="flex items-center gap-3 w-full px-4">
+                <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{templateFile.name}</p>
+                  <p className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5">
+                    <CheckCircle className="w-3 h-3" />
+                    {templateFile.placeholders.length} 个占位符
+                  </p>
+                </div>
+                <div className="p-1.5 rounded-lg bg-emerald-200/50 text-emerald-700">
+                  <FileEdit className="w-4 h-4" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-slate-400 group-hover:text-emerald-600 transition-colors">
+                <Upload className="w-6 h-6" />
+                <span className="text-sm font-medium">点击上传 Word 模板</span>
+              </div>
+            )}
           </label>
-          {templateFile && (
-            <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg border border-emerald-200">
-              <span>检测到 {templateFile.placeholders.length} 个占位符</span>
-              <CheckCircle className="w-4 h-4" />
-            </div>
-          )}
         </div>
 
-        {/* 数据上传 */}
+        {/* 数据上传 - SmartExcel风格 */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-            <Table className="w-4 h-4" />
-            Excel数据
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <div className="bg-slate-100 p-1.5 rounded-lg">
+              <Table className="w-4 h-4 text-slate-500" />
+            </div>
+            Excel数据源
           </h3>
-          <label className="flex items-center justify-center gap-3 w-full h-24 border-2 border-dashed border-emerald-300 bg-emerald-50 rounded-lg cursor-pointer hover:border-emerald-500 hover:bg-emerald-100 transition-all duration-200 shadow-sm">
+          <label className={`
+            group relative flex items-center justify-center w-full h-24 
+            border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300
+            ${dataFile
+              ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-500'
+              : 'bg-slate-50/50 border-slate-200 hover:border-emerald-400 hover:bg-white'}
+          `}>
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -280,17 +309,30 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
               className="hidden"
               disabled={isProcessing}
             />
-            <Upload className="w-6 h-6 text-emerald-500" />
-            <span className="text-sm text-slate-700 font-medium">
-              {dataFile ? dataFile.name : '点击上传Excel数据'}
-            </span>
+
+            {dataFile ? (
+              <div className="flex items-center gap-3 w-full px-4">
+                <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
+                  <Table className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{dataFile.name}</p>
+                  <p className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5">
+                    <CheckCircle className="w-3 h-3" />
+                    已加载
+                  </p>
+                </div>
+                <div className="p-1.5 rounded-lg bg-emerald-200/50 text-emerald-700">
+                  <FileEdit className="w-4 h-4" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-slate-400 group-hover:text-emerald-600 transition-colors">
+                <Upload className="w-6 h-6" />
+                <span className="text-sm font-medium">点击上传 Excel 数据</span>
+              </div>
+            )}
           </label>
-          {dataFile && (
-            <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg border border-emerald-200">
-              <span>{dataFile.name}</span>
-              <CheckCircle className="w-4 h-4" />
-            </div>
-          )}
         </div>
 
         {/* Sheet选择器 - 多Sheet支持 */}
@@ -305,19 +347,28 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
           />
         )}
 
-        {/* AI指令输入 */}
+        {/* AI指令 - SmartExcel风格 */}
         <div className="space-y-3">
-          <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-            <Wand2 className="w-4 h-4" />
-            AI指令
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <div className="bg-slate-100 p-1.5 rounded-lg">
+              <Wand2 className="w-4 h-4 text-slate-500" />
+            </div>
+            AI 智能指令
           </h3>
-          <textarea
-            value={userInstruction}
-            onChange={(e) => onInstructionChange(e.target.value)}
-            placeholder="例如：把销售额大于10万的产品信息填入模板，生成产品介绍文档"
-            className="w-full h-32 px-4 py-3 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm hover:border-orange-400"
-            disabled={isProcessing}
-          />
+          <div className="relative group">
+            <textarea
+              value={userInstruction}
+              onChange={(e) => onInstructionChange(e.target.value)}
+              placeholder="请输入处理指令，例如：&#10;“把销售额大于10万的产品信息填入模板，生成产品介绍文档”"
+              className="w-full h-32 px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400 group-hover:bg-white"
+              disabled={isProcessing}
+            />
+            <div className="absolute right-3 bottom-3">
+              <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-sm text-slate-400 group-hover:text-emerald-500 group-focus-within:text-emerald-600 transition-colors">
+                <Terminal className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Generation Mode Selector */}
