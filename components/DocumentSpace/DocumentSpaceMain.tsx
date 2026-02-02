@@ -331,20 +331,20 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
                   onClick={() => !tab.disabled && onTabChange(tab.id)}
                   disabled={tab.disabled}
                   className={`
-                    flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                    flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border
                     ${isActive
-                      ? 'bg-orange-500 text-white shadow-lg scale-105'
-                      : 'text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm'
+                      : 'text-slate-600 bg-transparent border-transparent hover:bg-slate-50 hover:text-slate-900'
                     }
-                    ${tab.disabled ? 'opacity-40 cursor-not-allowed !text-slate-500' : 'cursor-pointer'}
+                    ${tab.disabled ? 'opacity-40 cursor-not-allowed !text-slate-400' : 'cursor-pointer'}
                   `}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                   <span>{tab.label}</span>
                   {tab.badge && (
                     <span className={`
                       ml-1 px-2 py-0.5 rounded-full text-xs font-bold
-                      ${isActive ? 'bg-white text-orange-600' : 'bg-orange-100 text-orange-600'}
+                      ${isActive ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}
                     `}>
                       {tab.badge}
                     </span>

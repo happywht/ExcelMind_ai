@@ -117,50 +117,34 @@ const DataPreview: React.FC<DataPreviewProps> = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 头部信息 */}
-      <div className="flex-shrink-0 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="bg-emerald-500 p-1.5 rounded-lg">
-            <Database className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-semibold text-slate-800">
-              {excelData?.fileName || '数据文件'}
-            </span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-600">{statistics.rowCount} 行</span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-600">{statistics.columnCount} 列</span>
-
-            {/* 统计信息 */}
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Rows className="w-4 h-4 text-emerald-500" />
-                <div>
-                  <p className="text-xs text-slate-500">数据行数</p>
-                  <p className="text-lg font-bold text-slate-800">{statistics.rowCount}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Columns className="w-4 h-4 text-teal-500" />
-                <div>
-                  <p className="text-xs text-slate-500">列数</p>
-                  <p className="text-lg font-bold text-slate-800">{statistics.columnCount}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Sheet className="w-4 h-4 text-blue-500" />
-                <div>
-                  <p className="text-xs text-slate-500">工作表</p>
-                  <p className="text-lg font-bold text-slate-800">{statistics.totalSheets}</p>
-                </div>
+      {/* 头部信息 - 极简白底风格 */}
+      <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100">
+              <Database className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-slate-800 text-lg">
+                {excelData?.fileName || '数据文件'}
+              </span>
+              <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                <span>Excel 数据预览</span>
+                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span>{statistics.rowCount} 行</span>
+                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span>{statistics.columnCount} 列</span>
+                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span>{statistics.totalSheets} 个Sheet</span>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {sheetNames.length > 1 && (
+
+      {
+        sheetNames.length > 1 && (
           <div className="px-4 py-3 border-b border-slate-200 bg-white">
             <label className="text-base font-medium text-slate-700 mb-2 block">
               选择工作表
@@ -183,8 +167,8 @@ const DataPreview: React.FC<DataPreviewProps> = ({
               ))}
             </div>
           </div>
-        )}
-      </div>
+        )
+      }
 
       {/* 工具栏 */}
       <div className="flex-shrink-0 p-4 border-b border-slate-200 bg-white">
@@ -211,11 +195,13 @@ const DataPreview: React.FC<DataPreviewProps> = ({
           </div>
         </div>
 
-        {searchTerm && (
-          <div className="mt-2 text-xs text-slate-500">
-            找到 <span className="font-bold text-emerald-600">{filteredAndSortedData.length}</span> 条结果
-          </div>
-        )}
+        {
+          searchTerm && (
+            <div className="mt-2 text-xs text-slate-500">
+              找到 <span className="font-bold text-emerald-600">{filteredAndSortedData.length}</span> 条结果
+            </div>
+          )
+        }
 
         {/* 数据统计提示 */}
         <div className="mt-2 text-xs text-slate-500">

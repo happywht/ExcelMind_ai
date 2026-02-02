@@ -70,19 +70,23 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({ templateFile }) => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 头部信息 */}
-      <div className="flex-shrink-0 bg-gradient-to-r from-orange-50 to-red-50 border-b border-orange-200 px-4 py-3">
+      {/* 头部信息 - 极简白底风格 */}
+      <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between">
           {/* 左侧: 文件信息 */}
           <div className="flex items-center gap-3">
-            <div className="bg-orange-500 p-1.5 rounded-lg">
-              <FileText className="w-4 h-4 text-white" />
+            <div className="bg-blue-50 p-2 rounded-xl border border-blue-100">
+              <FileText className="w-5 h-5 text-blue-600" />
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="font-semibold text-slate-800">{templateFile.name}</span>
-              <span className="text-slate-400">·</span>
-              <span className="text-slate-600">{templateFile.placeholders.length} 个占位符</span>
-              <span className="text-slate-400">·</span>
-              <span className="text-slate-600">{formatFileSize(templateFile.size)}</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-slate-800 text-lg">{templateFile.name}</span>
+              <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                <span>Word 模板</span>
+                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span>{templateFile.placeholders.length} 个占位符</span>
+                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                <span>{formatFileSize(templateFile.size)}</span>
+              </div>
             </div>
           </div>
         </div>

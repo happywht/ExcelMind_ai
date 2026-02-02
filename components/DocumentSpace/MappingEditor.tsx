@@ -107,67 +107,68 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 头部信息 */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-blue-500 p-2 rounded-lg">
-                <GitBranch className="w-6 h-6 text-white" />
+      {/* 头部信息 - 极简白底风格 */}
+      <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-50 p-2 rounded-xl border border-blue-100">
+                <GitBranch className="w-5 h-5 text-blue-600" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">映射方案</h2>
-                <p className="text-sm text-slate-500">字段映射关系</p>
-              </div>
-            </div>
-
-            {/* 映射进度 */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-slate-700">
-                  映射完成度
-                </span>
-                <span className="text-sm font-bold text-blue-600">
-                  {mappingProgress.mapped} / {mappingProgress.total}
-                  ({mappingProgress.percentage}%)
-                </span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${mappingProgress.percentage}%` }}
-                />
+              <div className="flex flex-col">
+                <span className="font-bold text-slate-800 text-lg">字段映射方案</span>
+                <span className="text-xs text-slate-500">配置 Excel 列与 Word 占位符的对应关系</span>
               </div>
             </div>
           </div>
 
-          {/* 编辑按钮 */}
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2"
-            >
-              <Edit3 className="w-4 h-4" />
-              编辑映射
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-300 transition-colors flex items-center gap-2"
-              >
-                <X className="w-4 h-4" />
-                取消
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                保存
-              </button>
+          <div className="flex items-center gap-4">
+            {/* 映射进度 */}
+            <div className="flex items-center gap-3 pr-4 border-r border-slate-200">
+              <div className="text-right">
+                <p className="text-xs text-slate-500">映射完成度</p>
+                <p className="text-sm font-bold text-slate-700">
+                  <span className="text-emerald-600">{mappingProgress.mapped}</span>
+                  <span className="text-slate-400 mx-1">/</span>
+                  {mappingProgress.total}
+                </p>
+              </div>
+              <div className="w-24 bg-slate-100 rounded-full h-2">
+                <div
+                  className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${mappingProgress.percentage}%` }}
+                />
+              </div>
             </div>
-          )}
+
+            {/* 编辑按钮 */}
+            {!isEditing ? (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm flex items-center gap-2 group"
+              >
+                <Edit3 className="w-4 h-4 text-slate-400 group-hover:text-emerald-500" />
+                编辑映射
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  取消
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2 shadow-sm shadow-emerald-200"
+                >
+                  <Check className="w-4 h-4" />
+                  保存更改
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -257,7 +258,7 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                     {isEditing && (
                       <button
                         onClick={() => removeMapping(idx)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -271,7 +272,7 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
             {isEditing && mappingScheme.mappings.length < templatePlaceholders.length && (
               <button
                 onClick={addMapping}
-                className="mt-4 w-full py-3 border-2 border-dashed border-slate-300 rounded-lg text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+                className="mt-4 w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-emerald-400 hover:text-emerald-500 hover:bg-emerald-50/10 transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 添加映射
@@ -283,11 +284,11 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
           {mappingScheme.filterCondition && (
             <div className="mb-6">
               <h3 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                <Code className="w-4 h-4 text-purple-500" />
+                <Code className="w-4 h-4 text-emerald-500" />
                 筛选条件
               </h3>
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <code className="text-sm text-purple-700 font-mono">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <code className="text-sm text-emerald-700 font-mono">
                   {mappingScheme.filterCondition}
                 </code>
               </div>
@@ -301,12 +302,12 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 未映射字段 ({mappingScheme.unmappedPlaceholders.length})
               </h3>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                 <div className="flex flex-wrap gap-2">
                   {mappingScheme.unmappedPlaceholders.map((placeholder, idx) => (
                     <span
                       key={idx}
-                      className="text-sm bg-amber-100 text-amber-800 px-3 py-1.5 rounded-full font-mono"
+                      className="text-sm bg-white border border-amber-200 text-amber-800 px-3 py-1.5 rounded-full font-mono"
                     >
                       {placeholder}
                     </span>
@@ -328,9 +329,9 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
             {/* 模板 */}
             <div>
               <p className="text-xs font-medium text-slate-500 mb-2">Word模板</p>
-              <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-1">
+              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-1">
                 {templatePlaceholders.slice(0, 8).map((p, idx) => (
-                  <div key={idx} className="text-xs text-orange-600 font-mono">
+                  <div key={idx} className="text-xs text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded border border-slate-100 mb-1 last:mb-0">
                     {p}
                   </div>
                 ))}
@@ -346,7 +347,7 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
             <div className="flex justify-center">
               <div className="flex flex-col items-center gap-1">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="w-0.5 h-3 bg-blue-300"></div>
+                  <div key={i} className="w-0.5 h-3 bg-slate-300"></div>
                 ))}
               </div>
             </div>
@@ -354,9 +355,9 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
             {/* Excel */}
             <div>
               <p className="text-xs font-medium text-slate-500 mb-2">Excel数据</p>
-              <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-1">
+              <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-1">
                 {excelHeaders.slice(0, 8).map((h, idx) => (
-                  <div key={idx} className="text-xs text-emerald-600 font-medium">
+                  <div key={idx} className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-1 rounded border border-emerald-100 mb-1 last:mb-0">
                     {h}
                   </div>
                 ))}
@@ -378,7 +379,7 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">已映射</span>
-                <span className="font-bold text-blue-600">{mappingProgress.mapped}</span>
+                <span className="font-bold text-slate-700">{mappingProgress.mapped}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">未映射</span>
