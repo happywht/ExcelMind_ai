@@ -105,6 +105,8 @@ export interface DocumentSpaceSidebarProps {
   onGenerateDocs: () => Promise<void>;
   onDownloadDoc: (doc: GeneratedDocument) => void;
   onDownloadAll: () => Promise<void>;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export interface DocumentSpaceMainProps {

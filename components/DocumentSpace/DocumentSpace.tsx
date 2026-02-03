@@ -84,6 +84,7 @@ export const DocumentSpace: React.FC = () => {
   // UI状态
   const [activeTab, setActiveTab] = useState<DocumentSpaceTab>('upload');
   const [selectedDoc, setSelectedDoc] = useState<GeneratedDocument | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // 处理状态
   const [isProcessing, setIsProcessing] = useState(false);
@@ -611,7 +612,7 @@ export const DocumentSpace: React.FC = () => {
 
       // 跨Sheet映射处理
       const hasCrossSheetMappings = mappingScheme.crossSheetMappings &&
-                                     mappingScheme.crossSheetMappings.length > 0;
+        mappingScheme.crossSheetMappings.length > 0;
 
       if (hasCrossSheetMappings) {
         addLog('generating', 'info',
@@ -846,37 +847,42 @@ export const DocumentSpace: React.FC = () => {
   return (
     <div className="flex h-full bg-slate-50">
       {/* 左侧边栏 */}
-      <DocumentSpaceSidebar
-        templateFile={templateFile}
-        dataFile={dataFile}
-        excelData={excelData}
-        userInstruction={userInstruction}
-        mappingScheme={mappingScheme}
-        generatedDocs={generatedDocs}
-        isProcessing={isProcessing}
-        processingStage={processingStage}
-        progress={progress}
-        logs={logs}
-        performanceMetrics={performanceMetrics}
-        primarySheet={primarySheet}
-        enabledSheets={enabledSheets}
-        availableFields={excelData?.sheets
-          ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
-          : []}
-        generationMode={generationMode}
-        aggregateConfig={aggregateConfig}
-        onGenerationModeChange={setGenerationMode}
-        onAggregateConfigChange={setAggregateConfig}
-        onTemplateUpload={handleTemplateUpload}
-        onDataUpload={handleDataUpload}
-        onInstructionChange={setUserInstruction}
-        onPrimarySheetChange={setPrimarySheet}
-        onEnabledSheetsChange={setEnabledSheets}
-        onGenerateMapping={handleGenerateMapping}
-        onGenerateDocs={handleGenerateDocs}
-        onDownloadDoc={handleDownloadDoc}
-        onDownloadAll={handleDownloadAll}
-      />
+      <div className={`flex-shrink-0 transition-all duration-300 ease-in-out border-r border-slate-200 bg-white z-10 ${isSidebarCollapsed ? 'w-[64px]' : 'w-[400px]'
+        }`}>
+        <DocumentSpaceSidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          templateFile={templateFile}
+          dataFile={dataFile}
+          excelData={excelData}
+          userInstruction={userInstruction}
+          mappingScheme={mappingScheme}
+          generatedDocs={generatedDocs}
+          isProcessing={isProcessing}
+          processingStage={processingStage}
+          progress={progress}
+          logs={logs}
+          performanceMetrics={performanceMetrics}
+          primarySheet={primarySheet}
+          enabledSheets={enabledSheets}
+          availableFields={excelData?.sheets
+            ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
+            : []}
+          generationMode={generationMode}
+          aggregateConfig={aggregateConfig}
+          onGenerationModeChange={setGenerationMode}
+          onAggregateConfigChange={setAggregateConfig}
+          onTemplateUpload={handleTemplateUpload}
+          onDataUpload={handleDataUpload}
+          onInstructionChange={setUserInstruction}
+          onPrimarySheetChange={setPrimarySheet}
+          onEnabledSheetsChange={setEnabledSheets}
+          onGenerateMapping={handleGenerateMapping}
+          onGenerateDocs={handleGenerateDocs}
+          onDownloadDoc={handleDownloadDoc}
+          onDownloadAll={handleDownloadAll}
+        />
+      </div>
 
       {/* 右侧主内容区 */}
       <DocumentSpaceMain
