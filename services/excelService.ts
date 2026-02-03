@@ -8,7 +8,7 @@ export const readExcelFile = async (file: File): Promise<ExcelData> => {
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
+        const workbook = XLSX.read(data, { type: 'array' });
 
         const sheets: { [key: string]: any[] } = {};
         const metadata: {
@@ -83,7 +83,7 @@ export const readExcelFile = async (file: File): Promise<ExcelData> => {
       }
     };
     reader.onerror = (err) => reject(err);
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   });
 };
 

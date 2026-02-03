@@ -47,3 +47,4 @@ test-multi-file.html
 
 # Electron specific
 *.exe
+nul

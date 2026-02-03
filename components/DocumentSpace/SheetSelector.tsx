@@ -64,10 +64,11 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
    */
   const sheetInfoList = useMemo((): SheetInfo[] => {
     return Object.entries(sheets).map(([name, data]) => {
-      const rowCount = data.length;
-      const columnCount = data.length > 0 ? Object.keys(data[0]).length : 0;
-      const sampleFields = data.length > 0
-        ? Object.keys(data[0]).slice(0, 3)
+      const sheetData = data as any[];
+      const rowCount = sheetData.length;
+      const columnCount = sheetData.length > 0 ? Object.keys(sheetData[0]).length : 0;
+      const sampleFields = sheetData.length > 0
+        ? Object.keys(sheetData[0]).slice(0, 3)
         : [];
 
       return {
@@ -153,70 +154,83 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
         {/* 内容区 */}
         <div className="p-4">
           {/* 下拉选择器 */}
-          <div className="mb-4">
-            <label className="text-sm font-medium text-slate-700 mb-2 block">
-              选择主数据表
-            </label>
-            <div className="relative">
+          {/* 下拉选择器 */}
+          <div className="mb-3">
+            <div className="relative group">
               <select
                 value={primarySheet}
                 onChange={(e) => onPrimarySheetChange(e.target.value)}
                 disabled={disabled}
                 className={`
-                  w-full px-4 py-3 pr-10 rounded-lg border-2 appearance-none
-                  font-medium text-slate-700 transition-all
-                  focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+                  w-full px-4 py-2.5 pr-10 rounded-xl border appearance-none
+                  text-sm font-medium text-slate-700 transition-all bg-slate-50
+                  focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white
                   ${disabled
                     ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-white border-slate-200 hover:border-emerald-300 cursor-pointer'
+                    : 'border-slate-200 hover:border-emerald-400 cursor-pointer'
                   }
                 `}
               >
                 {sheetInfoList.map(info => (
                   <option key={info.name} value={info.name}>
-                    {info.name} ({info.rowCount} 行 × {info.columnCount} 列)
+                    {info.name}
                   </option>
                 ))}
               </select>
-              <ChevronDown className={`
-                absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors
-                ${disabled ? 'text-slate-400' : 'text-slate-500'}
-              `} />
+              <div className={`
+                absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center pointer-events-none rounded-r-xl transition-colors
+                ${disabled ? 'text-slate-400' : 'text-slate-500 group-hover:text-emerald-500'}
+              `}>
+                <ChevronDown className="w-4 h-4" />
+              </div>
             </div>
           </div>
 
           {/* 统计信息 */}
+          {/* 统计信息 - 极简行内展示 */}
           {primarySheetInfo && (
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <Table className="w-4 h-4 text-blue-500" />
-                  <p className="text-xs font-medium text-slate-600">表名</p>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col gap-3">
+              {/* 第一行：基础统计 */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="bg-white p-1.5 rounded border border-slate-200">
+                    <Rows className="w-3.5 h-3.5 text-slate-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-medium leading-none mb-0.5">数据行</span>
+                    <span className="text-xs font-bold text-slate-700 font-mono leading-none">{primarySheetInfo.rowCount}</span>
+                  </div>
                 </div>
-                <p className="text-lg font-bold text-slate-800 truncate">
-                  {primarySheetInfo.name}
-                </p>
+
+                <div className="w-px h-6 bg-slate-200"></div>
+
+                <div className="flex items-center gap-2">
+                  <div className="bg-white p-1.5 rounded border border-slate-200">
+                    <Columns className="w-3.5 h-3.5 text-slate-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-medium leading-none mb-0.5">字段列</span>
+                    <span className="text-xs font-bold text-slate-700 font-mono leading-none">{primarySheetInfo.columnCount}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <Rows className="w-4 h-4 text-emerald-500" />
-                  <p className="text-xs font-medium text-slate-600">数据行数</p>
+              {/* 第二行：字段预览 */}
+              {primarySheetInfo.sampleFields.length > 0 && (
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-200/60">
+                  <span className="text-[10px] text-slate-400 font-medium">包含字段预览:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {primarySheetInfo.sampleFields.slice(0, 3).map(f => (
+                      <span key={f} className="text-[10px] bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-600 max-w-full truncate">
+                        {f}
+                      </span>
+                    ))}
+                    {primarySheetInfo.sampleFields.length > 3 && (
+                      <span className="text-[10px] text-slate-400 self-center">...</span>
+                    )}
+                  </div>
                 </div>
-                <p className="text-lg font-bold text-slate-800">
-                  {primarySheetInfo.rowCount}
-                </p>
-              </div>
-
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <Columns className="w-4 h-4 text-purple-500" />
-                  <p className="text-xs font-medium text-slate-600">字段数</p>
-                </div>
-                <p className="text-lg font-bold text-slate-800">
-                  {primarySheetInfo.columnCount}
-                </p>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -229,8 +243,8 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
           <div className="bg-slate-50/50 border-b border-slate-200 px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="bg-blue-100 p-1.5 rounded-lg">
-                  <FileText className="w-4 h-4 text-blue-600" />
+                <div className="bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+                  <FileText className="w-3.5 h-3.5 text-slate-600" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">辅助数据表</h3>
               </div>
@@ -243,7 +257,7 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
                   px-3 py-1.5 rounded-lg text-sm font-medium transition-all
                   ${disabled
                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-dashed'
                   }
                 `}
               >
@@ -261,29 +275,29 @@ const SheetSelector: React.FC<SheetSelectorProps> = ({
                 <div
                   key={info.name}
                   className={`
-                    rounded-lg border-2 p-4 transition-all
+                    rounded-xl border p-3 transition-all
                     ${disabled
                       ? 'bg-slate-50 border-slate-200 opacity-60'
                       : isEnabled
-                        ? 'bg-blue-50 border-blue-300 shadow-sm'
-                        : 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
+                        ? 'bg-emerald-50/50 border-emerald-200 shadow-sm'
+                        : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-sm cursor-pointer'
                     }
                   `}
                   onClick={() => !disabled && handleToggleSheet(info.name)}
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3">
                     {/* Checkbox */}
                     <div className={`
-                      flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all
+                      flex-shrink-0 w-5 h-5 rounded-md border flex items-center justify-center transition-all
                       ${disabled
-                        ? 'bg-slate-200 border-slate-300'
+                        ? 'bg-slate-100 border-slate-300'
                         : isEnabled
-                          ? 'bg-blue-500 border-blue-500'
-                          : 'bg-white border-slate-300'
+                          ? 'bg-emerald-500 border-emerald-500'
+                          : 'bg-white border-slate-300 group-hover:border-emerald-400'
                       }
                     `}>
                       {isEnabled && (
-                        <Check className="w-4 h-4 text-white" />
+                        <Check className="w-3.5 h-3.5 text-white" />
                       )}
                     </div>
 
