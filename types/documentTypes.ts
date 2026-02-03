@@ -23,6 +23,7 @@ export interface FieldMapping {
   placeholder: string; // 模板中的占位符，如 "{{产品名称}}"
   excelColumn: string; // Excel中对应的列名
   transform?: string; // 可选的数据转换代码
+  ruleType?: 'direct' | 'script' | 'ai'; // 规则类型：直接映射、脚本转换、AI智能分析
 }
 
 /**
