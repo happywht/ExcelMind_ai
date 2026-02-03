@@ -187,6 +187,7 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
             excelHeaders={excelData?.sheets
               ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
               : []}
+            sampleData={excelData?.sheets?.[excelData.currentSheetName]?.[0]}
             onMappingChange={() => { }}
           />
         ) : (

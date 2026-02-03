@@ -15,11 +15,14 @@ import { WebSocketServer } from 'ws';
 import { appRouter } from '../api/routes';
 import { setupWebSocket } from './websocket';
 
+import aiRoutes from './routes/ai';
+
 /**
  * 创建并配置 Express 应用
  */
 export function createApp(): Express {
   const app = express();
+
 
   // ========================================================================
   // 安全中间件
@@ -124,6 +127,9 @@ export function createApp(): Express {
   // ========================================================================
   // API 路由
   // ========================================================================
+
+  // 注册 AI 路由 (Phase 4) - 必须在 bodyParser 之后
+  app.use('/api/ai', aiRoutes);
 
   app.use('/', appRouter);
 

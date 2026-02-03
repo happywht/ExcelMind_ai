@@ -19,6 +19,7 @@ import { ProgressBroadcaster } from './websocket/progressBroadcaster';
 import { getWebSocketConfig } from '../config/websocket.config';
 import type { BatchGenerationScheduler } from '../services/BatchGenerationScheduler';
 import type { BatchGenerationTask } from '../types/templateGeneration';
+import aiRoutes from './routes/ai';
 
 // ============================================================================
 // 服务器类
@@ -212,6 +213,9 @@ export class AppServer {
    * 设置路由
    */
   private setupRoutes(): void {
+    // AI 路由
+    this.expressApp.use('/api/ai', aiRoutes);
+
     // 健康检查
     this.expressApp.get('/health', (req, res) => {
       const wsStats = this.websocketServer?.getStats();

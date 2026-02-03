@@ -6,11 +6,13 @@
  * - 可视化映射关系
  * - 支持手动编辑映射
  * - 显示筛选条件
+ * - 支持 AI 规则试运行与调试
  *
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import React, { useState } from 'react';
+import { aiProcessingService, AIProcessResult } from '../../services/aiProcessingService';
 import {
   GitBranch,
   ArrowRight,
@@ -23,7 +25,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Info,
-  Eye
+  Eye,
+  Minimize2,
+  Maximize2,
+  Play,
+  Loader2
 } from 'lucide-react';
 import { MappingScheme } from '../../types/documentTypes';
 
@@ -31,6 +37,7 @@ interface MappingEditorProps {
   mappingScheme: MappingScheme;
   templatePlaceholders: string[];
   excelHeaders: string[];
+  sampleData?: Record<string, any>; // 第一行数据，用于试运行
   onMappingChange: (mapping: MappingScheme) => void;
 }
 
@@ -38,11 +45,17 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
   mappingScheme,
   templatePlaceholders,
   excelHeaders,
+  sampleData,
   onMappingChange
 }) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedMapping, setEditedMapping] = useState<MappingScheme>(mappingScheme);
+  const [isFullScreen, setIsFullScreen] = useState(false); // 全屏状态
+
+  // AI 测试状态
+  const [testingIndex, setTestingIndex] = useState<number | null>(null);
+  const [testResults, setTestResults] = useState<Record<number, AIProcessResult | null>>({});
 
   // 临时：为了演示AI规则，初始化时如果没数据，就造一个AI规则的假数据
   React.useEffect(() => {
@@ -137,6 +150,27 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
     updateStateWithMappings(newMappings);
   };
 
+  // 处理 AI 规则测试
+  const handleTestRule = async (index: number, rule: string) => {
+    if (!sampleData) {
+      alert('需要有Excel数据才能试运行规则');
+      return;
+    }
+
+    setTestingIndex(index);
+    setTestResults(prev => ({ ...prev, [index]: null })); // 清除旧结果
+
+    try {
+      const result = await aiProcessingService.processRule(rule, sampleData);
+      setTestResults(prev => ({ ...prev, [index]: result }));
+    } catch (err) {
+      console.error(err);
+      setTestResults(prev => ({ ...prev, [index]: { result: '', error: '测试失败, 请重试' } }));
+    } finally {
+      setTestingIndex(null);
+    }
+  };
+
   // 映射完成度
   const mappingProgress = {
     mapped: mappingScheme.mappings.length,
@@ -172,12 +206,21 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 h-full">
+    <div className={`flex-1 flex flex-col overflow-hidden bg-slate-50 transition-all duration-300 ${isFullScreen ? 'fixed inset-0 z-50' : 'h-full'}`}>
       {/* 头部信息 - 极简白底风格 */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-4 z-10 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-3">
+              {/* 全屏切换按钮 - 移到标题左侧或作为独立功能 */}
+              <button
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className="p-2 -ml-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title={isFullScreen ? "退出全屏" : "全屏编辑"}
+              >
+                {isFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+
               <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-100">
                 <GitBranch className="w-5 h-5 text-emerald-600" />
               </div>
@@ -185,6 +228,13 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                 <span className="font-bold text-slate-800 text-lg">字段映射方案</span>
                 <span className="text-xs text-slate-500">配置 Excel 列与 Word 占位符的对应关系</span>
               </div>
+              {/* Dry Run 提示 */}
+              {sampleData && (
+                <div className="ml-4 px-3 py-1 bg-purple-50 text-purple-600 text-xs rounded-full flex items-center gap-1 border border-purple-100">
+                  <Play className="w-3 h-3" />
+                  AI 试运行已就绪 (数据源: Excel 第1行)
+                </div>
+              )}
             </div>
           </div>
 
@@ -322,13 +372,43 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                   {/* 转换规则 - 增强显示 */}
                   <div className="flex-1 min-w-0 px-4">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-slate-200 rounded text-xs font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-300"
-                        placeholder="输入JS代码或以 // AI 开头输入规则"
-                        value={mapping.transform || ''}
-                        onChange={(e) => updateMapping(idx, 'transform', e.target.value)}
-                      />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            className={`flex-1 px-3 py-2 border rounded text-xs font-mono focus:outline-none focus:border-blue-500 placeholder:text-slate-300 ${mapping.transform?.startsWith('// AI') ? 'border-purple-300 bg-purple-50/50 text-purple-800' : 'border-slate-200'}`}
+                            placeholder="输入JS代码或以 // AI 开头输入规则"
+                            value={mapping.transform || ''}
+                            onChange={(e) => updateMapping(idx, 'transform', e.target.value)}
+                          />
+
+                          {/* AI 试运行按钮 */}
+                          {mapping.transform?.trim().startsWith('// AI') && (
+                            <button
+                              onClick={() => handleTestRule(idx, mapping.transform!)}
+                              disabled={testingIndex === idx}
+                              className="p-2 text-purple-600 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors disabled:opacity-50"
+                              title="试运行 AI 规则 (使用第一行数据)"
+                            >
+                              {testingIndex === idx ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Play className="w-4 h-4 fill-current" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* 测试结果展示 */}
+                        {testResults[idx] && (
+                          <div className={`text-xs p-2 rounded border ${testResults[idx]?.error ? 'bg-red-50 border-red-200 text-red-600' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                            <span className="font-bold mr-1">
+                              {testResults[idx]?.error ? 'Error:' : 'Preview:'}
+                            </span>
+                            {testResults[idx]?.error || testResults[idx]?.result}
+                          </div>
+                        )}
+                      </div>
                     ) : renderRuleContent(mapping)}
                   </div>
 
