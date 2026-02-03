@@ -52,6 +52,7 @@ interface DocumentSpaceMainProps {
   onTemplateFileChange: (templateFile: TemplateFile) => void;
   onMappingChange: (scheme: MappingScheme) => void;
   aiProgress?: { current: number; total: number } | null;
+  allSheetsHeaders: Record<string, string[]>;
 }
 
 const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
@@ -67,7 +68,8 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
   onSheetChange,
   onTemplateFileChange,
   onMappingChange,
-  aiProgress
+  aiProgress,
+  allSheetsHeaders
 }) => {
   // 模板上传弹窗状态
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -193,6 +195,7 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
               : []}
             sampleData={excelData?.sheets?.[excelData.currentSheetName]?.[0]}
             onMappingChange={onMappingChange}
+            allSheetsHeaders={allSheetsHeaders}
           />
         ) : (
           renderEmptyState('映射方案', GitBranch, '请先生成映射方案')

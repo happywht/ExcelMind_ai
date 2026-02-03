@@ -881,6 +881,20 @@ export const DocumentSpace: React.FC = () => {
 
   // ===== 渲染 =====
 
+  // Calculate headers for all sheets
+  const allSheetsHeaders = useMemo(() => {
+    if (!excelData || !excelData.sheets) return {};
+    const headers: Record<string, string[]> = {};
+    Object.entries(excelData.sheets).forEach(([name, data]) => {
+      if (Array.isArray(data) && data.length > 0) {
+        headers[name] = Object.keys(data[0]);
+      } else {
+        headers[name] = [];
+      }
+    });
+    return headers;
+  }, [excelData]);
+
   return (
     <div className="flex h-full bg-slate-50">
       {/* 左侧边栏 */}
@@ -928,6 +942,7 @@ export const DocumentSpace: React.FC = () => {
         excelData={excelData}
         mappingScheme={mappingScheme}
         generatedDocs={generatedDocs}
+        allSheetsHeaders={allSheetsHeaders}
         selectedDoc={selectedDoc}
         performanceMetrics={performanceMetrics}
         onTabChange={handleTabChange}
