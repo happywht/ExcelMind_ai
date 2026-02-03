@@ -121,6 +121,9 @@ export const DocumentSpace: React.FC = () => {
     }
   };
 
+  // AI 处理进度
+  const [aiProgress, setAiProgress] = useState<{ current: number; total: number } | null>(null);
+
   // 生成文档
   const handleGenerateDocs = async () => {
     if (!templateFile || !excelData || !mappingScheme) {
@@ -129,18 +132,50 @@ export const DocumentSpace: React.FC = () => {
     }
 
     setIsProcessing(true);
-    addLog('generating', 'pending', '正在批量生成Word文档...');
 
     try {
       // 获取当前工作表数据
       const currentSheetData = excelData.sheets[excelData.currentSheetName] || [];
       const baseFileName = templateFile.name.replace('.docx', '');
 
-      // 调用文档生成服务
+      // 1. AI 批量预处理
+      // 检查是否有 AI 规则
+      const hasAIRules = mappingScheme.mappings.some(
+        m => m.ruleType === 'ai' || (m.transform && m.transform.trim().startsWith('// AI'))
+      );
+
+      let dataToProcess = currentSheetData;
+      let mappingToUse = mappingScheme;
+
+      if (hasAIRules) {
+        addLog('generating', 'pending', '正在执行 AI 批量处理 (这可能需要一些时间)...');
+        setAiProgress({ current: 0, total: currentSheetData.length });
+
+        // 动态导入 AI 批量服务
+        const { aiBatchService } = await import('../services/aiBatchService');
+
+        const result = await aiBatchService.processBatch(
+          currentSheetData,
+          mappingScheme,
+          (current, total) => {
+            setAiProgress({ current, total });
+          }
+        );
+
+        dataToProcess = result.enrichedData;
+        mappingToUse = result.runtimeMapping;
+
+        addLog('generating', 'success', `AI 处理完成，已增强 ${dataToProcess.length} 条数据`);
+        setAiProgress(null); // 清除进度条
+      }
+
+      addLog('generating', 'pending', '正在批量生成Word文档...');
+
+      // 2. 调用文档生成服务
       const documents = await generateMultipleDocuments({
         templateBuffer: templateFile.arrayBuffer,
-        excelData: currentSheetData,
-        mappingScheme: mappingScheme,
+        excelData: dataToProcess, // 使用增强后的数据
+        mappingScheme: mappingToUse, // 使用运行时映射
         baseFileName: baseFileName
       });
 
@@ -148,6 +183,7 @@ export const DocumentSpace: React.FC = () => {
       addLog('generating', 'success', `成功生成 ${documents.length} 个Word文档`);
     } catch (error) {
       addLog('generating', 'error', `文档生成失败: ${error}`);
+      setAiProgress(null);
     } finally {
       setIsProcessing(false);
     }
@@ -335,23 +371,46 @@ export const DocumentSpace: React.FC = () => {
 
           {/* 生成文档按钮 */}
           {mappingScheme && (
-            <button
-              onClick={handleGenerateDocs}
-              disabled={isProcessing}
-              className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  生成Word文档
-                </>
+            <>
+              {/* AI 进度条 */}
+              {aiProgress && (
+                <div className="mb-3 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-orange-600 font-medium flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      AI 深度处理中...
+                    </span>
+                    <span className="text-slate-500 font-mono">
+                      {aiProgress.current}/{aiProgress.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden border border-slate-200">
+                    <div
+                      className="bg-orange-500 h-full transition-all duration-300 ease-out rounded-full"
+                      style={{ width: `${Math.round((aiProgress.current / aiProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
               )}
-            </button>
+
+              <button
+                onClick={handleGenerateDocs}
+                disabled={isProcessing}
+                className="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4" />
+                    生成Word文档
+                  </>
+                )}
+              </button>
+            </>
           )}
 
           {/* 已生成文档列表 */}
@@ -398,13 +457,12 @@ export const DocumentSpace: React.FC = () => {
                 {logs.map((log) => (
                   <div
                     key={log.id}
-                    className={`text-xs p-3 rounded-lg ${
-                      log.status === 'success'
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : log.status === 'error'
+                    className={`text-xs p-3 rounded-lg ${log.status === 'success'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : log.status === 'error'
                         ? 'bg-red-50 text-red-700'
                         : 'bg-blue-50 text-blue-700'
-                    }`}
+                      }`}
                   >
                     {log.message}
                   </div>

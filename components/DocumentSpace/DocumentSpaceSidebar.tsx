@@ -316,6 +316,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
                       {processingStage === 'template_upload' && '正在解析模板...'}
                       {processingStage === 'data_upload' && '正在读取数据...'}
                       {processingStage === 'ai_mapping' && 'AI正在生成映射...'}
+                      {processingStage === 'ai_batch_processing' && 'AI 深度处理中...'}
                       {processingStage === 'document_generation' && '正在生成文档...'}
                     </span>
                   </div>

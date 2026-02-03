@@ -59,6 +59,7 @@ import {
 
 import DocumentSpaceSidebar from './DocumentSpaceSidebar';
 import DocumentSpaceMain from './DocumentSpaceMain';
+import { aiBatchService } from '../../services/aiBatchService';
 
 export const DocumentSpace: React.FC = () => {
   // ===== 状态管理 =====
@@ -603,20 +604,56 @@ export const DocumentSpace: React.FC = () => {
     try {
       // 使用映射方案中的主Sheet
       const sheetToUse = mappingScheme.primarySheet || excelData.currentSheetName;
-      const primarySheetData = excelData.sheets[sheetToUse] || [];
+      let primarySheetData = excelData.sheets[sheetToUse] || [];
       const baseFileName = templateFile.name.replace('.docx', '');
+      let schemeToUse = mappingScheme;
+
+      // Check for AI rules and execute batch processing if needed
+      const hasAIRules = mappingScheme.mappings.some(m =>
+        m.ruleType === 'ai' || (m.transform && m.transform.trim().startsWith('// AI'))
+      );
+
+      if (hasAIRules) {
+        setProcessingStage('ai_batch_processing');
+        addLog('generating', 'pending', 'Detected AI rules, starting batch processing...');
+
+        try {
+          const batchResult = await aiBatchService.processBatch(
+            primarySheetData,
+            mappingScheme,
+            (current, total) => {
+              const percentage = Math.round((current / total) * 100);
+              setProgress(percentage);
+            }
+          );
+
+          primarySheetData = batchResult.enrichedData;
+          schemeToUse = batchResult.runtimeMapping;
+          addLog('generating', 'success', 'AI batch processing completed successfully');
+
+        } catch (error) {
+          console.error('AI Batch Processing Failed:', error);
+          addLog('generating', 'error', `AI processing failed: ${error instanceof Error ? error.message : String(error)}`);
+          // Optional: Decide whether to continue or abort. Creating a hybrid choice might be better, but for now fallback or abort.
+          // Aborting seems safer to avoid generating empty/wrong docs.
+          throw new Error('AI processing failed, cannot generate documents.');
+        }
+      }
+
+      setProcessingStage('document_generation');
+      setProgress(0);
 
       addLog('generating', 'pending',
         `使用主数据表 "${sheetToUse}" (${primarySheetData.length}行) 生成文档...`
       );
 
       // 跨Sheet映射处理
-      const hasCrossSheetMappings = mappingScheme.crossSheetMappings &&
-        mappingScheme.crossSheetMappings.length > 0;
+      const hasCrossSheetMappings = schemeToUse.crossSheetMappings &&
+        schemeToUse.crossSheetMappings.length > 0;
 
       if (hasCrossSheetMappings) {
         addLog('generating', 'info',
-          `检测到 ${mappingScheme.crossSheetMappings!.length} 个跨Sheet映射，正在构建查找索引...`
+          `检测到 ${schemeToUse.crossSheetMappings!.length} 个跨Sheet映射，正在构建查找索引...`
         );
       }
 
@@ -625,7 +662,7 @@ export const DocumentSpace: React.FC = () => {
       let totalIndexedRows = 0;
 
       if (hasCrossSheetMappings) {
-        mappingScheme.crossSheetMappings!.forEach(crossMapping => {
+        schemeToUse.crossSheetMappings!.forEach(crossMapping => {
           const sourceSheet = excelData.sheets[crossMapping.sourceSheet];
           if (sourceSheet) {
             const index = buildLookupIndex(sourceSheet, crossMapping.lookupKey);
@@ -651,14 +688,14 @@ export const DocumentSpace: React.FC = () => {
         const mappedData: any = {};
 
         // 1. 处理主Sheet的字段映射
-        mappingScheme.mappings.forEach(mapping => {
+        schemeToUse.mappings.forEach(mapping => {
           const key = mapping.placeholder.replace(/\{\{|\}\}/g, '').trim();
           mappedData[key] = row[mapping.excelColumn];
         });
 
         // 2. 处理跨Sheet映射
         if (hasCrossSheetMappings) {
-          mappingScheme.crossSheetMappings!.forEach(crossMapping => {
+          schemeToUse.crossSheetMappings!.forEach(crossMapping => {
             const lookupValue = String(row[crossMapping.lookupKey] || '');
             const key = crossMapping.placeholder.replace(/\{\{|\}\}/g, '').trim();
 
@@ -897,6 +934,7 @@ export const DocumentSpace: React.FC = () => {
         onDocSelect={handleDocSelect}
         onSheetChange={handleSheetChange}
         onTemplateFileChange={setTemplateFile}
+        onMappingChange={setMappingScheme}
       />
     </div>
   );
