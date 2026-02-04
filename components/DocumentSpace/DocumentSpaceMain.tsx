@@ -18,7 +18,8 @@ import {
   GitBranch,
   Eye,
   FileDown,
-  Library
+  Library,
+  LayoutTemplate
 } from 'lucide-react';
 import {
   TemplateFile,
@@ -34,6 +35,7 @@ import DocumentList from './DocumentList';
 import DocumentPreview from './DocumentPreview';
 import TemplateLibrary from './TemplateLibrary';
 import TemplateUploadToLibrary from './TemplateUploadToLibrary';
+import AgentOrchestratorView from './AgentView/AgentOrchestratorView';
 import { LocalTemplateMetadata } from '../../types/templateStorage';
 import { createTemplateFile } from '../../services/templateService';
 import { templateStorage } from '../../services/templateStorage';
@@ -73,6 +75,9 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
 }) => {
   // 模板上传弹窗状态
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+
+  // Phase 5: View Mode for Mapping Tab
+  const [viewMode, setViewMode] = useState<'classic' | 'agent'>('classic');
 
   // 处理从模板库使用模板
   const handleUseTemplateFromLibrary = async (templateMetadata: LocalTemplateMetadata) => {
@@ -187,16 +192,31 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
 
       case 'mapping':
         return mappingScheme ? (
-          <MappingEditor
-            mappingScheme={mappingScheme}
-            templatePlaceholders={templateFile?.placeholders || []}
-            excelHeaders={excelData?.sheets
-              ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
-              : []}
-            sampleData={excelData?.sheets?.[excelData.currentSheetName]?.[0]}
-            onMappingChange={onMappingChange}
-            allSheetsHeaders={allSheetsHeaders}
-          />
+          viewMode === 'agent' ? (
+            <AgentOrchestratorView
+              mappingScheme={mappingScheme}
+              templatePlaceholders={templateFile?.placeholders || []}
+              excelHeaders={excelData?.sheets
+                ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
+                : []}
+              primarySheetData={excelData?.sheets?.[excelData.currentSheetName]}
+              allSheetsHeaders={allSheetsHeaders}
+              onAutoFix={(ph) => {
+                alert(`Repairing ${ph} (Coming Soon)`);
+              }}
+            />
+          ) : (
+            <MappingEditor
+              mappingScheme={mappingScheme}
+              templatePlaceholders={templateFile?.placeholders || []}
+              excelHeaders={excelData?.sheets
+                ? Object.keys(excelData.sheets[excelData.currentSheetName]?.[0] || {})
+                : []}
+              sampleData={excelData?.sheets?.[excelData.currentSheetName]?.[0]}
+              onMappingChange={onMappingChange}
+              allSheetsHeaders={allSheetsHeaders}
+            />
+          )
         ) : (
           renderEmptyState('映射方案', GitBranch, '请先生成映射方案')
         );
@@ -360,6 +380,32 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
                 </button>
               );
             })}
+
+            {/* Phase 5: Agent View Toggle */}
+            {activeTab === 'mapping' && (
+              <div className="ml-auto flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button
+                  onClick={() => setViewMode('classic')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2 ${viewMode === 'classic'
+                    ? 'bg-white text-slate-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  <GitBranch className="w-3.5 h-3.5" />
+                  经典视图
+                </button>
+                <button
+                  onClick={() => setViewMode('agent')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2 ${viewMode === 'agent'
+                    ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  <LayoutTemplate className="w-3.5 h-3.5" />
+                  Agent 编排
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

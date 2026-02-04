@@ -29,6 +29,12 @@ import {
 import {
   FewShotEngine
 } from '../../services/ai/fewShotEngine';
+import { aiProcessingService } from '../../services/aiProcessingService';
+import {
+  LayoutTemplate,
+  Search
+} from 'lucide-react';
+import AgentOrchestratorView from './AgentView/AgentOrchestratorView';
 import {
   allQueryExamples
 } from '../../services/ai/queryExamples';
@@ -86,6 +92,7 @@ export const DocumentSpace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<DocumentSpaceTab>('upload');
   const [selectedDoc, setSelectedDoc] = useState<GeneratedDocument | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [viewMode, setViewMode] = useState<'classic' | 'agent'>('classic');
 
   // 处理状态
   const [isProcessing, setIsProcessing] = useState(false);
@@ -442,6 +449,22 @@ export const DocumentSpace: React.FC = () => {
     return index;
   }, [excelData, primarySheet, enabledSheets]);
 
+  /**
+   * 构建多值查找索引 - 用于1对多关系 (Phase 3 Loop)
+   */
+  const buildMultiLookupIndex = useCallback((data: any[], keyField: string): Map<string, any[]> => {
+    const index = new Map<string, any[]>();
+    data.forEach(row => {
+      const keyValue = String(row[keyField] || '');
+      if (keyValue) {
+        const list = index.get(keyValue) || [];
+        list.push(row);
+        index.set(keyValue, list);
+      }
+    });
+    return index;
+  }, [excelData, primarySheet, enabledSheets]);
+
   // Aggregate mode document generation handler
   const handleAggregateGeneration = useCallback(async () => {
     if (!templateFile || !excelData || !mappingScheme) {
@@ -683,15 +706,71 @@ export const DocumentSpace: React.FC = () => {
       let crossSheetLookupSuccess = 0;
       let crossSheetLookupTotal = 0;
 
+      // Phase 3: Loop Indexes (构建列表循环索引)
+      const loopIndexes = new Map<string, Map<string, any[]>>();
+      if (schemeToUse.loopMappings) {
+        schemeToUse.loopMappings.forEach(loop => {
+          const sourceSheet = excelData.sheets[loop.sourceSheet];
+          if (sourceSheet) {
+            // Using the newly added buildMultiLookupIndex
+            const index = buildMultiLookupIndex(sourceSheet, loop.foreignKey);
+            loopIndexes.set(loop.loopPlaceholder, index);
+            addLog('generating', 'info', `为 Loop #${loop.loopPlaceholder} 构建多值索引 (${sourceSheet.length}行)`);
+          } else {
+            addLog('generating', 'warning', `Loop #${loop.loopPlaceholder} 的数据源 ${loop.sourceSheet} 不存在`);
+          }
+        });
+      }
+
       // 构建映射数据
-      const mappedDataList = primarySheetData.map((row: any, rowIndex: number) => {
+      // 构建映射数据
+      const mappedDataList = await Promise.all(primarySheetData.map(async (row: any, rowIndex: number) => {
         const mappedData: any = {};
 
         // 1. 处理主Sheet的字段映射
-        schemeToUse.mappings.forEach(mapping => {
+        for (const mapping of schemeToUse.mappings) {
           const key = mapping.placeholder.replace(/\{\{|\}\}/g, '').trim();
-          mappedData[key] = row[mapping.excelColumn];
-        });
+
+          // Phase 3: Virtual Column Support
+          if (mapping.excelColumn.startsWith('[虚拟] ')) {
+            const exactVc = schemeToUse.virtualColumns?.find(v => v.name === mapping.excelColumn);
+
+            if (exactVc) {
+              if (exactVc.type === 'const') {
+                mappedData[key] = exactVc.value;
+              } else if (exactVc.type === 'var') {
+                if (exactVc.value === 'CurrentDate') mappedData[key] = new Date().toLocaleDateString();
+                else if (exactVc.value === 'CurrentTime') mappedData[key] = new Date().toLocaleTimeString();
+                else if (exactVc.value === 'RowIndex') mappedData[key] = rowIndex + 1;
+                else if (exactVc.value === 'UUID') mappedData[key] = crypto.randomUUID();
+              } else if (exactVc.type === 'ai') {
+                // Phase 4: AI Content Generation
+                if (rowIndex < 3) {
+                  try {
+                    const prompt = exactVc.aiPrompt || exactVc.value;
+                    let hydratedPrompt = prompt;
+                    // Simple variable substitution in prompt
+                    Object.keys(row).forEach(header => {
+                      hydratedPrompt = hydratedPrompt.replace(new RegExp(`\\{\\{${header}\\}\\}`, 'g'), String(row[header] || ''));
+                    });
+
+                    const aiRes = await aiProcessingService.generateCellContent(hydratedPrompt, row);
+                    mappedData[key] = aiRes.result || '[AI Error]';
+                  } catch (e) {
+                    mappedData[key] = '[AI Failed]';
+                  }
+                } else {
+                  mappedData[key] = '[AI Preview Limited]';
+                }
+              }
+            } else {
+              mappedData[key] = ''; // Virtual column definition not found
+            }
+          } else {
+            // Standard Excel Column Mapping
+            mappedData[key] = row[mapping.excelColumn];
+          }
+        }
 
         // 2. 处理跨Sheet映射
         if (hasCrossSheetMappings) {
@@ -733,10 +812,36 @@ export const DocumentSpace: React.FC = () => {
               mappedData[key] = '';
             }
           });
+
+        }
+
+        // 3. Phase 3: Loop Mappings (处理列表循环)
+        if (schemeToUse.loopMappings) {
+          schemeToUse.loopMappings.forEach(loop => {
+            const loopName = loop.loopPlaceholder.replace(/^#/, ''); // Standardize name
+            const index = loopIndexes.get(loop.loopPlaceholder);
+
+            // Look up by Foreign Key value from Primary Row
+            // loop.foreignKey refers to the column in Source Sheet, but which column in Primary Sheet?
+            // Wait, UI says "Linked By". Usually it's same column name.
+            // Assumption: Primary Row also has column 'loop.foreignKey'.
+            const foreignKeyVal = String(row[loop.foreignKey] || '');
+
+            const matchedRows = index?.get(foreignKeyVal) || [];
+
+            mappedData[loopName] = matchedRows.map(childRow => {
+              const childData: any = {};
+              loop.mappings.forEach(m => {
+                const matchKey = m.placeholder.replace(/\{\{|\}\}/g, '').trim();
+                childData[matchKey] = childRow[m.excelColumn];
+              });
+              return childData;
+            });
+          });
         }
 
         return mappedData;
-      });
+      }));
 
       // 报告跨Sheet查找统计
       if (hasCrossSheetMappings && crossSheetLookupTotal > 0) {

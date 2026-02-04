@@ -23,7 +23,9 @@ export interface FieldMapping {
   placeholder: string; // 模板中的占位符，如 "{{产品名称}}"
   excelColumn: string; // Excel中对应的列名
   transform?: string; // 可选的数据转换代码
-  ruleType?: 'direct' | 'script' | 'ai'; // 规则类型：直接映射、脚本转换、AI智能分析
+  ruleType?: 'direct' | 'script' | 'ai'; // 规则类型
+  format?: 'date' | 'currency' | 'number' | 'text' | 'custom'; // Phase 5: 格式化类型
+  formatParams?: any; // Phase 5: 格式化参数 (e.g., "YYYY-MM-DD")
 }
 
 /**
@@ -51,6 +53,28 @@ export interface CrossSheetMapping {
 }
 
 /**
+ * 列表/表格循环映射 (Phase 3)
+ * 用于处理 docxtemplater 的 {#Loop} ... {/Loop} 结构
+ */
+export interface LoopMapping {
+  loopPlaceholder: string;       // 循环占位符，例如 "Projects" (对应 {#Projects})
+  sourceSheet: string;           // 数据源Sheet
+  foreignKey: string;            // 外键字段 (在SourceSheet中关联PrimarySheet的Key)
+  mappings: FieldMapping[];      // 循环内部的字段映射
+}
+
+/**
+ * 虚拟列定义
+ */
+export interface VirtualColumn {
+  id: string;
+  name: string;           // 显示名称
+  type: 'const' | 'var' | 'ai'; // 类型：静态文本、系统变量、AI生成
+  value: string;          // 值或表达式
+  aiPrompt?: string;      // AI生成的提示词 (Phase 4)
+}
+
+/**
  * AI生成的映射方案（扩展版）
  * 支持多Sheet数据源和跨Sheet映射功能
  */
@@ -61,6 +85,8 @@ export interface MappingScheme {
   primarySheet: string; // 主数据sheet（用于批量生成）
   mappings: FieldMapping[]; // 主sheet的字段映射关系
   crossSheetMappings?: CrossSheetMapping[];  // 跨sheet映射（可选）
+  loopMappings?: LoopMapping[]; // 列表循环映射 (Phase 3)
+  virtualColumns?: VirtualColumn[]; // 虚拟列定义 (Phase 3)
   unmappedPlaceholders: string[]; // 未能映射的占位符
   allSheetsInfo?: SheetInfo[];   // 所有可用sheet的信息（可选）
   confidence?: number;           // 映射方案的置信度（可选）

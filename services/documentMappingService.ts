@@ -93,6 +93,47 @@ export async function generateFieldMappingV2(params: GenerateMappingParamsV2): P
     // 解析AI响应（支持跨Sheet映射）
     const mappingScheme = parseMultiSheetMappingResponse(text, allSheetsInfo);
 
+    // ===========================================
+    // Phase 2: Context-Aware Auto-Formatting (Heuristic Layer)
+    // ===========================================
+
+    // 动态导入避免可能的循环依赖，虽在此处未必发生，但作为防御性编程
+    const { aiProcessingService } = await import('./aiProcessingService');
+    const { FormatterService } = await import('./formatterService');
+
+    // 遍历所有生成的映射，尝试应用智能格式化
+    // 只处理主Sheet的映射，且没有已有Transform的情况
+    if (mappingScheme.primarySheet) {
+      const primarySheetInfo = allSheetsInfo.find(s => s.sheetName === mappingScheme.primarySheet);
+
+      if (primarySheetInfo && primarySheetInfo.sampleData) {
+        // 并行处理所有各列的分析
+        await Promise.all(mappingScheme.mappings.map(async (mapping) => {
+          if (mapping.transform) return; // 已有规则则跳过
+
+          // 获取该列的样本数据
+          const columnIndex = primarySheetInfo.headers.indexOf(mapping.excelColumn);
+          if (columnIndex === -1) return;
+
+          const columnSamples = primarySheetInfo.sampleData.map(row => row[mapping.excelColumn]);
+
+          // 分析列内容
+          const analysis = await aiProcessingService.analyzeColumnContent(mapping.excelColumn, columnSamples);
+
+          if (analysis.suggestedFormatter) {
+            const formatters = FormatterService.getFormatters();
+            const formatter = formatters.find(f => f.id === analysis.suggestedFormatter);
+
+            if (formatter) {
+              mapping.transform = formatter.generateCode();
+              // 可以在此处添加日志或标记，表明是“智能添加”的
+              logger.info(`[Auto-Format] Applied ${formatter.label} to column ${mapping.excelColumn}`);
+            }
+          }
+        }));
+      }
+    }
+
     return mappingScheme;
 
   } catch (error) {
