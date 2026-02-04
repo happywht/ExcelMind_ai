@@ -239,8 +239,43 @@ ${templatePlaceholders.map(p => `  - ${p}`).join('\n')}
     }
   ],
   "unmappedPlaceholders": ["未能映射的占位符"],
+  "loopMappings": [
+    {
+      "id": "自动生成的ID",
+      "loopPlaceholder": "循环占位符(如Projects)",
+      "type": "group_by", // 或 'lookup'
+      "groupByColumn": "分组字段(仅group_by)",
+      "mappings": [
+        // 循环内部的字段映射
+        {"placeholder": "{{ItemName}}", "excelColumn": "ItemName"}
+      ]
+    }
+  ],
+  "virtualColumns": [
+    {
+      "id": "vcol_1",
+      "name": "显式名称",
+      "type": "const",
+      "value": "静态值"
+    }
+  ],
   "confidence": 0.95
 }
+
+【高级模式说明】
+1. **列表循环 (Loop)**:
+   - 如果模板包含 {#Projects}...{/Projects} 结构，请生成 loopMappings。
+   - type: "group_by" (单表分组) 或 "lookup" (跨表关联)。
+
+2. **分组融合 (Group Merge / Flattening)**:
+   - 如果模板包含 {{Name1}}, {{Name2}} 这种带索引的占位符，说明用户希望将多行数据融合到同一页。
+   - 处理方式：
+     1. 创建一个 loopMappings (type="group_by")，按主键(如InvoiceNo)分组。
+     2. 在 mappings (主层级) 中，将 {{Name1}} 映射到 Name_1 (系统会自动拍平分组数据)。
+     3. 告诉用户：系统会自动生成 Column_Index 格式的变量。
+
+3. **虚拟列 (Virtual Column)**:
+   - 用于生成静态文本 (type="const") 或 简单变量。
 
 【多Sheet映射示例】
 
@@ -323,6 +358,32 @@ ${templatePlaceholders.map(p => `  - ${p}`).join('\n')}
   ],
   "unmappedPlaceholders": [],
   "confidence": 0.9
+}
+
+示例4 - 分组融合 (Flattening):
+用户指令: "将同一Session的多个演讲者填入模板 (Name1, Name2)"
+Excel: {SessionID, SpeakerName, Topic}
+模板: [{{SessionID}}, {{SpeakerName1}}, {{SpeakerName2}}]
+输出:
+{
+  "explanation": "检测到带索引的占位符，使用分组融合模式。按SessionID分组，并映射扁平化后的变量。",
+  "primarySheet": "Sheet1",
+  "mappings": [
+    {"placeholder": "{{SessionID}}", "excelColumn": "SessionID"},
+    {"placeholder": "{{SpeakerName1}}", "excelColumn": "SpeakerName_1"},
+    {"placeholder": "{{SpeakerName2}}", "excelColumn": "SpeakerName_2"}
+  ],
+  "loopMappings": [
+    {
+      "id": "loop_session",
+      "loopPlaceholder": "Matches", // 隐式循环
+      "type": "group_by",
+      "groupByColumn": "SessionID",
+      "mappings": []
+    }
+  ],
+  "unmappedPlaceholders": [],
+  "confidence": 0.95
 }
 
 现在请处理上述用户任务，输出JSON格式。

@@ -66,6 +66,7 @@ import {
 import DocumentSpaceSidebar from './DocumentSpaceSidebar';
 import DocumentSpaceMain from './DocumentSpaceMain';
 import { aiBatchService } from '../../services/aiBatchService';
+import { executeLoopProcessing } from '../../services/loopProcessingService';
 
 export const DocumentSpace: React.FC = () => {
   // ===== 状态管理 =====
@@ -507,7 +508,54 @@ export const DocumentSpace: React.FC = () => {
 
       // Execute aggregate calculation
       const { executeAggregate } = await import('../../services/aggregateService');
-      const aggregateResults = executeAggregate(primarySheetData, configToUse);
+
+      // Pre-process data: Enrich with Virtual Columns & Mappings
+      // This ensures aggregation can use calculated fields (e.g. formatted dates, AI columns)
+      const enrichData = async (data: any[]) => {
+        // Reuse the logic from handleGenerate calculation to compute columns
+        // For performance, we might want to only compute fields used in Aggregate Rules?
+        // But for transparency and 'Export Mapped Data', computing all is safer.
+        // For MVP Optimization: Only compute Virtual Columns for now.
+
+        const enriched = await Promise.all(data.map(async (row, rowIndex) => {
+          const newRow = { ...row }; // Clone row
+
+          // 1. Apply Virtual Columns
+          if (mappingScheme.virtualColumns) {
+            for (const vc of mappingScheme.virtualColumns) {
+              if (vc.type === 'const') {
+                newRow[vc.name] = vc.value;
+              } else if (vc.type === 'var') {
+                if (vc.value === 'CurrentDate') newRow[vc.name] = new Date().toLocaleDateString();
+                if (vc.value === 'UUID') newRow[vc.name] = crypto.randomUUID();
+                if (vc.value === 'RowIndex') newRow[vc.name] = rowIndex + 1;
+              }
+              // AI Virtual Columns might be too slow for Batch Aggregation of 1000s rows.
+              // We skip AI columns in Aggregate Mode for now unless explicitly requested.
+            }
+          }
+
+          // 2. Apply Transforms (Optional - if we want to aggregate on transformed values)
+          mappingScheme.mappings.forEach(m => {
+            // If there is a transform, we could add a field `transformed_${m.excelColumn}`?
+            // Or better: If the placeholder is different from column name, add the placeholder as a key.
+            const key = m.placeholder.replace(/\{\{|\}\}/g, '').trim();
+            if (key !== m.excelColumn) {
+              newRow[key] = row[m.excelColumn];
+              // TODO: Apply basic format transforms here if possible
+            }
+          });
+
+          return newRow;
+        }));
+        return enriched;
+      };
+
+      const enrichedData = await enrichData(primarySheetData);
+
+      const aggregateResults = executeAggregate(enrichedData, configToUse);
+
+
 
       addLog('generating', 'pending',
         `Aggregation complete, will generate ${aggregateResults.length} summary documents`
@@ -706,25 +754,56 @@ export const DocumentSpace: React.FC = () => {
       let crossSheetLookupSuccess = 0;
       let crossSheetLookupTotal = 0;
 
-      // Phase 3: Loop Indexes (构建列表循环索引)
+      // Phase 6: Loop Indexes (构建列表循环索引)
       const loopIndexes = new Map<string, Map<string, any[]>>();
       if (schemeToUse.loopMappings) {
         schemeToUse.loopMappings.forEach(loop => {
-          const sourceSheet = excelData.sheets[loop.sourceSheet];
-          if (sourceSheet) {
+          // Determine Source Sheet & Key
+          const isGroupBy = loop.type === 'group_by';
+          const targetSheetName = isGroupBy
+            ? (loop.sourceSheet || sheetToUse) // Default to primary sheet for GroupBy
+            : loop.sourceSheet;
+
+          const keyColumn = isGroupBy ? loop.groupByColumn : loop.foreignKey;
+
+          const sourceSheet = excelData.sheets[targetSheetName];
+
+          if (sourceSheet && keyColumn) {
             // Using the newly added buildMultiLookupIndex
-            const index = buildMultiLookupIndex(sourceSheet, loop.foreignKey);
+            const index = buildMultiLookupIndex(sourceSheet, keyColumn);
             loopIndexes.set(loop.loopPlaceholder, index);
             addLog('generating', 'info', `为 Loop #${loop.loopPlaceholder} 构建多值索引 (${sourceSheet.length}行)`);
           } else {
-            addLog('generating', 'warning', `Loop #${loop.loopPlaceholder} 的数据源 ${loop.sourceSheet} 不存在`);
+            addLog('generating', 'warning', `Loop #${loop.loopPlaceholder} 无法构建索引 (Sheet: ${targetSheetName}, Key: ${keyColumn})`);
           }
         });
       }
 
       // 构建映射数据
-      // 构建映射数据
-      const mappedDataList = await Promise.all(primarySheetData.map(async (row: any, rowIndex: number) => {
+      let generationSource = primarySheetData;
+
+      // Phase 6: Group By Loop Detection
+      const groupByLoop = schemeToUse.loopMappings?.find(m => m.type === 'group_by');
+      if (groupByLoop && groupByLoop.groupByColumn) {
+        const keyCol = groupByLoop.groupByColumn;
+        const seenKeys = new Set<string>();
+        const uniqueRows: any[] = [];
+
+        primarySheetData.forEach(row => {
+          const val = String(row[keyCol] || '');
+          if (val && !seenKeys.has(val)) {
+            seenKeys.add(val);
+            uniqueRows.push(row); // Use first row as representative
+          }
+        });
+
+        if (uniqueRows.length > 0) {
+          generationSource = uniqueRows;
+          addLog('generating', 'info', `Group By 模式: 依据 "${keyCol}" 合并为 ${uniqueRows.length} 个文档`);
+        }
+      }
+
+      const mappedDataList = await Promise.all(generationSource.map(async (row: any, rowIndex: number) => {
         const mappedData: any = {};
 
         // 1. 处理主Sheet的字段映射
@@ -815,29 +894,34 @@ export const DocumentSpace: React.FC = () => {
 
         }
 
-        // 3. Phase 3: Loop Mappings (处理列表循环)
-        if (schemeToUse.loopMappings) {
-          schemeToUse.loopMappings.forEach(loop => {
-            const loopName = loop.loopPlaceholder.replace(/^#/, ''); // Standardize name
-            const index = loopIndexes.get(loop.loopPlaceholder);
+        // 3. Phase 6: Loop Mappings (使用 loopProcessingService)
+        if (schemeToUse.loopMappings && schemeToUse.loopMappings.length > 0) {
 
-            // Look up by Foreign Key value from Primary Row
-            // loop.foreignKey refers to the column in Source Sheet, but which column in Primary Sheet?
-            // Wait, UI says "Linked By". Usually it's same column name.
-            // Assumption: Primary Row also has column 'loop.foreignKey'.
-            const foreignKeyVal = String(row[loop.foreignKey] || '');
+          const loopResults = executeLoopProcessing(
+            row,
+            schemeToUse.loopMappings,
+            excelData.sheets,
+            rowIndex,
+            loopIndexes
+          );
 
-            const matchedRows = index?.get(foreignKeyVal) || [];
-
-            mappedData[loopName] = matchedRows.map(childRow => {
-              const childData: any = {};
-              loop.mappings.forEach(m => {
-                const matchKey = m.placeholder.replace(/\{\{|\}\}/g, '').trim();
-                childData[matchKey] = childRow[m.excelColumn];
+          // Phase 7: Flattening Logic (One-to-Many Fixed Slot Mapping)
+          // Automatically flatten group children into indexed fields (e.g., Name_1, Name_2)
+          Object.entries(loopResults).forEach(([loopKey, loopValue]) => {
+            if (Array.isArray(loopValue) && loopValue.length > 0) {
+              loopValue.forEach((childItem, index) => {
+                const suffix = `_${index + 1}`; // 1-based index
+                Object.entries(childItem).forEach(([childField, childVal]) => {
+                  // Only flatten distinct values (ignore if same as parent, though uncommon in GroupBy)
+                  // Inject: Field_1, Field_2
+                  mappedData[`${childField}${suffix}`] = childVal as string | number | boolean;
+                });
               });
-              return childData;
-            });
+            }
           });
+
+          // Merge loop results into mappedData (Keep original structure for Loop Tags)
+          Object.assign(mappedData, loopResults);
         }
 
         return mappedData;

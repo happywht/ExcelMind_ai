@@ -53,13 +53,24 @@ export interface CrossSheetMapping {
 }
 
 /**
- * 列表/表格循环映射 (Phase 3)
+ * 列表/表格循环映射 (Phase 6: Autonomous Data Production)
  * 用于处理 docxtemplater 的 {#Loop} ... {/Loop} 结构
+ * 支持单表分组 (Group By) 和 跨表关联 (Lookup)
  */
+export type LoopType = 'group_by' | 'lookup';
+
 export interface LoopMapping {
+  id: string;                    // 唯一标识符
   loopPlaceholder: string;       // 循环占位符，例如 "Projects" (对应 {#Projects})
-  sourceSheet: string;           // 数据源Sheet
-  foreignKey: string;            // 外键字段 (在SourceSheet中关联PrimarySheet的Key)
+  type: LoopType;                // 循环类型：单表分组 或 跨表关联
+
+  // Group By Config (Single Sheet)
+  groupByColumn?: string;        // 分组字段 (e.g. "InvoiceNo")
+
+  // Lookup Config (Multi Sheet)
+  sourceSheet?: string;          // 数据源Sheet
+  foreignKey?: string;           // 外键字段 (在SourceSheet中关联PrimarySheet的Key)
+
   mappings: FieldMapping[];      // 循环内部的字段映射
 }
 

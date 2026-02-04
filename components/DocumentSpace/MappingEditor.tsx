@@ -332,9 +332,13 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
     const defaultSheet = availableSheets[0] || '';
 
     const newLoop: import('../../types/documentTypes').LoopMapping = {
+      id: `loop_${Date.now()}`,
       loopPlaceholder: 'Loop',
+      type: 'lookup', // Default to Lookup for backward compatibility
       sourceSheet: defaultSheet,
-      foreignKey: excelHeaders[0] || '',
+      foreignKey: excelHeaders[0] || '', // Used as Foreign Key (Lookup) or potentially Group Column? 
+      // Ideally separate them. For new loop, we init defaults.
+      groupByColumn: excelHeaders[0] || '',
       mappings: []
     };
 
@@ -356,6 +360,12 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
       ...currentLoops[index],
       [field]: value
     };
+
+    // Auto specific logic when Type changes
+    if (field === 'type') {
+      // Maybe reset defaults? For now keep it simple.
+    }
+
     updateStateWithMappings(editedMapping.mappings, undefined, currentLoops);
   };
 
@@ -460,36 +470,6 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
 
   };
 
-  // Phase 4: Auto Config Handler
-  const handleAutoConfig = async () => {
-    if (!allSheetsHeaders || Object.keys(allSheetsHeaders).length === 0) {
-      alert("缺少Excel表头信息，无法进行自动配置");
-      return;
-    }
-
-    if (confirm("AI 自动配置将分析您的模板和Excel结构，并覆盖当前的映射方案。\n\n是否继续？")) {
-      setIsAutoConfiguring(true);
-      try {
-        const result = await aiProcessingService.autoConfigMapping(templatePlaceholders, allSheetsHeaders);
-        if (result) {
-          // Success!
-          setEditedMapping({
-            ...result,
-            // Preserve some UI state if needed, or just full overwrite
-          });
-          setIsEditing(true); // Enter edit mode to review
-        } else {
-          alert("AI 自动配置失败，未能生成有效的映射方案。");
-        }
-      } catch (e) {
-        console.error(e);
-        alert("自动配置过程中发生错误");
-      } finally {
-        setIsAutoConfiguring(false);
-      }
-    }
-  };
-
   return (
     <div className={`flex-1 flex flex-col overflow-hidden bg-slate-50 transition-all duration-300 ${isFullScreen ? 'fixed inset-0 z-50' : 'h-full'}`}>
       {/* 头部信息 - 极简白底风格 */}
@@ -544,21 +524,6 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
 
             {/* 操作按钮区 */}
             <div className="flex gap-2">
-              {/* Auto Config Filter Trigger (Phase 4) */}
-              <button
-                onClick={handleAutoConfig}
-                disabled={isAutoConfiguring}
-                className={`px-3 py-2 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg text-sm font-medium hover:from-violet-600 hover:to-fuchsia-600 transition-all shadow-md hover:shadow-lg flex items-center gap-2 ${isAutoConfiguring ? 'opacity-70 cursor-wait' : ''}`}
-                title="AI 智能自动配置"
-              >
-                {isAutoConfiguring ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Wand2 className="w-4 h-4" />
-                )}
-                <span className="hidden sm:inline">智能配置</span>
-              </button>
-
               {/* Virtual Columns Manager Trigger */}
               <button
                 onClick={() => setShowVirtualModal(true)}
@@ -841,6 +806,14 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                                   ))}
                                 </optgroup>
                               )}
+                              {/* AI/Flattened Columns (not in headers) */}
+                              {mapping.excelColumn &&
+                                !excelHeaders.includes(mapping.excelColumn) &&
+                                !virtualColumns.some(v => v.name === mapping.excelColumn) && (
+                                  <optgroup label="AI Generated / Flattened">
+                                    <option value={mapping.excelColumn}>{mapping.excelColumn}</option>
+                                  </optgroup>
+                                )}
                             </select>
                           </div>
                         ) : (
@@ -1125,71 +1098,120 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                 <div className="space-y-3">
                   {((isEditing ? editedMapping.loopMappings : mappingScheme.loopMappings) || []).map((loop, idx) => {
                     const isExpanded = expandedLoopIndex === idx;
+                    const isGroupBy = loop.type === 'group_by';
+
                     return (
-                      <div key={`loop-${idx}`} className={`rounded-lg border overflow-hidden ${isEditing ? 'border-cyan-200' : 'border-slate-200'}`}>
+                      <div key={`loop-${idx}`} className={`rounded-lg border overflow-hidden ${isEditing ? 'border-cyan-200 shadow-sm' : 'border-slate-200'}`}>
                         {/* Loop Header */}
                         <div className="flex items-center p-3 bg-cyan-50/30 gap-3">
                           <button
                             onClick={() => setExpandedLoopIndex(isExpanded ? null : idx)}
-                            className="p-1 rounded hover:bg-cyan-100 text-slate-500"
+                            className="p-1 rounded hover:bg-cyan-100 text-slate-500 transition-colors"
                           >
                             {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                           </button>
 
                           <div className="flex-1 grid grid-cols-12 gap-3 items-center">
-                            {/* Loop Tag */}
+                            {/* 1. Loop Tag */}
                             <div className="col-span-3 flex items-center gap-2">
-                              <List className="w-4 h-4 text-cyan-600" />
+                              {isGroupBy ? <List className="w-4 h-4 text-orange-500" /> : <Table className="w-4 h-4 text-cyan-600" />}
                               {isEditing ? (
                                 <input
                                   type="text"
-                                  className="w-full px-2 py-1 text-sm border border-slate-200 rounded focus:border-cyan-500"
+                                  className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded focus:border-cyan-500 font-mono bg-white"
                                   value={loop.loopPlaceholder}
                                   onChange={(e) => updateLoopMapping(idx, 'loopPlaceholder', e.target.value)}
-                                  placeholder="Loop Tag (No #)"
+                                  placeholder="Loop Tag"
                                 />
                               ) : (
                                 <span className="font-mono font-bold text-sm text-cyan-700">#{loop.loopPlaceholder}</span>
                               )}
                             </div>
 
-                            {/* Source Sheet */}
-                            <div className="col-span-4">
+                            {/* 2. Type Selector (Editing Only) */}
+                            <div className="col-span-3">
                               {isEditing ? (
                                 <select
-                                  value={loop.sourceSheet}
-                                  onChange={(e) => updateLoopMapping(idx, 'sourceSheet', e.target.value)}
-                                  className="w-full px-2 py-1 text-xs border border-slate-200 rounded"
+                                  value={loop.type || 'lookup'}
+                                  onChange={(e) => updateLoopMapping(idx, 'type', e.target.value as any)}
+                                  className="w-full px-2 py-1.5 text-xs font-medium border border-slate-200 rounded bg-white focus:border-cyan-500"
                                 >
-                                  {Object.keys(allSheetsHeaders || {}).filter(s => s !== (isEditing ? editedMapping.primarySheet : mappingScheme.primarySheet)).map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                  ))}
+                                  <option value="lookup">🔗 Cross-Sheet (Lookup)</option>
+                                  <option value="group_by">📂 Group By (List)</option>
                                 </select>
                               ) : (
-                                <span className="text-xs text-slate-500 bg-white px-2 py-1 border rounded">{loop.sourceSheet}</span>
+                                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${isGroupBy ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-cyan-50 text-cyan-600 border-cyan-100'}`}>
+                                  {isGroupBy ? 'Group By' : 'Lookup'}
+                                </span>
                               )}
                             </div>
 
-                            {/* Foreign Key */}
-                            <div className="col-span-4 flex items-center gap-2">
-                              <span className="text-xs text-slate-400">Linked By:</span>
-                              {isEditing ? (
-                                <select
-                                  value={loop.foreignKey}
-                                  onChange={(e) => updateLoopMapping(idx, 'foreignKey', e.target.value)}
-                                  className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded"
-                                >
-                                  {excelHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
+                            {/* 3. Config Area (Dynamic) */}
+                            <div className="col-span-5 flex items-center gap-2">
+                              {isGroupBy ? (
+                                // Group By Config
+                                <>
+                                  <span className="text-xs text-slate-400 whitespace-nowrap">Group By:</span>
+                                  {isEditing ? (
+                                    <select
+                                      value={loop.groupByColumn}
+                                      onChange={(e) => updateLoopMapping(idx, 'groupByColumn', e.target.value)}
+                                      className="flex-1 px-2 py-1.5 text-xs border border-slate-200 rounded bg-white"
+                                    >
+                                      {excelHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                  ) : (
+                                    <span className="text-xs font-medium bg-white px-2 py-1 border rounded">{loop.groupByColumn || '-'}</span>
+                                  )}
+                                </>
                               ) : (
-                                <span className="text-xs font-mono">{loop.foreignKey}</span>
+                                // Lookup Config
+                                <>
+                                  {isEditing ? (
+                                    <>
+                                      {/* Source */}
+                                      <select
+                                        value={loop.sourceSheet}
+                                        onChange={(e) => updateLoopMapping(idx, 'sourceSheet', e.target.value)}
+                                        className="w-1/2 px-2 py-1.5 text-xs border border-slate-200 rounded bg-white"
+                                        title="Source Sheet"
+                                      >
+                                        {Object.keys(allSheetsHeaders || {}).filter(s => s !== (isEditing ? editedMapping.primarySheet : mappingScheme.primarySheet)).map(s => (
+                                          <option key={s} value={s}>{s}</option>
+                                        ))}
+                                      </select>
+                                      <span className="text-slate-300">.</span>
+                                      {/* Key */}
+                                      <select
+                                        value={loop.foreignKey}
+                                        onChange={(e) => updateLoopMapping(idx, 'foreignKey', e.target.value)}
+                                        className="w-1/2 px-2 py-1.5 text-xs border border-slate-200 rounded bg-white"
+                                        title="Match Key"
+                                      >
+                                        {/* Should list Source Sheet Columns ideally, currently logic uses excelHeaders which is Primary. 
+                                            Wait, 'foreignKey' for Lookup usually means 'Linked By' column in Primary Sheet? 
+                                            The logic in loopProcessingService says: joinValue = mainRow[loop.foreignKey]. 
+                                            So yes, foreignKey is column in PRIMARY sheet. 
+                                            And we assume Source Sheet has SAME column name. 
+                                        */}
+                                        {excelHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                                      </select>
+                                    </>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-xs">
+                                      <span className="bg-white px-2 py-1 border rounded text-slate-600">{loop.sourceSheet}</span>
+                                      <span className="text-slate-300">on</span>
+                                      <span className="font-mono">{loop.foreignKey}</span>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
 
                             {/* Delete */}
                             {isEditing && (
                               <div className="col-span-1 text-right">
-                                <button onClick={() => removeLoopMapping(idx)} className="text-slate-400 hover:text-red-500">
+                                <button onClick={() => removeLoopMapping(idx)} className="text-slate-400 hover:text-red-500 transition-colors p-1.5 hover:bg-red-50 rounded">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
@@ -1201,9 +1223,17 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                         {isExpanded && (
                           <div className="bg-slate-50 p-3 border-t border-cyan-100 shadow-inner">
                             <div className="space-y-2 pl-8">
-                              <h5 className="text-xs font-bold text-slate-400 uppercase">Child Mappings ({loop.mappings.length})</h5>
+                              <div className="flex justify-between items-center mb-2">
+                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                  Inner Mappings ({loop.mappings.length})
+                                </h5>
+                                <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded border">
+                                  {isGroupBy ? 'Select columns from this sheet' : `Select columns from ${loop.sourceSheet || 'Source'}`}
+                                </span>
+                              </div>
+
                               {loop.mappings.map((m, mIdx) => (
-                                <div key={mIdx} className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded">
+                                <div key={mIdx} className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded shadow-sm">
                                   <ArrowRight className="w-3 h-3 text-slate-300" />
                                   {/* Child Placeholder */}
                                   <div className="flex-1">
@@ -1211,12 +1241,12 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                                       <select
                                         value={m.placeholder}
                                         onChange={(e) => updateLoopFieldMapping(idx, mIdx, 'placeholder', e.target.value)}
-                                        className="w-full text-xs p-1 border rounded"
+                                        className="w-full text-xs p-1.5 border border-slate-200 rounded bg-slate-50 hover:bg-white focus:bg-white focus:border-cyan-500 transition-colors"
                                       >
                                         {templatePlaceholders.map(p => <option key={p} value={p}>{p}</option>)}
                                       </select>
                                     ) : (
-                                      <code className="text-xs">{m.placeholder}</code>
+                                      <code className="text-xs font-medium text-slate-700">{m.placeholder}</code>
                                     )}
                                   </div>
                                   <span className="text-slate-300">→</span>
@@ -1226,17 +1256,22 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                                       <select
                                         value={m.excelColumn}
                                         onChange={(e) => updateLoopFieldMapping(idx, mIdx, 'excelColumn', e.target.value)}
-                                        className="w-full text-xs p-1 border rounded"
+                                        className="w-full text-xs p-1.5 border border-slate-200 rounded bg-slate-50 hover:bg-white focus:bg-white focus:border-cyan-500 transition-colors"
                                       >
-                                        {(allSheetsHeaders?.[loop.sourceSheet] || []).map(h => <option key={h} value={h}>{h}</option>)}
+                                        {/* 
+                                           Columns Source:
+                                           - If Group By: Use Primary Sheet Headers (excelHeaders)
+                                           - If Lookup: Use Source Sheet Headers (allSheetsHeaders[loop.sourceSheet])
+                                        */}
+                                        {(isGroupBy ? excelHeaders : (allSheetsHeaders?.[loop.sourceSheet || ''] || [])).map(h => <option key={h} value={h}>{h}</option>)}
                                       </select>
                                     ) : (
-                                      <span className="text-xs font-medium">{m.excelColumn}</span>
+                                      <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">{m.excelColumn}</span>
                                     )}
                                   </div>
                                   {/* Remove Child */}
                                   {isEditing && (
-                                    <button onClick={() => removeLoopFieldMapping(idx, mIdx)} className="text-slate-400 hover:text-red-500">
+                                    <button onClick={() => removeLoopFieldMapping(idx, mIdx)} className="text-slate-300 hover:text-red-500 p-1">
                                       <X className="w-3 h-3" />
                                     </button>
                                   )}
@@ -1246,7 +1281,7 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                               {isEditing && (
                                 <button
                                   onClick={() => addLoopFieldMapping(idx)}
-                                  className="text-xs text-cyan-600 hover:text-cyan-700 font-medium flex items-center gap-1 mt-2"
+                                  className="text-xs text-cyan-600 hover:text-cyan-700 font-medium flex items-center gap-1 mt-3 px-2 py-1 hover:bg-cyan-50 rounded transition-colors"
                                 >
                                   <Plus className="w-3 h-3" /> Add Field to Loop
                                 </button>

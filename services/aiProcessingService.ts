@@ -95,11 +95,21 @@ export const aiProcessingService = {
             
             Instructions:
             1. Analyze the semantic relationship between Placeholders and Excel Headers.
-            2. Identify Direct Mappings (1-to-1).
-            3. Identify Loop Mappings (1-to-Many) if any placeholder suggests a list (e.g. #Projects) and there is a matching sheet.
-            4. Identify Virtual Columns if a placeholder is standard (Date, UUID).
+            2. Identifying Output Structure: You must return a valid JSON object matching the 'MappingScheme' interface.
+            3. CRITICAL: Your JSON must include a "mappings" array. Do not just echo the input.
             
-            Output JSON format matching 'MappingScheme' interface.
+            Output JSON Format Example:
+            {
+              "explanation": "Brief reasoning",
+              "primarySheet": "Sheet1",
+              "mappings": [
+                { "placeholder": "{{Name}}", "excelColumn": "EmployeeName", "ruleType": "direct" },
+                { "placeholder": "{{Date}}", "excelColumn": "JoinDate", "format": "yyyy-MM-dd" }
+              ],
+              "unmappedPlaceholders": []
+            }
+            
+            IMPORTANT: Return ONLY the JSON code block. No conversational filler.
             `;
 
             // Calling the same endpoint. In real implementation, this should be a separate 'v2/ai/generate-mapping' or similar.
@@ -114,22 +124,87 @@ export const aiProcessingService = {
                 })
             });
 
-            if (!response.ok) return null;
+            if (!response.ok) throw new Error("Backend request failed");
             const data = await response.json();
 
-            // Assume the result is the JSON string of the scheme
+            // 1. Parsing Logic
+            let scheme: import('../types/documentTypes').MappingScheme | null = null;
             try {
-                const scheme = JSON.parse(data.result);
-                if (!scheme.mappings || !Array.isArray(scheme.mappings)) {
-                    scheme.mappings = [];
+                let jsonStr = data.result;
+                // Attempt to extract JSON from markdown code blocks
+                const jsonMatch = jsonStr.match(/```json\s*(\{[\s\S]*?\})\s*```/) || jsonStr.match(/```\s*(\{[\s\S]*?\})\s*```/);
+                if (jsonMatch) {
+                    jsonStr = jsonMatch[1];
+                } else if (jsonStr.indexOf('{') > -1) {
+                    // Fallback: try to find the JSON object boundaries
+                    const firstOpen = jsonStr.indexOf('{');
+                    const lastClose = jsonStr.lastIndexOf('}');
+                    if (lastClose > firstOpen) {
+                        jsonStr = jsonStr.substring(firstOpen, lastClose + 1);
+                    }
                 }
-                return scheme as import('../types/documentTypes').MappingScheme;
+
+                scheme = JSON.parse(jsonStr);
             } catch (e) {
-                console.error("Failed to parse AI Auto-Config result", e);
-                return null;
+                console.error("Failed to parse AI Auto-Config result", e, data.result);
+                // Don't return null yet, try fallback
             }
+
+            // 2. Client-Side Fallback (Local Heuristic)
+            // If AI failed or returned empty mappings, we do it ourselves.
+            if (!scheme || !scheme.mappings || !Array.isArray(scheme.mappings) || scheme.mappings.length === 0) {
+                console.warn("AI returned empty/invalid mappings, using Local Heuristic Fallback.");
+                const fallbackMappings: import('../types/documentTypes').FieldMapping[] = [];
+                const fallbackUnmapped: string[] = [];
+
+                // Simple Exact/Fuzzy Match Logic
+                const allHeaders = Object.values(allSheetsHeaders).flat();
+
+                placeholders.forEach(ph => {
+                    const cleanPh = ph.replace(/[{}]/g, '').trim();
+                    // 1. Exact Name Match
+                    const exactMatch = allHeaders.find(h => h === cleanPh);
+                    if (exactMatch) {
+                        fallbackMappings.push({
+                            placeholder: ph,
+                            excelColumn: exactMatch,
+                            ruleType: 'direct'
+                        });
+                        return;
+                    }
+
+                    // 2. Fuzzy Match (Contains)
+                    const fuzzyMatch = allHeaders.find(h => h.includes(cleanPh) || cleanPh.includes(h));
+                    if (fuzzyMatch) {
+                        fallbackMappings.push({
+                            placeholder: ph,
+                            excelColumn: fuzzyMatch,
+                            ruleType: 'direct' // Mark as direct for now
+                        });
+                        return;
+                    }
+
+                    fallbackUnmapped.push(ph);
+                });
+
+                scheme = {
+                    explanation: "AI Service Unavailable or returned empty. Using Local Best-Effort Matching.",
+                    primarySheet: Object.keys(allSheetsHeaders)[0] || 'Sheet1',
+                    filterCondition: null,
+                    mappings: fallbackMappings,
+                    unmappedPlaceholders: fallbackUnmapped,
+                    confidence: 0.5
+                };
+            }
+
+            // Safety check
+            if (!scheme.mappings) scheme.mappings = [];
+            return scheme as import('../types/documentTypes').MappingScheme;
+
         } catch (error) {
             console.error('Auto Config Failed:', error);
+            // Even on error, try to return a Local Fallback instead of null?
+            // For now, return null to show error alert.
             return null;
         }
     },

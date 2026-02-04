@@ -202,7 +202,10 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
               primarySheetData={excelData?.sheets?.[excelData.currentSheetName]}
               allSheetsHeaders={allSheetsHeaders}
               onAutoFix={(ph) => {
-                alert(`Repairing ${ph} (Coming Soon)`);
+                setViewMode('classic');
+                // Future: We could scroll to the specific row in MappingEditor
+                // For now, just switching helps the user find it manually
+                setTimeout(() => alert(`请在映射编辑器中为 "${ph}" 手动选择列或创建虚拟列`), 100);
               }}
             />
           ) : (
