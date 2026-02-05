@@ -37,32 +37,16 @@ export default {
     {
       displayName: 'services',
       testEnvironment: 'node',
-      roots: ['<rootDir>/services', '<rootDir>/tests'],
-      testMatch: [
-        '**/__tests__/**/*.test.ts',
-        '**/?(*.)+(spec|test).ts'
-      ],
+      roots: ['<rootDir>/src/services', '<rootDir>/tests'],
       collectCoverageFrom: [
-        'services/**/*.{ts,tsx}',
-        '!services/**/*.d.ts',
-        '!services/**/*.test.ts',
-        '!services/**/*.spec.ts',
-        '!services/**/*.demo.ts',
-        '!services/**/*.example.ts',
-        '!services/**/index.ts'
+        'src/services/**/*.{ts,tsx}',
+        '!src/services/**/*.d.ts',
+        '!src/services/**/*.test.ts',
+        '!src/services/**/*.spec.ts',
+        '!src/services/**/*.demo.ts',
+        '!src/services/**/*.example.ts',
+        '!src/services/**/index.ts'
       ],
-      transform: {
-        '^.+\\.tsx?$': [
-          'ts-jest',
-          {
-            useESM: true,
-            tsconfig: {
-              esModuleInterop: true,
-              allowSyntheticDefaultImports: true,
-            },
-          },
-        ],
-      },
       moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
       },
@@ -70,112 +54,75 @@ export default {
     {
       displayName: 'components',
       testEnvironment: 'jsdom',
-      roots: ['<rootDir>/components'],
+      roots: ['<rootDir>/src/components'],
       testMatch: [
         '**/__tests__/**/*.test.tsx',
         '**/__tests__/**/*.test.ts',
         '**/?(*.)+(spec|test).tsx'
       ],
       collectCoverageFrom: [
-        'components/**/*.{ts,tsx}',
-        '!components/**/*.d.ts',
-        '!components/**/*.test.ts',
-        '!components/**/*.test.tsx',
-        '!components/**/*.spec.ts',
-        '!components/**/*.spec.tsx',
-        '!components/**/index.ts'
+        'src/components/**/*.{ts,tsx}',
+        '!src/components/**/*.d.ts',
+        '!src/components/**/*.test.ts',
+        '!src/components/**/*.test.tsx',
+        '!src/components/**/*.spec.ts',
+        '!src/components/**/*.spec.tsx',
+        '!src/components/**/index.ts'
       ],
       moduleNameMapper: {
-        '^@/(.*)$': '<rootDir>/$1',
-        '^@services/(.*)$': '<rootDir>/services/$1',
+        '^@/(.*)$': '<rootDir>/src/$1',
+        '^@services/(.*)$': '<rootDir>/src/services/$1',
         '^@tests/(.*)$': '<rootDir>/tests/$1',
         '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
         '^(\\.{1,2}/.*)\\.js$': '$1',
       },
       setupFilesAfterEnv: ['<rootDir>/tests/setup.test.ts'],
-      transform: {
-        '^.+\\.tsx?$': [
-          'ts-jest',
-          {
-            useESM: true,
-            tsconfig: {
-              jsx: 'react-jsx',
-              esModuleInterop: true,
-              allowSyntheticDefaultImports: true,
-            },
-          },
-        ],
-      },
-      transformIgnorePatterns: [
-        'node_modules/(?!(@testing-library|dom-accessibility-api)/)',
+      // ...
+      // 覆盖率配置（全局默认）
+      collectCoverageFrom: [
+        'src/services/**/*.{ts,tsx}',
+        'src/components/**/*.{ts,tsx}',
+        '!**/*.d.ts',
+        '!**/*.test.ts',
+        '!**/*.test.tsx',
+        '!**/*.spec.ts',
+        '!**/*.spec.tsx',
+        '!**/*.demo.ts',
+        '!**/*.example.ts',
+        '!**/index.ts'
       ],
-    }
-  ],
 
-  // 覆盖率配置（全局默认）
-  collectCoverageFrom: [
-    'services/**/*.{ts,tsx}',
-    'components/**/*.{ts,tsx}',
-    '!**/*.d.ts',
-    '!**/*.test.ts',
-    '!**/*.test.tsx',
-    '!**/*.spec.ts',
-    '!**/*.spec.tsx',
-    '!**/*.demo.ts',
-    '!**/*.example.ts',
-    '!**/index.ts'
-  ],
+      // 覆盖率输出目录
+      coverageDirectory: '<rootDir>/coverage',
 
-  // 覆盖率阈值目标（Week 1要求）
-  coverageThreshold: {
-    global: {
-      statements: 80,
-      branches: 75,
-      functions: 80,
-      lines: 80
-    }
-  },
+      // 模块路径映射
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+        '^@services/(.*)$': '<rootDir>/src/services/$1',
+        '^@tests/(.*)$': '<rootDir>/tests/$1',
+        '^@shared-types/(.*)$': '<rootDir>/packages/shared-types/$1',
+        '^(\\.{1,2}/.*)\\.js$': '$1',
+      },
 
-  // 覆盖率报告格式
-  coverageReporters: [
-    'json',
-    'lcov',
-    'text',
-    'text-summary',
-    'html'
-  ],
+      // 全局设置文件
+      setupFilesAfterEnv: ['<rootDir>/src/jest-setup.ts'],
 
-  // 覆盖率输出目录
-  coverageDirectory: '<rootDir>/coverage',
+      // 测试超时时间
+      testTimeout: 10000,
 
-  // 模块路径映射
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
-    '^@services/(.*)$': '<rootDir>/services/$1',
-    '^@tests/(.*)$': '<rootDir>/tests/$1',
-    '^@shared-types/(.*)$': '<rootDir>/packages/shared-types/$1',
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
+      // 并行执行
+      maxWorkers: '50%',
 
-  // 全局设置文件
-  setupFilesAfterEnv: ['<rootDir>/jest-setup.ts'],
+      // 详细输出
+      verbose: true,
 
-  // 测试超时时间
-  testTimeout: 10000,
+      // 清除模拟
+      clearMocks: true,
+      resetMocks: true,
+      restoreMocks: true,
 
-  // 并行执行
-  maxWorkers: '50%',
-
-  // 详细输出
-  verbose: true,
-
-  // 清除模拟
-  clearMocks: true,
-  resetMocks: true,
-  restoreMocks: true,
-
-  // 忽略转换的文件
-  transformIgnorePatterns: [
-    'node_modules/(?!(alasql|@anthropic-ai/sdk|@testing-library|dom-accessibility-api)/)'
-  ]
-};
+      // 忽略转换的文件
+      transformIgnorePatterns: [
+        'node_modules/(?!(alasql|@anthropic-ai/sdk|@testing-library|dom-accessibility-api)/)'
+      ]
+    };

@@ -8,14 +8,14 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AgenticOrchestrator } from '../../services/agentic/AgenticOrchestrator';
+import { AgenticOrchestrator } from '../../src/services/agentic/AgenticOrchestrator';
 import type {
   DataFileInfo,
   OrchestratorConfig,
   MultiStepTask,
   TaskResult
-} from '../../types/agenticTypes';
-import { logger } from '../../utils/logger';
+} from '../../src/types/agenticTypes';
+import { logger } from '../../src/utils/logger';
 
 /**
  * 智能处理请求接口

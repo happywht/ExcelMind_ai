@@ -12,9 +12,9 @@
  * @date 2026-01-24
  */
 
-import { getPyodideService } from '../../services/wasm/PyodideService';
-import { getFileSystemService } from '../../services/wasm/FileSystemService';
-import { getExecutionEngine } from '../../services/wasm/ExecutionEngine';
+import { getPyodideService } from '../../src/services/wasm/PyodideService';
+import { getFileSystemService } from '../../src/services/wasm/FileSystemService';
+import { getExecutionEngine } from '../../src/services/wasm/ExecutionEngine';
 
 // ============================================================================
 // 类型定义

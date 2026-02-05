@@ -11,8 +11,8 @@ import {
   DataQualityAnalyzeRequest,
   DataQualitySuggestionsRequest,
   DataQualityCleanRequest
-} from '../../../types/apiTypes';
-import { createMockRequest, createMockResponse } from '../../../utils/testHelpers';
+} from '../../../src/types/apiTypes';
+import { createMockRequest, createMockResponse } from '../../../src/utils/testHelpers';
 
 // ============================================================================
 // Mock服务

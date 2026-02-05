@@ -194,12 +194,12 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         // 配置路径别名，解决相对路径解析问题
-        '@': path.resolve(__dirname, '.'),
-        '@config': path.resolve(__dirname, './config'),
-        '@services': path.resolve(__dirname, './services'),
-        '@components': path.resolve(__dirname, './components'),
-        '@types': path.resolve(__dirname, './types'),
-        '@utils': path.resolve(__dirname, './utils'),
+        '@': path.resolve(__dirname, './src'),
+        '@config': path.resolve(__dirname, './src/config'),
+        '@services': path.resolve(__dirname, './src/services'),
+        '@components': path.resolve(__dirname, './src/components'),
+        '@types': path.resolve(__dirname, './src/types'),
+        '@utils': path.resolve(__dirname, './src/utils'),
         '@excelmind/shared-types': path.resolve(__dirname, './packages/shared-types/dist'),
       }
     },
@@ -229,8 +229,8 @@ export default defineConfig(({ mode }) => {
 
             // UI工具库
             if (id.includes('node_modules/clsx') ||
-                id.includes('node_modules/tailwind-merge') ||
-                id.includes('node_modules/@tanstack/react-query')) {
+              id.includes('node_modules/tailwind-merge') ||
+              id.includes('node_modules/@tanstack/react-query')) {
               return 'ui-utils-vendor';
             }
 
@@ -241,8 +241,8 @@ export default defineConfig(({ mode }) => {
 
             // Word处理库（按需加载）
             if (id.includes('node_modules/docx') ||
-                id.includes('node_modules/pizzip') ||
-                id.includes('node_modules/mammoth')) {
+              id.includes('node_modules/pizzip') ||
+              id.includes('node_modules/mammoth')) {
               return 'docx-vendor';
             }
 

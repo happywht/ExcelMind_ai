@@ -8,8 +8,8 @@
  */
 
 import { ExecutionContext, ExtendedVirtualFileInfo, GraphNode, GraphEdge, ExecutionStage, StageInfo, LogEntry } from '../../components/VirtualWorkspace/types';
-import { QueryResult } from '../../services/quality/aiOutputValidator';
-import { FileRole, RelationType } from '../../services/infrastructure/vfs/VirtualFileSystem/types';
+import { QueryResult } from '../../src/services/quality/aiOutputValidator';
+import { FileRole, RelationType } from '../../src/services/infrastructure/vfs/VirtualFileSystem/types';
 
 // ============================================================================
 // ExecutionContext 工厂函数

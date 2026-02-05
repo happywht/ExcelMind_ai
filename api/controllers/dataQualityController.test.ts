@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { Request, Response } from 'express';
 import { DataQualityController } from './dataQualityController';
-import { ApiErrorCode } from '../../types/errorCodes';
+import { ApiErrorCode } from '../../src/types/errorCodes';
 
 describe('DataQualityController', () => {
   let controller: DataQualityController;

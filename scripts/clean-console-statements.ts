@@ -293,8 +293,8 @@ function addLoggerImport(content: string): string {
   // 检查是否已经导入logger
   if (content.includes("from '@/utils/logger'") ||
       content.includes('from "./utils/logger"') ||
-      content.includes('from "../utils/logger"') ||
-      content.includes("from '../../utils/logger'")) {
+      content.includes('from "../src/utils/logger"') ||
+      content.includes("from '../../src/utils/logger'")) {
     return content;
   }
 

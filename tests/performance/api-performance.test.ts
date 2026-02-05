@@ -16,8 +16,8 @@ import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createDataQualityController } from '../../api/controllers/dataQualityController';
-import { WebSocketService } from '../../services/websocket/websocketService';
-import { InMemoryStorageService } from '../../services/storage/inMemoryStorageService';
+import { WebSocketService } from '../../src/services/websocket/websocketService';
+import { InMemoryStorageService } from '../../src/services/storage/inMemoryStorageService';
 
 // ============================================================================
 // 测试基础设施

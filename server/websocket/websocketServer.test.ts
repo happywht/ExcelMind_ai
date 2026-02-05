@@ -7,8 +7,8 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { WebSocket } from 'ws';
 import { WebSocketServer } from './websocketServer';
-import { getWebSocketConfig } from '../../config/websocket.config';
-import { MessageType } from '../../types/websocket';
+import { getWebSocketConfig } from '../../src/config/websocket.config';
+import { MessageType } from '../../src/types/websocket';
 
 // ============================================================================
 // 测试配置

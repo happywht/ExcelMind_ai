@@ -105,9 +105,9 @@ const validateProxyUsage = () => {
   console.log('\n🔍 验证2: 检查前端是否使用AI代理服务...');
 
   const frontendComponents = [
-    { file: 'components/SmartExcel.tsx', expectedImport: "from '../services/aiProxyService'" },
-    { file: 'components/FormulaGen.tsx', expectedImport: "from '../services/aiProxyService'" },
-    { file: 'components/KnowledgeChat.tsx', expectedImport: "from '../services/aiProxyService'" }
+    { file: 'components/SmartExcel.tsx', expectedImport: "from '../src/services/aiProxyService'" },
+    { file: 'components/FormulaGen.tsx', expectedImport: "from '../src/services/aiProxyService'" },
+    { file: 'components/KnowledgeChat.tsx', expectedImport: "from '../src/services/aiProxyService'" }
   ];
 
   for (const { file, expectedImport } of frontendComponents) {
@@ -131,7 +131,7 @@ const validateProxyUsage = () => {
         true,
         `正确使用aiProxyService`
       );
-    } else if (content.includes("from '../services/zhipuService'")) {
+    } else if (content.includes("from '../src/services/zhipuService'")) {
       addResult(
         '架构',
         `检查${file}使用代理服务`,

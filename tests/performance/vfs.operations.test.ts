@@ -8,8 +8,8 @@
 
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { PerformanceTestRunner, PerformanceTestHelpers } from './PerformanceTestRunner';
-import { getVirtualFileSystem } from '../../services/infrastructure/vfs/VirtualFileSystem';
-import { FileRole } from '../../services/infrastructure/vfs/VirtualFileSystem/types';
+import { getVirtualFileSystem } from '../../src/services/infrastructure/vfs/VirtualFileSystem';
+import { FileRole } from '../../src/services/infrastructure/vfs/VirtualFileSystem/types';
 
 describe('虚拟文件系统性能测试', () => {
   const runner = new PerformanceTestRunner();

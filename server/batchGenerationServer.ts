@@ -14,14 +14,14 @@
 
 import { logger } from '@/utils/logger';
 import express, { Express } from 'express';
-import { BatchGenerationScheduler, DefaultDocumentGenerator } from '../services/BatchGenerationScheduler';
-import { TemplateManager } from '../services/TemplateManager';
+import { BatchGenerationScheduler, DefaultDocumentGenerator } from '../src/services/BatchGenerationScheduler';
+import { TemplateManager } from '../src/services/TemplateManager';
 import { WebSocketServer } from './websocket/websocketServer';
 import { ProgressBroadcaster } from './websocket/progressBroadcaster';
 import { createBatchGenerationController } from '../api/controllers/batchGenerationController';
-import { createLocalStorageService } from '../services/storage/LocalStorageService';
-import { generateWithDocxtemplater } from '../services/docxtemplaterService';
-import type { WebSocketServerConfig } from '../types/websocket';
+import { createLocalStorageService } from '../src/services/storage/LocalStorageService';
+import { generateWithDocxtemplater } from '../src/services/docxtemplaterService';
+import type { WebSocketServerConfig } from '../src/types/websocket';
 
 // ============================================================================
 // 配置接口

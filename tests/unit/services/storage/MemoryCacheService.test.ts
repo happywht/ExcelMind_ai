@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { MemoryCacheService, createMemoryCacheService } from '../../../services/storage/MemoryCacheService';
-import type { MemoryCacheConfig } from '../../../types/storage';
+import { MemoryCacheService, createMemoryCacheService } from '../../../src/services/storage/MemoryCacheService';
+import type { MemoryCacheConfig } from '../../../src/types/storage';
 
 describe('MemoryCacheService', () => {
   let service: MemoryCacheService;

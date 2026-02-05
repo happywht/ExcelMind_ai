@@ -10,7 +10,7 @@ import {
   ValidationError,
   NotFoundError,
   InternalServerError
-} from '../../../types/errors';
+} from '../../../src/types/errors';
 
 describe('Phase 2: P0-3 错误处理标准化', () => {
   describe('ValidationError', () => {

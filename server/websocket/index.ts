@@ -29,12 +29,12 @@ export type {
   WebSocketServerConfig,
   WebSocketServerOptions,
   WebSocketServerStats,
-} from '../../types/websocket';
+} from '../../src/types/websocket';
 
 export type {
   ProgressBroadcasterConfig,
   ProgressUpdateEvent,
-} from '../../types/websocket';
+} from '../../src/types/websocket';
 
 // ============================================================================
 // 枚举和错误类
@@ -46,7 +46,7 @@ export {
   ConnectionRejectedError,
   AuthenticationError,
   RateLimitError,
-} from '../../types/websocket';
+} from '../../src/types/websocket';
 
 // ============================================================================
 // 默认导出

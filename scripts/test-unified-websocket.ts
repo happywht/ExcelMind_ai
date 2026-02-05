@@ -6,10 +6,10 @@
  * @version 1.0.0
  */
 
-import { IWebSocket } from '../services/websocket/IWebSocket';
-import { ServerWebSocket } from '../services/websocket/ServerWebSocket';
-import { ClientWebSocket } from '../services/websocket/ClientWebSocket';
-import { WebSocketService, getWebSocketService, createServerWebSocketService, createClientWebSocketService } from '../services/websocket/websocketService';
+import { IWebSocket } from '../src/services/websocket/IWebSocket';
+import { ServerWebSocket } from '../src/services/websocket/ServerWebSocket';
+import { ClientWebSocket } from '../src/services/websocket/ClientWebSocket';
+import { WebSocketService, getWebSocketService, createServerWebSocketService, createClientWebSocketService } from '../src/services/websocket/websocketService';
 
 // ============================================================================
 // 测试辅助函数

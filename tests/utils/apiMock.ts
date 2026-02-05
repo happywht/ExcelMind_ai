@@ -12,7 +12,7 @@ import {
   CleaningSuggestion,
   TemplateInfo,
   BatchGenerationTask
-} from '../../types';
+} from '../../src/types';
 
 // ============================================================================
 // AI服务Mock

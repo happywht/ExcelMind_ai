@@ -12,7 +12,7 @@ import type {
   DataQualityAnalysis,
   Template,
   BatchGenerationResponse,
-} from '../../types/apiTypes';
+} from '../../src/types/apiTypes';
 
 // 测试配置
 const TEST_PORT = 3001;

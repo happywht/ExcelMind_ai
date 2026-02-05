@@ -15,7 +15,7 @@ import {
   NotFoundError,
   TaskNotFoundError,
   InternalServerError
-} from '../../types/errors';
+} from '../../src/types/errors';
 
 // 创建测试应用
 function createTestApp(): Application {

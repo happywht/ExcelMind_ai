@@ -1,4 +1,4 @@
-import { parseLLMJson } from '../services/utils/jsonUtils';
+import { parseLLMJson } from '../src/services/utils/jsonUtils';
 
 describe('Robust JSON Parsing', () => {
     test('should parse standard JSON', () => {

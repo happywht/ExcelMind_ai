@@ -13,10 +13,10 @@
  */
 
 import { describe, test, expect, beforeAll, afterEach } from '@jest/globals';
-import { DataQualityAnalyzer } from '../../services/ai/dataQualityAnalyzer';
-import { AIServiceAdapter } from '../../services/agentic/aiServiceAdapter';
-import { InMemoryCacheService } from '../../services/cache/inMemoryCacheService';
-import { ExcelData } from '../../types';
+import { DataQualityAnalyzer } from '../../src/services/ai/dataQualityAnalyzer';
+import { AIServiceAdapter } from '../../src/services/agentic/aiServiceAdapter';
+import { InMemoryCacheService } from '../../src/services/cache/inMemoryCacheService';
+import { ExcelData } from '../../src/types';
 
 // ============================================================================
 // 测试基础设施

@@ -16,7 +16,7 @@ import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { createWebSocketServer } from '../../server/websocket/websocketServer';
-import { WebSocketService } from '../../services/websocket/websocketService';
+import { WebSocketService } from '../../src/services/websocket/websocketService';
 
 // ============================================================================
 // 测试配置

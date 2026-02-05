@@ -7,7 +7,7 @@
 
 import { logger } from '@/utils/logger';
 import { Request, Response, NextFunction } from 'express';
-import { ApiErrorCode, createApiErrorResponse } from '../../types/errorCodes';
+import { ApiErrorCode, createApiErrorResponse } from '../../src/types/errorCodes';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

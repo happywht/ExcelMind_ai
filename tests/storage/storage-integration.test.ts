@@ -14,12 +14,12 @@ import {
   IndexedDBService,
   ClientStateManager,
   SyncService,
-} from '../../services/infrastructure/storage';
+} from '../../src/services/infrastructure/storage';
 import type {
   ExecutionState,
   UserSettings,
   StorageResult,
-} from '../../types/storageTypes';
+} from '../../src/types/storageTypes';
 
 describe('外部化状态存储集成测试', () => {
   describe('类型定义验证', () => {

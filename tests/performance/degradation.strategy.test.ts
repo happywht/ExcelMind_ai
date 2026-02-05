@@ -8,7 +8,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { PerformanceTestRunner, PerformanceTestHelpers } from './PerformanceTestRunner';
-import { DegradationManager } from '../../services/infrastructure/degradation/DegradationManager';
+import { DegradationManager } from '../../src/services/infrastructure/degradation/DegradationManager';
 
 describe('AI 降级策略性能测试', () => {
   const runner = new PerformanceTestRunner();

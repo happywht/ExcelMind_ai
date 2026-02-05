@@ -6,7 +6,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { zhipuService } from '../../services/zhipuService';
+import { zhipuService } from '../../src/services/zhipuService';
 
 /**
  * AI请求数据接口

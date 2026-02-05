@@ -5,12 +5,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { LocalStorageService, createLocalStorageService } from '../services/storage/LocalStorageService';
-import { MemoryCacheService, createMemoryCacheService } from '../services/storage/MemoryCacheService';
-import { IndexedDBStorageService, createIndexedDBStorageService } from '../services/storage/IndexedDBStorageService';
-import { StorageServiceFactory, createStorageServiceFactory } from '../services/storage/StorageServiceFactory';
-import type { IStorageService } from '../types/storage';
-import { StorageType } from '../types/storage';
+import { LocalStorageService, createLocalStorageService } from '../src/services/storage/LocalStorageService';
+import { MemoryCacheService, createMemoryCacheService } from '../src/services/storage/MemoryCacheService';
+import { IndexedDBStorageService, createIndexedDBStorageService } from '../src/services/storage/IndexedDBStorageService';
+import { StorageServiceFactory, createStorageServiceFactory } from '../src/services/storage/StorageServiceFactory';
+import type { IStorageService } from '../src/types/storage';
+import { StorageType } from '../src/types/storage';
 
 // 测试结果统计
 const testResults = {

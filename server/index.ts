@@ -16,9 +16,9 @@ import express from 'express';
 import { createServer } from 'http';
 import { WebSocketServer } from './websocket/websocketServer';
 import { ProgressBroadcaster } from './websocket/progressBroadcaster';
-import { getWebSocketConfig } from '../config/websocket.config';
-import type { BatchGenerationScheduler } from '../services/BatchGenerationScheduler';
-import type { BatchGenerationTask } from '../types/templateGeneration';
+import { getWebSocketConfig } from '../src/config/websocket.config';
+import type { BatchGenerationScheduler } from '../src/services/BatchGenerationScheduler';
+import type { BatchGenerationTask } from '../src/types/templateGeneration';
 import aiRoutes from './routes/ai';
 
 // ============================================================================

@@ -8,16 +8,16 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { DataQualityAnalyzer } from '../../../services/ai/dataQualityAnalyzer';
-import { CleaningRecommendationEngine } from '../../../services/ai/cleaningRecommendationEngine';
-import { MockAIService, MockCacheService } from '../../../utils/apiMock';
+import { DataQualityAnalyzer } from '../../../src/services/ai/dataQualityAnalyzer';
+import { CleaningRecommendationEngine } from '../../../src/services/ai/cleaningRecommendationEngine';
+import { MockAIService, MockCacheService } from '../../../src/utils/apiMock';
 import {
   createMockExcelData,
   createTestDataWithMissingValues,
   createTestDataWithOutliers,
   createTestDataWithDuplicates,
   createCleanTestData
-} from '../../../utils/testHelpers';
+} from '../../../src/utils/testHelpers';
 
 // ============================================================================
 // 测试套件

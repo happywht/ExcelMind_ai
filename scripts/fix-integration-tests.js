@@ -201,7 +201,7 @@ import { setupAnthropicMock, mockAIResponse } from '../tests/helpers/mockAI';
   if (!content.includes('tests/helpers/mockAI')) {
     content = content.replace(
       /"(\.\/\.\.\/types)"/,
-      `"../tests/helpers/mockAI"${importStatement}"../types"`
+      `"../tests/helpers/mockAI"${importStatement}"../src/types"`
     );
   }
 

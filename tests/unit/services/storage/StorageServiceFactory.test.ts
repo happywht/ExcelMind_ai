@@ -7,10 +7,10 @@ import {
   StorageServiceFactory,
   createStorageServiceFactory,
   createDefaultStorageService
-} from '../../../services/storage/StorageServiceFactory';
-import { StorageType } from '../../../types/storage';
-import { LocalStorageService } from '../../../services/storage/LocalStorageService';
-import { MemoryCacheService } from '../../../services/storage/MemoryCacheService';
+} from '../../../src/services/storage/StorageServiceFactory';
+import { StorageType } from '../../../src/types/storage';
+import { LocalStorageService } from '../../../src/services/storage/LocalStorageService';
+import { MemoryCacheService } from '../../../src/services/storage/MemoryCacheService';
 
 describe('StorageServiceFactory', () => {
   let factory: StorageServiceFactory;

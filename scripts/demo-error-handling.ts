@@ -16,9 +16,9 @@ import {
   InternalServerError,
   isAppError,
   toAppError
-} from '../types/errors';
+} from '../src/types/errors';
 
-import { ErrorHandler } from '../utils/errorHandler';
+import { ErrorHandler } from '../src/utils/errorHandler';
 
 console.log('========================================');
 console.log('错误处理系统演示');

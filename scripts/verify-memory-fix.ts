@@ -8,9 +8,9 @@
  * 4. 缓存淘汰
  */
 
-import { DataQualityAnalyzer } from '../services/ai/dataQualityAnalyzer';
-import { MemoryCacheService } from '../services/storage/MemoryCacheService';
-import type { ExcelData } from '../types';
+import { DataQualityAnalyzer } from '../src/services/ai/dataQualityAnalyzer';
+import { MemoryCacheService } from '../src/services/storage/MemoryCacheService';
+import type { ExcelData } from '../src/types';
 
 // ============================================================================
 // 测试数据生成

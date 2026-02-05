@@ -13,7 +13,7 @@ import type {
   AuditAlertMessage,
   PerformanceAlertMessage,
   WebSocketSubscribeMessage,
-} from '../types/apiTypes';
+} from '../src/types/apiTypes';
 
 /**
  * WebSocket 客户端连接

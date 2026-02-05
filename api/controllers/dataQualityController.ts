@@ -21,13 +21,13 @@ import {
   ApiResponseSuccess,
   ApiErrorResponse,
   ApiResponseMeta,
-} from '../../types/apiTypes';
-import { ApiErrorCode, createApiErrorResponse } from '../../types/errorCodes';
-import { DataQualityAnalyzer } from '../../services/ai/dataQualityAnalyzer';
-import { CleaningRecommendationEngine } from '../../services/ai/cleaningRecommendationEngine';
-import { AIServiceAdapter } from '../../services/agentic/aiServiceAdapter';
-import { IStorageService } from '../../types/dataQuality';
-import { WebSocketService } from '../../services/websocket/websocketService';
+} from '../../src/types/apiTypes';
+import { ApiErrorCode, createApiErrorResponse } from '../../src/types/errorCodes';
+import { DataQualityAnalyzer } from '../../src/services/ai/dataQualityAnalyzer';
+import { CleaningRecommendationEngine } from '../../src/services/ai/cleaningRecommendationEngine';
+import { AIServiceAdapter } from '../../src/services/agentic/aiServiceAdapter';
+import { IStorageService } from '../../src/types/dataQuality';
+import { WebSocketService } from '../../src/services/websocket/websocketService';
 
 /**
  * WebSocket进度回调

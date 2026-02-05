@@ -164,12 +164,12 @@ function determineLoggerMethod(
 function hasLoggerImport(content: string): boolean {
   return (
     content.includes("from '@/utils/logger'") ||
-    content.includes("from '../utils/logger'") ||
-    content.includes("from '../../utils/logger'") ||
+    content.includes("from '../src/utils/logger'") ||
+    content.includes("from '../../src/utils/logger'") ||
     content.includes("from './utils/logger'") ||
     content.includes('from "@/utils/logger"') ||
-    content.includes('from "../utils/logger"') ||
-    content.includes('from "../../utils/logger"') ||
+    content.includes('from "../src/utils/logger"') ||
+    content.includes('from "../../src/utils/logger"') ||
     content.includes('from "./utils/logger"')
   );
 }

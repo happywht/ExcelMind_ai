@@ -9,7 +9,7 @@
  * - 自动降级
  */
 
-import { createDefaultStorageService } from '../services/storage';
+import { createDefaultStorageService } from '../src/services/storage';
 
 async function testStorage() {
   console.log('🧪 开始测试存储服务...\n');

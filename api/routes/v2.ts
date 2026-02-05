@@ -23,8 +23,8 @@ import { aiRouter } from './ai';
 import { smartProcessRouter } from './smartProcess';
 
 // 导入服务
-import { createLocalStorageService } from '../../services/storage/LocalStorageService';
-import { WebSocketService } from '../../services/websocket/websocketService';
+import { createLocalStorageService } from '../../src/services/storage/LocalStorageService';
+import { WebSocketService } from '../../src/services/websocket/websocketService';
 
 // 导入中间件
 import {

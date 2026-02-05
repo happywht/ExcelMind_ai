@@ -8,9 +8,9 @@
 
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { PerformanceTestRunner } from './PerformanceTestRunner';
-import { StateManager } from '../../services/infrastructure/storage/StateManager';
-import { ClientStateManager } from '../../services/infrastructure/storage/ClientStateManager';
-import { SyncService } from '../../services/infrastructure/storage/SyncService';
+import { StateManager } from '../../src/services/infrastructure/storage/StateManager';
+import { ClientStateManager } from '../../src/services/infrastructure/storage/ClientStateManager';
+import { SyncService } from '../../src/services/infrastructure/storage/SyncService';
 
 /**
  * 测试用执行状态接口

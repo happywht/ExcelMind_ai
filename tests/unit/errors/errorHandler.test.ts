@@ -19,8 +19,8 @@ import {
   AIServiceError,
   isAppError,
   toAppError
-} from '../../../types/errors';
-import { ErrorHandler } from '../../../utils/errorHandler';
+} from '../../../src/types/errors';
+import { ErrorHandler } from '../../../src/utils/errorHandler';
 
 describe('错误类层级测试', () => {
   describe('ValidationError', () => {

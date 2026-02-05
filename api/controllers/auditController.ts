@@ -17,12 +17,12 @@ import {
   ApiResponseSuccess,
   PaginatedResponse,
   ApiErrorResponse,
-} from '../../types/apiTypes';
-import { ApiErrorCode, createApiErrorResponse } from '../../types/errorCodes';
+} from '../../src/types/apiTypes';
+import { ApiErrorCode, createApiErrorResponse } from '../../src/types/errorCodes';
 
 // 导入服务层（这些服务需要在后续实现）
-// import { AuditRuleEngine } from '../../services/audit/AuditRuleEngine';
-// import { AuditReportGenerator } from '../../services/audit/AuditReportGenerator';
+// import { AuditRuleEngine } from '../../src/services/audit/AuditRuleEngine';
+// import { AuditReportGenerator } from '../../src/services/audit/AuditReportGenerator';
 
 /**
  * 审计控制器

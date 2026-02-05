@@ -5,7 +5,7 @@
  * 测试所有7个AI功能模块
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../src/utils/logger';
 
 const API_BASE_URL = 'http://localhost:3001';
 const API_PREFIX = '/api/v2';

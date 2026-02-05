@@ -13,7 +13,7 @@ import type {
   Template,
   BatchGenerationResponse,
   ApiResponseSuccess,
-} from '../types/apiTypes';
+} from '../src/types/apiTypes';
 
 const app = express();
 const PORT = 3002;

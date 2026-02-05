@@ -18,17 +18,17 @@ import {
   GenerationStatus,
   ApiResponseSuccess,
   ApiErrorResponse,
-} from '../../types/apiTypes';
-import { ApiErrorCode, createApiErrorResponse } from '../../types/errorCodes';
+} from '../../src/types/apiTypes';
+import { ApiErrorCode, createApiErrorResponse } from '../../src/types/errorCodes';
 
 // 导入服务层
-import { BatchGenerationScheduler } from '../../services/BatchGenerationScheduler';
-import { TemplateManager } from '../../services/TemplateManager';
+import { BatchGenerationScheduler } from '../../src/services/BatchGenerationScheduler';
+import { TemplateManager } from '../../src/services/TemplateManager';
 import { WebSocketServer } from '../../server/websocket/websocketServer';
 import { ProgressBroadcaster } from '../../server/websocket/progressBroadcaster';
-import { createLocalStorageService } from '../../services/storage/LocalStorageService';
-import type { BatchGenerationTask } from '../../types/templateGeneration';
-import { TaskStatus as GenerationTaskStatus } from '../../types/templateGeneration';
+import { createLocalStorageService } from '../../src/services/storage/LocalStorageService';
+import type { BatchGenerationTask } from '../../src/types/templateGeneration';
+import { TaskStatus as GenerationTaskStatus } from '../../src/types/templateGeneration';
 
 /**
  * 批量生成任务状态（API响应用）

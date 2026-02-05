@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { generateDataProcessingCode } from '../../services/aiProxyService';
+import { generateDataProcessingCode } from '../../src/services/aiProxyService';
 
 describe('AI代理服务 - 集成测试', () => {
   describe('安全性验证', () => {
@@ -44,7 +44,7 @@ describe('AI代理服务 - 集成测试', () => {
       const content = await fs.readFile(smartExcelPath, 'utf-8');
 
       // 应该导入aiProxyService
-      expect(content).toContain("from '../services/aiProxyService'");
+      expect(content).toContain("from '../src/services/aiProxyService'");
 
       // 不应该直接导入Anthropic客户端
       expect(content).not.toContain('@anthropic-ai/sdk');
@@ -168,7 +168,7 @@ describe('AI代理服务 - 功能测试', () => {
 
       global.fetch = mockFetch;
 
-      const { generateExcelFormula } = await import('../../services/aiProxyService');
+      const { generateExcelFormula } = await import('../../src/services/aiProxyService');
       const result = await generateExcelFormula('求和');
 
       expect(result).toBe('=SUM(A:A)');
@@ -195,7 +195,7 @@ describe('AI代理服务 - 功能测试', () => {
 
       global.fetch = mockFetch;
 
-      const { chatWithKnowledgeBase } = await import('../../services/aiProxyService');
+      const { chatWithKnowledgeBase } = await import('../../src/services/aiProxyService');
       const result = await chatWithKnowledgeBase(
         '你好',
         [{ role: 'user', text: '之前的问题' }]

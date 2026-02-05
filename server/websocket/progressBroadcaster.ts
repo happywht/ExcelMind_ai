@@ -14,7 +14,7 @@
 
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import type { BatchGenerationTask } from '../../types/templateGeneration';
+import type { BatchGenerationTask } from '../../src/types/templateGeneration';
 import type {
   ProgressBroadcasterConfig,
   ProgressUpdateEvent,
@@ -23,8 +23,8 @@ import type {
   TaskProgressMessage,
   TaskStartedMessage,
   WebSocketMessage,
-} from '../../types/websocket';
-import { MessageType } from '../../types/websocket';
+} from '../../src/types/websocket';
+import { MessageType } from '../../src/types/websocket';
 import type { WebSocketServer } from './websocketServer';
 
 // ============================================================================

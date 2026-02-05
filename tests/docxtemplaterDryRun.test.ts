@@ -1,4 +1,4 @@
-import { generateWithDocxtemplater } from '../services/docxtemplaterService';
+import { generateWithDocxtemplater } from '../src/services/docxtemplaterService';
 import PizZip from 'pizzip';
 import { fileURLToPath } from 'url';
 

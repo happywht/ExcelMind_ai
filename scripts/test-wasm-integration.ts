@@ -9,10 +9,10 @@
  * ```
  */
 
-import { getPyodideService } from '../services/wasm/PyodideService';
-import { getFileSystemService, STANDARD_PATHS } from '../services/wasm/FileSystemService';
-import { getExecutionEngine } from '../services/wasm/ExecutionEngine';
-import { getWasmIntegration } from '../services/wasm/WasmIntegrationLayer';
+import { getPyodideService } from '../src/services/wasm/PyodideService';
+import { getFileSystemService, STANDARD_PATHS } from '../src/services/wasm/FileSystemService';
+import { getExecutionEngine } from '../src/services/wasm/ExecutionEngine';
+import { getWasmIntegration } from '../src/services/wasm/WasmIntegrationLayer';
 
 // 颜色输出
 const colors = {

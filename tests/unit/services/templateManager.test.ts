@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { TemplateManager } from '../../../services/TemplateManager';
-import { TemplateInfo, TemplateVariable } from '../../../types';
-import { MockFileService, MockCacheService } from '../../../utils/apiMock';
-import { createMockTemplateInfo } from '../../../utils/testHelpers';
+import { TemplateManager } from '../../../src/services/TemplateManager';
+import { TemplateInfo, TemplateVariable } from '../../../src/types';
+import { MockFileService, MockCacheService } from '../../../src/utils/apiMock';
+import { createMockTemplateInfo } from '../../../src/utils/testHelpers';
 
 // ============================================================================
 // 测试数据

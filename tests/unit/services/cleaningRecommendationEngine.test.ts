@@ -6,14 +6,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { CleaningRecommendationEngine } from '../../../services/ai/cleaningRecommendationEngine';
-import { DataQualityIssue, AnalysisOptions } from '../../../types/dataQuality';
-import { MockAIService, MockCacheService } from '../../../utils/apiMock';
+import { CleaningRecommendationEngine } from '../../../src/services/ai/cleaningRecommendationEngine';
+import { DataQualityIssue, AnalysisOptions } from '../../../src/types/dataQuality';
+import { MockAIService, MockCacheService } from '../../../src/utils/apiMock';
 import {
   createMockDataQualityIssue,
   createTestDataWithMissingValues,
   createTestDataWithOutliers
-} from '../../../utils/testHelpers';
+} from '../../../src/utils/testHelpers';
 
 // ============================================================================
 // 测试数据

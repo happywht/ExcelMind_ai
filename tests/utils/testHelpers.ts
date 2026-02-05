@@ -7,7 +7,7 @@
  * @version 2.0.0
  */
 
-import { DataQualityIssue, CleaningSuggestion, TemplateInfo, BatchGenerationTask } from '../../types';
+import { DataQualityIssue, CleaningSuggestion, TemplateInfo, BatchGenerationTask } from '../../src/types';
 
 // ============================================================================
 // 数据质量测试工具

@@ -23,22 +23,22 @@
     "baseUrl": "./",
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ],
       "@config/*": [
-        "./config/*"
+        "./src/config/*"
       ],
       "@services/*": [
-        "./services/*"
+        "./src/services/*"
       ],
       "@components/*": [
-        "./components/*"
+        "./src/components/*"
       ],
       "@types/*": [
-        "./types/*"
+        "./src/types/*"
       ],
       "@utils/*": [
-        "./utils/*"
+        "./src/utils/*"
       ],
       "@excelmind/shared-types": [
         "./packages/shared-types/dist"

@@ -4,7 +4,7 @@
  * 测试多Sheet数据处理的各项功能
  */
 
-import { ExcelData } from '../../types';
+import { ExcelData } from '../../src/types';
 
 describe('SmartExcel 多Sheet支持', () => {
 

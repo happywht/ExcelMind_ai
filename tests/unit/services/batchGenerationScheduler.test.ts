@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { BatchGenerationScheduler } from '../../../services/BatchGenerationScheduler';
-import { BatchGenerationTask, TaskStatus, TaskPriority } from '../../../types';
-import { MockWebSocketService, MockDatabaseService } from '../../../utils/apiMock';
-import { createMockBatchTask } from '../../../utils/testHelpers';
+import { BatchGenerationScheduler } from '../../../src/services/BatchGenerationScheduler';
+import { BatchGenerationTask, TaskStatus, TaskPriority } from '../../../src/types';
+import { MockWebSocketService, MockDatabaseService } from '../../../src/utils/apiMock';
+import { createMockBatchTask } from '../../../src/utils/testHelpers';
 
 // ============================================================================
 // 测试数据

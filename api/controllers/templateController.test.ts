@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { Request, Response } from 'express';
 import { TemplateController } from './templateController';
-import { ApiErrorCode } from '../../types/errorCodes';
+import { ApiErrorCode } from '../../src/types/errorCodes';
 
 describe('TemplateController', () => {
   let controller: TemplateController;

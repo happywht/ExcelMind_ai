@@ -13,27 +13,27 @@ import { describe, it, expect } from '@jest/globals';
 import {
   extractExcelMetadata,
   formatMetadataForPrompt
-} from '../services/metadata/excelMetadataService';
+} from '../src/services/metadata/excelMetadataService';
 
 import {
   reactCycle
-} from '../services/react/reactCycleService';
+} from '../src/services/react/reactCycleService';
 
 import {
   StaticCodeAnalyzer,
   analyzeCode
-} from '../services/quality/staticCodeAnalyzer';
+} from '../src/services/quality/staticCodeAnalyzer';
 
 import {
   buildPromptWithSchema,
   buildRefinePrompt
-} from '../services/prompt/promptBuilderService';
+} from '../src/services/prompt/promptBuilderService';
 
 import {
   AUDIT_TOOLS,
   generateToolsDocumentation,
   findTool
-} from '../services/tools/auditTools';
+} from '../src/services/tools/auditTools';
 
 // 模拟测试数据
 const mockExcelData = {

@@ -15,12 +15,12 @@ import {
   PaginatedResponse,
   QueryParams,
   ApiErrorResponse,
-} from '../../types/apiTypes';
-import { ApiErrorCode, createApiErrorResponse } from '../../types/errorCodes';
+} from '../../src/types/apiTypes';
+import { ApiErrorCode, createApiErrorResponse } from '../../src/types/errorCodes';
 
 // 导入服务层（这些服务需要在后续实现）
-// import { TemplateService } from '../../services/TemplateService';
-// import { TemplateParser } from '../../services/quality/TemplateParser';
+// import { TemplateService } from '../../src/services/TemplateService';
+// import { TemplateParser } from '../../src/services/quality/TemplateParser';
 
 /**
  * 模板管理控制器

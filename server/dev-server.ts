@@ -29,7 +29,7 @@ config({ path: envLocalPath, override: true });
 
 import { logger } from '@/utils/logger';
 import { createServerWithWebSocket } from './app';
-import { validateAIServiceConfig } from '../services/zhipuService';
+import { validateAIServiceConfig } from '../src/services/zhipuService';
 
 // 环境变量
 const PORT = process.env.API_PORT || 3001;

@@ -27,15 +27,15 @@ import type {
   WebSocketServerConfig,
   WebSocketServerOptions,
   WebSocketServerStats,
-} from '../../types/websocket';
+} from '../../src/types/websocket';
 import {
   AuthenticationError,
   ConnectionRejectedError,
   MessageType,
   RateLimitError,
   WebSocketServerError,
-} from '../../types/websocket';
-import { getWebSocketConfig } from '../../config/websocket.config';
+} from '../../src/types/websocket';
+import { getWebSocketConfig } from '../../src/config/websocket.config';
 
 // ============================================================================
 // 接口定义

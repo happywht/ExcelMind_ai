@@ -19,7 +19,7 @@ import {
   createMockExecutionContext,
   createMockGraphData,
   asMock
-} from '../utils/test-helpers';
+} from '../src/utils/test-helpers';
 import { ExtendedVirtualFileInfo, GraphNode, GraphEdge, ExecutionContext } from '../../components/VirtualWorkspace/types';
 
 // 扩展Jest匹配器类型
