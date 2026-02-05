@@ -1225,14 +1225,14 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
                             <div className="space-y-2 pl-8">
                               <div className="flex justify-between items-center mb-2">
                                 <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                  Inner Mappings ({loop.mappings.length})
+                                  Inner Mappings ({(loop.mappings || []).length})
                                 </h5>
                                 <span className="text-[10px] text-slate-400 bg-white px-2 py-0.5 rounded border">
                                   {isGroupBy ? 'Select columns from this sheet' : `Select columns from ${loop.sourceSheet || 'Source'}`}
                                 </span>
                               </div>
 
-                              {loop.mappings.map((m, mIdx) => (
+                              {(loop.mappings || []).map((m, mIdx) => (
                                 <div key={mIdx} className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded shadow-sm">
                                   <ArrowRight className="w-3 h-3 text-slate-300" />
                                   {/* Child Placeholder */}

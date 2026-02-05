@@ -19,7 +19,9 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { templateAPI } from '../../services/templateAPI';
+import { templateStorage } from '../../services/templateStorage';
+import { parseWordTemplate } from '../../services/templateService';
+// import { templateAPI } from '../../services/templateAPI'; // Remove legacy API
 import TemplateUpload from './TemplateUpload';
 import VariableMapping from './VariableMapping';
 import TemplatePreview from './TemplatePreview';
@@ -103,11 +105,19 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
         message: '提取变量中...',
       });
 
-      const extractedPlaceholders = await templateAPI.extractPlaceholders(file);
-      setPlaceholders(extractedPlaceholders);
+      const { placeholders: rawPlaceholders } = await parseWordTemplate(file);
+
+      const newPlaceholders: TemplatePlaceholder[] = rawPlaceholders.map(p => ({
+        key: p,
+        rawPlaceholder: `{{${p}}}`,
+        dataType: 'string', // Type assertion needed or update interface to accept string
+        required: true
+      }));
+
+      setPlaceholders(newPlaceholders);
 
       // 初始化映射
-      const initialMappings = extractedPlaceholders.map((p) => ({
+      const initialMappings = newPlaceholders.map((p) => ({
         placeholder: p.key,
         excelColumn: '',
         dataType: p.dataType,
@@ -198,19 +208,23 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
 
     try {
       if (mode === 'create' && templateFile) {
-        const response = await templateAPI.uploadTemplate(templateFile, {
+        // Parse template first to ensure we have valid placeholders
+        const { placeholders: parsedPlaceholders } = await parseWordTemplate(templateFile);
+
+        const newTemplate = await templateStorage.saveTemplate(templateFile, {
           name: templateMetadata.name,
           description: templateMetadata.description || '',
           category: templateMetadata.category,
           tags: templateMetadata.tags,
-          mappings: { placeholders },
+          placeholders: parsedPlaceholders
         });
 
         if (onSave) {
-          onSave(response);
+          // Convert to TemplateMetadata format expected by parent
+          onSave(newTemplate as unknown as TemplateMetadata);
         }
       } else if (mode === 'edit' && templateId) {
-        await templateAPI.updateTemplate(templateId, {
+        await templateStorage.updateTemplate(templateId, {
           name: templateMetadata.name,
           description: templateMetadata.description,
           category: templateMetadata.category,
@@ -233,6 +247,7 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
             hasTables: false,
             pageCount: 1,
             wordCount: 0,
+            metadata: { placeholders }
           } as TemplateMetadata);
         }
       }
@@ -251,31 +266,31 @@ const TemplateEditor: React.FC<TemplateEditorProps> = ({
     disabled?: boolean;
     badge?: number;
   }> = [
-    {
-      id: 'upload',
-      label: '上传模板',
-      icon: UploadIcon,
-    },
-    {
-      id: 'mapping',
-      label: '变量映射',
-      icon: Settings,
-      disabled: placeholders.length === 0,
-      badge: mappings.filter((m) => m.excelColumn).length,
-    },
-    {
-      id: 'preview',
-      label: '预览',
-      icon: Eye,
-      disabled: placeholders.length === 0,
-    },
-    {
-      id: 'history',
-      label: '版本历史',
-      icon: FileText,
-      disabled: mode === 'create',
-    },
-  ];
+      {
+        id: 'upload',
+        label: '上传模板',
+        icon: UploadIcon,
+      },
+      {
+        id: 'mapping',
+        label: '变量映射',
+        icon: Settings,
+        disabled: placeholders.length === 0,
+        badge: mappings.filter((m) => m.excelColumn).length,
+      },
+      {
+        id: 'preview',
+        label: '预览',
+        icon: Eye,
+        disabled: placeholders.length === 0,
+      },
+      {
+        id: 'history',
+        label: '版本历史',
+        icon: FileText,
+        disabled: mode === 'create',
+      },
+    ];
 
   return (
     <div className={cn('bg-white border border-slate-200 rounded-xl overflow-hidden', className)}>

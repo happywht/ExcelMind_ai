@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download, AlertCircle, CheckCircle, Zap } from 'lucide-react';
+import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Download, AlertCircle, CheckCircle, Zap, Send } from 'lucide-react';
 import { readExcelFile, exportToExcel, exportMultipleSheetsToExcel } from '../services/excelService';
-import { ExcelData, ProcessingLog } from '../types';
+import { ExcelData, ProcessingLog, AppView } from '../types';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 // ✅ 修复：不再直接导入 AgenticOrchestrator（它应该在服务器端运行）
 // ✅ 改为使用 API 客户端调用后端服务
 import { smartProcessApi } from '../services/api/smartProcessApi';
@@ -31,6 +32,8 @@ export const SmartExcel: React.FC = () => {
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
 
+  const { setExcelData, setView } = useWorkspace();
+
   // 多步分析系统状态
   const [taskState, setTaskState] = useState<MultiStepTask | null>(null);
   const [agenticLogs, setAgenticLogs] = useState<AgenticLogEntry[]>([]);
@@ -44,7 +47,7 @@ export const SmartExcel: React.FC = () => {
   const [qualityResults, setQualityResults] = useState<RuleExecutionResult[]>([]); // 规则执行结果
   const [batchResult, setBatchResult] = useState<BatchExecutionResult | null>(null); // 批量执行结果
   const [executingQualityCheck, setExecutingQualityCheck] = useState(false); // 质量检查执行中
-  const [selectedIssue, setSelectedIssue] = useState<{row: number, column: string} | null>(null); // 选中的问题
+  const [selectedIssue, setSelectedIssue] = useState<{ row: number, column: string } | null>(null); // 选中的问题
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -584,6 +587,16 @@ export const SmartExcel: React.FC = () => {
     });
   };
 
+
+
+  const handleSendToGenerator = (file: ExcelData, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setExcelData(file);
+    // Auto-select the active sheet if not set? 
+    // WorkspaceContext doesn't treat sheets specially, just passes data. DocumentSpace handles it.
+    setView(AppView.DOCUMENT_SPACE);
+  };
+
   const handleSelectAll = () => {
     if (selectedFileIds.size === filesData.length) {
       setSelectedFileIds(new Set());
@@ -594,7 +607,7 @@ export const SmartExcel: React.FC = () => {
 
   const handleBatchExport = async () => {
     if (selectedFileIds.size === 0) return;
-    
+
     setIsProcessing(true);
     const zip = new JSZip();
     let count = 0;
@@ -690,14 +703,14 @@ export const SmartExcel: React.FC = () => {
               {/* File List Header Actions */}
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div className="flex items-center gap-2">
-                   <button onClick={handleSelectAll} className="text-slate-500 hover:text-emerald-600 transition-colors" title="全选/取消全选">
-                     {filesData.length > 0 && selectedFileIds.size === filesData.length ? (
-                       <CheckSquare className="w-5 h-5 text-emerald-600" />
-                     ) : (
-                       <Square className="w-5 h-5" />
-                     )}
-                   </button>
-                   <span className="text-sm font-semibold text-slate-700">文件列表 ({filesData.length})</span>
+                  <button onClick={handleSelectAll} className="text-slate-500 hover:text-emerald-600 transition-colors" title="全选/取消全选">
+                    {filesData.length > 0 && selectedFileIds.size === filesData.length ? (
+                      <CheckSquare className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
+                  </button>
+                  <span className="text-sm font-semibold text-slate-700">文件列表 ({filesData.length})</span>
                 </div>
                 {selectedFileIds.size > 0 && (
                   <button
@@ -709,243 +722,245 @@ export const SmartExcel: React.FC = () => {
                   </button>
                 )}
               </div>
-          
-          {/* File List */}
-          <div className="flex-1 overflow-y-auto p-4 border-b border-slate-100">
-             {filesData.length === 0 ? (
-               <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">
-                 <p>工作区为空</p>
-                 <p className="text-xs mt-1">请添加 Excel 文件</p>
-               </div>
-             ) : (
-               <ul className="space-y-2">
-                 {filesData.map((f) => (
-                   <li 
-                     key={f.id} 
-                     onClick={() => setActiveFileId(f.id)}
-                     className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${
-                       activeFileId === f.id 
-                         ? 'bg-emerald-50 border-emerald-200 shadow-sm' 
-                         : 'bg-white border-slate-100 hover:bg-slate-50'
-                     }`}
-                   >
-                     <div className="flex items-center gap-3 overflow-hidden">
-                       <div 
-                         onClick={(e) => toggleSelection(f.id, e)}
-                         className="flex-shrink-0 text-slate-400 hover:text-emerald-600 transition-colors"
-                       >
-                         {selectedFileIds.has(f.id) ? <CheckSquare className="w-4 h-4 text-emerald-600" /> : <Square className="w-4 h-4" />}
-                       </div>
-                       <div className={`p-2 rounded-lg ${activeFileId === f.id ? 'bg-emerald-200 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                         <FileSpreadsheet className="w-4 h-4" />
-                       </div>
-                       <div className="truncate">
-                         <p className={`text-sm font-medium truncate ${activeFileId === f.id ? 'text-slate-800' : 'text-slate-600'}`}>{f.fileName}</p>
-                         <p className="text-xs text-slate-400">{Object.keys(f.sheets).length} 个工作表</p>
-                       </div>
-                     </div>
-                     <div className="flex items-center gap-1">
-                       <button
-                         onClick={(e) => downloadSingleFile(f, e)}
-                         className="text-slate-300 hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                         title="下载文件"
-                       >
-                         <Download className="w-4 h-4" />
-                       </button>
-                       <button
-                         onClick={(e) => removeFile(f.id, e)}
-                         className="text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                         title="删除文件"
-                       >
-                         <Trash2 className="w-4 h-4" />
-                       </button>
-                     </div>
-                   </li>
-                 ))}
-               </ul>
-             )}
-          </div>
 
-          {/* AI Command Area */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200">
-            {/* 多步分析状态显示 */}
-            {taskState && isProcessing && (
-              <div className="mb-3 p-3 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl border border-emerald-200">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-bold text-emerald-700">多步分析系统</span>
+              {/* File List */}
+              <div className="flex-1 overflow-y-auto p-4 border-b border-slate-100">
+                {filesData.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">
+                    <p>工作区为空</p>
+                    <p className="text-xs mt-1">请添加 Excel 文件</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-600">
-                      {taskState.progress.percentage}%
-                    </span>
-                  </div>
-                </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {filesData.map((f) => (
+                      <li
+                        key={f.id}
+                        onClick={() => setActiveFileId(f.id)}
+                        className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${activeFileId === f.id
+                          ? 'bg-emerald-50 border-emerald-200 shadow-sm'
+                          : 'bg-white border-slate-100 hover:bg-slate-50'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div
+                            onClick={(e) => toggleSelection(f.id, e)}
+                            className="flex-shrink-0 text-slate-400 hover:text-emerald-600 transition-colors"
+                          >
+                            {selectedFileIds.has(f.id) ? <CheckSquare className="w-4 h-4 text-emerald-600" /> : <Square className="w-4 h-4" />}
+                          </div>
+                          <div className={`p-2 rounded-lg ${activeFileId === f.id ? 'bg-emerald-200 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            <FileSpreadsheet className="w-4 h-4" />
+                          </div>
+                          <div className="truncate">
+                            <p className={`text-sm font-medium truncate ${activeFileId === f.id ? 'text-slate-800' : 'text-slate-600'}`}>{f.fileName}</p>
+                            <p className="text-xs text-slate-400">{Object.keys(f.sheets).length} 个工作表</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => handleSendToGenerator(f, e)}
+                            className="text-slate-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                            title="发送到文档生成"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => downloadSingleFile(f, e)}
+                            className="text-slate-300 hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                            title="下载文件"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => removeFile(f.id, e)}
+                            className="text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                            title="删除文件"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
-                {/* 进度条 */}
-                <div className="w-full bg-slate-200 rounded-full h-2 mb-2">
-                  <div
-                    className="bg-gradient-to-r from-emerald-500 to-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${taskState.progress.percentage}%` }}
-                  />
-                </div>
-
-                {/* 当前阶段 */}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-700">
-                    {statusTextMap[taskState.status as TaskStatus] || taskState.status}
-                  </span>
-                  {taskState.qualityReport && (
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className={`w-3 h-3 ${taskState.qualityReport.overallQuality >= 0.8 ? 'text-green-500' : 'text-yellow-500'}`} />
-                      <span className="font-semibold text-slate-600">
-                        质量: {formatQualityScore(taskState.qualityReport.overallQuality)}
-                      </span>
+              {/* AI Command Area */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200">
+                {/* 多步分析状态显示 */}
+                {taskState && isProcessing && (
+                  <div className="mb-3 p-3 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl border border-emerald-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-emerald-600" />
+                        <span className="text-xs font-bold text-emerald-700">多步分析系统</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-600">
+                          {taskState.progress.percentage}%
+                        </span>
+                      </div>
                     </div>
+
+                    {/* 进度条 */}
+                    <div className="w-full bg-slate-200 rounded-full h-2 mb-2">
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${taskState.progress.percentage}%` }}
+                      />
+                    </div>
+
+                    {/* 当前阶段 */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-slate-700">
+                        {statusTextMap[taskState.status as TaskStatus] || taskState.status}
+                      </span>
+                      {taskState.qualityReport && (
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className={`w-3 h-3 ${taskState.qualityReport.overallQuality >= 0.8 ? 'text-green-500' : 'text-yellow-500'}`} />
+                          <span className="font-semibold text-slate-600">
+                            质量: {formatQualityScore(taskState.qualityReport.overallQuality)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* OTAE 步骤指示器 */}
+                    <div className="mt-2 flex items-center gap-1 text-xs">
+                      {[
+                        { key: 'observing', label: '观察', icon: '👁️' },
+                        { key: 'thinking', label: '思考', icon: '🧠' },
+                        { key: 'acting', label: '执行', icon: '⚡' },
+                        { key: 'evaluating', label: '评估', icon: '✅' }
+                      ].map((step) => {
+                        const isActive = taskState.status === step.key;
+                        const isCompleted = ['observing', 'thinking'].includes(step.key) &&
+                          ['acting', 'evaluating', 'completed'].includes(taskState.status);
+
+                        return (
+                          <div
+                            key={step.key}
+                            className={`flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg transition-all ${isActive ? 'bg-emerald-500 text-white font-bold' :
+                              isCompleted ? 'bg-emerald-100 text-emerald-700' :
+                                'bg-slate-100 text-slate-400'
+                              }`}
+                          >
+                            <span>{step.icon}</span>
+                            <span className="hidden sm:inline">{step.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* 错误重试信息 */}
+                    {taskState.status === 'repairing' && (
+                      <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
+                        <AlertCircle className="w-3 h-3" />
+                        <span className="font-medium">检测到错误，正在自动修复...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 模式切换和工具栏 */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-slate-700">AI 指令</span>
+                  <div className="flex items-center gap-2">
+                    {/* 模式切换 */}
+                    <button
+                      onClick={() => setUseAgenticMode(!useAgenticMode)}
+                      className={`text-xs px-2 py-1 rounded-lg font-medium transition-all flex items-center gap-1 ${useAgenticMode
+                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                      title={useAgenticMode ? '多步分析模式：支持自我修复和质量评估' : '单步执行模式：快速执行'}
+                    >
+                      <Zap className="w-3 h-3" />
+                      {useAgenticMode ? '智能模式' : '快速模式'}
+                    </button>
+                    <button
+                      onClick={() => setShowCode(!showCode)}
+                      className="text-xs font-normal text-slate-400 hover:text-emerald-600 flex items-center gap-1"
+                    >
+                      <Code className="w-3 h-3" /> {showCode ? '隐藏代码' : '查看代码'}
+                    </button>
+                  </div>
+                </div>
+
+                {showCode && lastGeneratedCode && (
+                  <div className="mb-3 p-2 bg-slate-900 text-green-400 text-xs font-mono rounded-lg max-h-32 overflow-y-auto">
+                    <pre>{lastGeneratedCode}</pre>
+                  </div>
+                )}
+
+                <textarea
+                  value={command}
+                  onChange={(e) => setCommand(e.target.value)}
+                  placeholder="描述您的跨文件需求... &#10;例如：'对比表A和表B，找出金额不一致的行，存为新文件差异表'"
+                  className="w-full h-24 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 resize-none bg-white text-sm shadow-sm"
+                />
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={handleRun}
+                    disabled={isProcessing || !command || filesData.length === 0}
+                    className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all text-sm ${isProcessing || !command || filesData.length === 0
+                      ? 'bg-slate-300 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-emerald-900/20'
+                      }`}
+                  >
+                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    执行智能处理
+                  </button>
+
+                  {isProcessing && (
+                    <button
+                      onClick={cancelExecution}
+                      className="px-4 py-2.5 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 transition-all font-bold text-sm flex items-center gap-2"
+                      title="取消执行"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      取消
+                    </button>
                   )}
                 </div>
 
-                {/* OTAE 步骤指示器 */}
-                <div className="mt-2 flex items-center gap-1 text-xs">
-                  {[
-                    { key: 'observing', label: '观察', icon: '👁️' },
-                    { key: 'thinking', label: '思考', icon: '🧠' },
-                    { key: 'acting', label: '执行', icon: '⚡' },
-                    { key: 'evaluating', label: '评估', icon: '✅' }
-                  ].map((step) => {
-                    const isActive = taskState.status === step.key;
-                    const isCompleted = ['observing', 'thinking'].includes(step.key) &&
-                                        ['acting', 'evaluating', 'completed'].includes(taskState.status);
-
-                    return (
-                      <div
-                        key={step.key}
-                        className={`flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg transition-all ${
-                          isActive ? 'bg-emerald-500 text-white font-bold' :
-                          isCompleted ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-slate-100 text-slate-400'
-                        }`}
-                      >
-                        <span>{step.icon}</span>
-                        <span className="hidden sm:inline">{step.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 错误重试信息 */}
-                {taskState.status === 'repairing' && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
-                    <AlertCircle className="w-3 h-3" />
-                    <span className="font-medium">检测到错误，正在自动修复...</span>
+                {/* 执行统计信息 */}
+                {taskState && !isProcessing && taskState.status === 'completed' && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-xl border border-green-200">
+                    <div className="flex items-center gap-2 text-green-700 font-bold text-sm mb-2">
+                      <CheckCircle className="w-4 h-4" />
+                      执行完成
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                      {taskState.result?.executionSummary && (
+                        <>
+                          <div>总步骤: {taskState.result.executionSummary.totalSteps}</div>
+                          <div>成功: {taskState.result.executionSummary.successfulSteps}</div>
+                          <div>耗时: {Math.round(taskState.result.executionSummary.totalTime / 1000)}s</div>
+                          <div>失败: {taskState.result.executionSummary.failedSteps}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
 
-            {/* 模式切换和工具栏 */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-bold text-slate-700">AI 指令</span>
-              <div className="flex items-center gap-2">
-                {/* 模式切换 */}
-                <button
-                  onClick={() => setUseAgenticMode(!useAgenticMode)}
-                  className={`text-xs px-2 py-1 rounded-lg font-medium transition-all flex items-center gap-1 ${
-                    useAgenticMode
-                      ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
-                      : 'bg-slate-100 text-slate-600 border border-slate-200'
-                  }`}
-                  title={useAgenticMode ? '多步分析模式：支持自我修复和质量评估' : '单步执行模式：快速执行'}
-                >
-                  <Zap className="w-3 h-3" />
-                  {useAgenticMode ? '智能模式' : '快速模式'}
-                </button>
-                <button
-                  onClick={() => setShowCode(!showCode)}
-                  className="text-xs font-normal text-slate-400 hover:text-emerald-600 flex items-center gap-1"
-                >
-                  <Code className="w-3 h-3" /> {showCode ? '隐藏代码' : '查看代码'}
-                </button>
+              {/* Logs */}
+              <div className="h-32 bg-slate-900 overflow-y-auto p-3 text-xs font-mono">
+                {logs.length === 0 ? (
+                  <span className="text-slate-600">等待指令...</span>
+                ) : (
+                  logs.map((log) => (
+                    <div key={log.id} className="mb-1.5 flex gap-2">
+                      <span className={`uppercase font-bold ${log.status === 'success' ? 'text-green-400' :
+                        log.status === 'error' ? 'text-red-400' : 'text-yellow-400'
+                        }`}>[{log.status}]</span>
+                      <span className="text-slate-300">{log.message}</span>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
-
-            {showCode && lastGeneratedCode && (
-              <div className="mb-3 p-2 bg-slate-900 text-green-400 text-xs font-mono rounded-lg max-h-32 overflow-y-auto">
-                <pre>{lastGeneratedCode}</pre>
-              </div>
-            )}
-
-            <textarea
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder="描述您的跨文件需求... &#10;例如：'对比表A和表B，找出金额不一致的行，存为新文件差异表'"
-              className="w-full h-24 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 resize-none bg-white text-sm shadow-sm"
-            />
-
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={handleRun}
-                disabled={isProcessing || !command || filesData.length === 0}
-                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all text-sm ${
-                  isProcessing || !command || filesData.length === 0
-                    ? 'bg-slate-300 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-emerald-900/20'
-                }`}
-              >
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                执行智能处理
-              </button>
-
-              {isProcessing && (
-                <button
-                  onClick={cancelExecution}
-                  className="px-4 py-2.5 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 transition-all font-bold text-sm flex items-center gap-2"
-                  title="取消执行"
-                >
-                  <AlertCircle className="w-4 h-4" />
-                  取消
-                </button>
-              )}
-            </div>
-
-            {/* 执行统计信息 */}
-            {taskState && !isProcessing && taskState.status === 'completed' && (
-              <div className="mt-3 p-3 bg-green-50 rounded-xl border border-green-200">
-                <div className="flex items-center gap-2 text-green-700 font-bold text-sm mb-2">
-                  <CheckCircle className="w-4 h-4" />
-                  执行完成
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                  {taskState.result?.executionSummary && (
-                    <>
-                      <div>总步骤: {taskState.result.executionSummary.totalSteps}</div>
-                      <div>成功: {taskState.result.executionSummary.successfulSteps}</div>
-                      <div>耗时: {Math.round(taskState.result.executionSummary.totalTime / 1000)}s</div>
-                      <div>失败: {taskState.result.executionSummary.failedSteps}</div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Logs */}
-          <div className="h-32 bg-slate-900 overflow-y-auto p-3 text-xs font-mono">
-            {logs.length === 0 ? (
-              <span className="text-slate-600">等待指令...</span>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} className="mb-1.5 flex gap-2">
-                  <span className={`uppercase font-bold ${
-                    log.status === 'success' ? 'text-green-400' :
-                    log.status === 'error' ? 'text-red-400' : 'text-yellow-400'
-                  }`}>[{log.status}]</span>
-                  <span className="text-slate-300">{log.message}</span>
-                </div>
-              ))
-            )}
-          </div>
             </>
           ) : (
             <>
@@ -963,10 +978,9 @@ export const SmartExcel: React.FC = () => {
                 ) : (
                   logs.map((log) => (
                     <div key={log.id} className="mb-1.5 flex gap-2">
-                      <span className={`uppercase font-bold ${
-                        log.status === 'success' ? 'text-green-400' :
+                      <span className={`uppercase font-bold ${log.status === 'success' ? 'text-green-400' :
                         log.status === 'error' ? 'text-red-400' : 'text-yellow-400'
-                      }`}>[{log.status}]</span>
+                        }`}>[{log.status}]</span>
                       <span className="text-slate-300">{log.message}</span>
                     </div>
                   ))
@@ -1021,13 +1035,22 @@ export const SmartExcel: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => exportMultipleSheetsToExcel(activeFile.sheets, activeFile.fileName)}
-                      className="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
-                      title="导出所有工作表"
-                    >
-                      <FileDown className="w-3.5 h-3.5" /> 导出文件 {Object.keys(activeFile.sheets).length > 1 && `(${Object.keys(activeFile.sheets).length}个工作表)`}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSendToGenerator(activeFile)}
+                        className="text-xs flex items-center gap-1 text-white bg-blue-600 hover:bg-blue-700 font-medium px-3 py-1.5 rounded-lg shadow-sm transition-all"
+                        title="使用此数据生成文档"
+                      >
+                        <Send className="w-3.5 h-3.5" /> 发送到生成器
+                      </button>
+                      <button
+                        onClick={() => exportMultipleSheetsToExcel(activeFile.sheets, activeFile.fileName)}
+                        className="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
+                        title="导出所有工作表"
+                      >
+                        <FileDown className="w-3.5 h-3.5" /> 导出文件 {Object.keys(activeFile.sheets).length > 1 && `(${Object.keys(activeFile.sheets).length}个工作表)`}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-auto w-full">

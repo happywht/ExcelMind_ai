@@ -5,8 +5,9 @@ export enum AppView {
   KNOWLEDGE_CHAT = 'KNOWLEDGE_CHAT',
   DOCUMENT_SPACE = 'DOCUMENT_SPACE', // 文档空间
   BATCH_GENERATION = 'BATCH_GENERATION', // 新增：批量生成
-  TEMPLATE_MANAGEMENT = 'TEMPLATE_MANAGEMENT', // 新增：模板管理
   DATA_QUALITY = 'DATA_QUALITY', // 新增：数据质量分析
+  AUDIT_ASSISTANT = 'AUDIT_ASSISTANT', // 新增：审计助手 (独立功能)
+  AI_TOOLS = 'AI_TOOLS', // AI工具箱 (公式)
 }
 
 export interface ChatMessage {

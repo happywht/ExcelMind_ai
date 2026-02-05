@@ -18,7 +18,7 @@ import {
   createTemplateFile,
   highlightPlaceholdersInHtml
 } from '../../services/templateService';
-import { generateFieldMappingV2, generateFieldMapping } from '../../services/documentMappingService';
+import { generateFieldMappingV2 } from '../../services/documentMappingService';
 import {
   DocxtemplaterService
 } from '../../services/docxtemplaterService';
@@ -63,12 +63,16 @@ import {
   PerformanceMetrics
 } from './types';
 
+import { useWorkspace } from '../../contexts/WorkspaceContext';
+
 import DocumentSpaceSidebar from './DocumentSpaceSidebar';
 import DocumentSpaceMain from './DocumentSpaceMain';
 import { aiBatchService } from '../../services/aiBatchService';
 import { executeLoopProcessing } from '../../services/loopProcessingService';
 
 export const DocumentSpace: React.FC = () => {
+  const { currentExcelData, currentTemplate, setExcelData: setWorkspaceExcelData, setTemplate: setWorkspaceTemplate } = useWorkspace();
+
   // ===== 状态管理 =====
 
   // 文件状态
@@ -110,6 +114,35 @@ export const DocumentSpace: React.FC = () => {
     engine.addExamples(allQueryExamples);
     return engine;
   }, []);
+
+  // ===== 初始化Context状态 =====
+  useEffect(() => {
+    if (currentExcelData && !excelData) {
+      setExcelData(currentExcelData);
+      const sheetNames = Object.keys(currentExcelData.sheets || {});
+      if (sheetNames.length > 0 && !primarySheet) {
+        setPrimarySheet(currentExcelData.currentSheetName || sheetNames[0]);
+      }
+      // If we have data but no template, show data tab? Or if both, show mapping?
+      if (!currentTemplate) setActiveTab('data');
+    }
+
+    if (currentTemplate && !templateFile) {
+      setTemplateFile(currentTemplate);
+      // If we also have data, go to mapping?
+      // Actually, if we have both, we usually want to start mapping.
+      // But let's check generatedDocs too?
+      if (!generatedDocs || generatedDocs.length === 0) {
+        // Maybe default to 'mapping' if both exist?
+        // For now let's leave it to user or smart logic below.
+      }
+    }
+
+    if (currentExcelData && currentTemplate && !mappingScheme) {
+      // If both exist, maybe suggest mapping?
+      setActiveTab('mapping');
+    }
+  }, [currentExcelData, currentTemplate]); // Run when context changes or on mount
 
   // ===== 初始化监控系统 =====
 
@@ -217,8 +250,10 @@ export const DocumentSpace: React.FC = () => {
 
     try {
       // 解析模板
+      // 解析模板
       const template = await createTemplateFile(file);
       setTemplateFile(template);
+      setWorkspaceTemplate(template); // Sync to global context
       setActiveTab('template');
 
       const duration = performance.now() - startTime;
@@ -268,6 +303,7 @@ export const DocumentSpace: React.FC = () => {
 
       setDataFile(file);
       setExcelData(data);
+      setWorkspaceExcelData(data); // Sync to global context
       setActiveTab('data');
 
       // 自动设置主Sheet为第一个Sheet

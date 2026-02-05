@@ -25,11 +25,7 @@ export type {
 export * from './documentTypes';
 
 // 映射类型 - 使用别名避免冲突
-export type {
-  AIAnalysisRequest as MappingAIAnalysisRequest,
-  AIAnalysisResponse as MappingAIAnalysisResponse,
-  CacheEntry as MappingCacheEntry
-} from './mappingSchemaV2';
+
 // 不使用 export * 以避免名称冲突
 
 // Sandbox 类型
@@ -55,3 +51,7 @@ export * from './dataQuality';
 
 // 质量规则类型
 export * from './qualityRule';
+
+// 视图类型
+export * from './viewTypes';
+

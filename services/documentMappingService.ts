@@ -48,16 +48,7 @@ export interface GenerateMappingParamsV2 {
   userInstruction: string;
 }
 
-/**
- * AI映射生成请求参数（V1 - 向后兼容）
- * @deprecated 使用 GenerateMappingParamsV2 代替
- */
-interface GenerateMappingParams {
-  excelHeaders: string[];
-  excelSampleData: any[];
-  templatePlaceholders: string[];
-  userInstruction: string;
-}
+
 
 /**
  * 生成字段映射方案（V2 - 增强版）
@@ -183,25 +174,7 @@ export async function generateFieldMappingV2(params: GenerateMappingParamsV2): P
   }
 }
 
-/**
- * 生成字段映射方案（V1 - 向后兼容）
- * @deprecated 使用 generateFieldMappingV2 代替
- */
-export async function generateFieldMapping(params: GenerateMappingParams): Promise<MappingScheme> {
-  const { excelHeaders, excelSampleData, templatePlaceholders, userInstruction } = params;
 
-  // 转换为新的调用格式
-  return generateFieldMappingV2({
-    allSheetsInfo: [{
-      sheetName: 'Sheet1',
-      headers: excelHeaders,
-      rowCount: excelSampleData.length,
-      sampleData: excelSampleData
-    }],
-    templatePlaceholders,
-    userInstruction
-  });
-}
 
 /**
  * 构建多Sheet映射提示词
@@ -431,76 +404,7 @@ Excel: {SessionID, SpeakerName, Topic}
 `;
 }
 
-/**
- * 构建AI映射提示词（V1版本 - 向后兼容）
- */
-interface MappingPromptParams {
-  excelHeaders: string[];
-  excelSampleData: any[];
-  templatePlaceholders: string[];
-  userInstruction: string;
-}
 
-function buildMappingPrompt(params: MappingPromptParams): string {
-  const { excelHeaders, excelSampleData, templatePlaceholders, userInstruction } = params;
-
-  return `
-你是专业的智能文档映射专家。你的任务是将Excel数据字段智能映射到Word模板的占位符。
-
-【Excel数据结构】
-列名: ${JSON.stringify(excelHeaders)}
-样本数据(前${SAMPLING_CONFIG.DOCUMENT_MAPPING.PREVIEW_ROWS}行):
-${JSON.stringify(excelSampleData.slice(0, SAMPLING_CONFIG.DOCUMENT_MAPPING.PREVIEW_ROWS), null, 2)}
-
-【Word模板占位符】
-检测到 ${templatePlaceholders.length} 个占位符:
-${templatePlaceholders.map(p => `  - ${p}`).join('\n')}
-
-【用户指令】
-"${userInstruction}"
-
-【任务要求】
-1. 理解用户指令的语义意图
-2. 智能匹配Excel列名和模板占位符（考虑语义相似度）
-3. 确定是否需要筛选数据（如"销售额大于10万"）
-4. 生成可执行的映射方案
-
-【输出格式要求】
-必须输出纯净的JSON格式，不要包含任何Markdown标记：
-{"explanation": "映射思路的详细说明", "filterCondition": "筛选条件的JavaScript代码或null", "mappings": [{"placeholder": "{{占位符}}", "excelColumn": "对应的Excel列名", "transform": "数据转换代码(可选)"}], "unmappedPlaceholders": ["未能映射的占位符"]}
-
-【映射示例】
-示例1 - 筛选映射:
-用户指令: "把所有销售额大于10万的产品填入模板"
-输出:
-{
-  "explanation": "筛选销售额列大于100000的行，将产品名称、销售额、类别字段映射到对应占位符",
-  "filterCondition": "row['销售额'] > 100000",
-  "mappings": [
-    {"placeholder": "{{产品名称}}", "excelColumn": "产品名称"},
-    {"placeholder": "{{销售额}}", "excelColumn": "销售额"},
-    {"placeholder": "{{类别}}", "excelColumn": "类别"}
-  ],
-  "unmappedPlaceholders": []
-}
-
-示例2 - 简单映射:
-用户指令: "把客户信息填入模板"
-输出:
-{
-  "explanation": "将Excel中的客户名称、联系电话、地址字段直接映射到对应占位符",
-  "filterCondition": null,
-  "mappings": [
-    {"placeholder": "{{客户名}}", "excelColumn": "客户名称"},
-    {"placeholder": "{{电话}}", "excelColumn": "联系电话"},
-    {"placeholder": "{{地址}}", "excelColumn": "详细地址"}
-  ],
-  "unmappedPlaceholders": []
-}
-
-现在请处理上述用户任务，输出JSON格式。
-`;
-}
 
 import { parseLLMJson } from './utils/jsonUtils';
 
@@ -563,34 +467,7 @@ function parseMultiSheetMappingResponse(text: string, allSheetsInfo: SheetInfo[]
   }
 }
 
-/**
- * 解析AI映射响应（V1版本 - 向后兼容）
- * 支持多种格式：纯净JSON、Markdown代码块
- */
-function parseMappingResponse(text: string): MappingScheme {
-  try {
-    // 使用增强的JSON解析工具
-    const result = parseLLMJson<any>(text);
 
-    // 验证结果格式
-    if (!result.explanation || !Array.isArray(result.mappings)) {
-      throw new Error("AI响应格式无效");
-    }
-
-    // 为V1兼容性添加默认primarySheet
-    if (!result.primarySheet) {
-      result.primarySheet = 'Sheet1';
-    }
-
-    return result as MappingScheme;
-
-  } catch (error) {
-    logger.error("JSON解析失败，使用降级策略:", error);
-
-    // 降级策略：返回基础映射
-    return createFallbackMappingLegacy(text);
-  }
-}
 
 /**
  * 创建降级映射方案（当AI解析失败时）
@@ -613,18 +490,7 @@ function createFallbackMapping(aiResponse: string, allSheetsInfo?: SheetInfo[]):
   return fallback;
 }
 
-/**
- * 创建降级映射方案（V1版本 - 向后兼容）
- */
-function createFallbackMappingLegacy(aiResponse: string): MappingScheme {
-  return {
-    explanation: `AI解析基于语义匹配：${aiResponse.substring(0, 200)}...`,
-    primarySheet: 'Sheet1',
-    filterCondition: null,
-    mappings: [],
-    unmappedPlaceholders: [] // 将在调用方填充
-  };
-}
+
 
 // ============================================================================
 // 辅助工具函数

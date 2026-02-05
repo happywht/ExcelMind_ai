@@ -17,18 +17,21 @@ import {
   Eye,
   Plus,
   Search,
-  Filter
+  Filter,
+  Play // Added icon
 } from 'lucide-react';
-import { TemplateMetadata } from '../../services/templateAPI';
-import { templateAPI } from '../../services/templateAPI';
+import { TemplateMetadata } from '../../services/templateAPI'; // Keeping this for type, or should verify type
+// import { templateAPI } from '../../services/templateAPI'; // Remove legacy API
+import { templateStorage } from '../../services/templateStorage';
 import StatusIndicator from '../Shared/StatusIndicator';
 
 interface TemplateListProps {
   onSelectTemplate: (templateId: string) => void;
+  onUseTemplate?: (template: TemplateMetadata) => void; // New prop
   className?: string;
 }
 
-const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className }) => {
+const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, onUseTemplate, className }) => {
   const [templates, setTemplates] = useState<TemplateMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,8 +45,10 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
   const loadTemplates = async () => {
     setLoading(true);
     try {
-      const response = await templateAPI.listTemplates({ page: 1, pageSize: 50 });
-      setTemplates(response.items);
+      const allTemplates = await templateStorage.getAllTemplates();
+      // Cast to match component state type if needed, or update state type
+      // LocalTemplateMetadata is compatible enough for display
+      setTemplates(allTemplates as unknown as TemplateMetadata[]);
     } catch (error) {
       logger.error('加载模板失败:', error);
     } finally {
@@ -56,7 +61,7 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
     if (!confirm('确定要删除这个模板吗？')) return;
 
     try {
-      await templateAPI.deleteTemplate(templateId);
+      await templateStorage.deleteTemplate(templateId);
       setTemplates(templates.filter(t => t.id !== templateId));
       setShowMenu(null);
     } catch (error) {
@@ -68,15 +73,22 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
   const handleDownload = async (templateId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const blob = await templateAPI.downloadTemplate(templateId);
+      const buffer = await templateStorage.loadTemplateFile(templateId);
+      if (!buffer) throw new Error('File not found');
+
+      const template = templates.find(t => t.id === templateId);
+      const fileName = template?.name ? `${template.name}.docx` : `template_${templateId}.docx`;
+
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `template_${templateId}.docx`;
+      a.download = fileName;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
       logger.error('下载模板失败:', error);
+      alert('下载失败');
     }
     setShowMenu(null);
   };
@@ -157,6 +169,19 @@ const TemplateList: React.FC<TemplateListProps> = ({ onSelectTemplate, className
                 {/* 下拉菜单 */}
                 {showMenu === template.id && (
                   <div className="absolute right-0 top-8 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[150px]">
+                    {onUseTemplate && (
+                      <button
+                        onClick={() => {
+                          setShowMenu(null);
+                          onUseTemplate(template);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 text-emerald-600 flex items-center gap-2 font-medium"
+                      >
+                        <Play className="w-4 h-4" />
+                        立即使用
+                      </button>
+                    )}
+
                     <button
                       onClick={() => {
                         setShowMenu(null);

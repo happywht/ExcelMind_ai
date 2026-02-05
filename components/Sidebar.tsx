@@ -20,14 +20,10 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
   const menuItems = [
     { id: AppView.DASHBOARD, label: '仪表盘', icon: LayoutDashboard },
-    { id: AppView.SMART_OPS, label: '智能处理', icon: FileSpreadsheet },
-    { id: AppView.FORMULA, label: '公式生成器', icon: FunctionSquare },
-    { id: AppView.KNOWLEDGE_CHAT, label: '审计助手', icon: MessageSquareText },
-    { id: AppView.DOCUMENT_SPACE, label: '文档空间', icon: FileEdit },
-    // 新增功能菜单项
-    { id: AppView.BATCH_GENERATION, label: '批量生成', icon: Package },
-    { id: AppView.TEMPLATE_MANAGEMENT, label: '模板管理', icon: FolderOpen },
-    { id: AppView.DATA_QUALITY, label: '数据质量', icon: CheckCircle },
+    { id: AppView.SMART_OPS, label: '数据工坊', icon: FileSpreadsheet }, // 原智能处理 + 数据质量
+    { id: AppView.DOCUMENT_SPACE, label: '文档生成', icon: FileEdit }, // 原文档空间 + 批量生成
+    { id: AppView.AUDIT_ASSISTANT, label: '审计助手', icon: Bot }, // 独立出来的审计助手
+    { id: AppView.AI_TOOLS, label: '公式生成器', icon: FunctionSquare }, // 原AI工具箱，现仅保留公式
   ];
 
   return (
@@ -50,11 +46,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
             <button
               key={item.id}
               onClick={() => setView(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                isActive 
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' 
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
             >
               <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
               <span className="font-medium text-sm">{item.label}</span>

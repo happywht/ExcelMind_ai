@@ -281,12 +281,26 @@ export class DocxGenerationError extends Error {
       code = ErrorCode.DECOMPRESSION_FAILED;
     } else if (error.message.includes('deflate')) {
       code = ErrorCode.COMPRESSION_FAILED;
+    } else if (error.message.includes('Unclosed loop')) {
+      code = ErrorCode.TEMPLATE_ERROR;
+      const tagMatch = error.message.match(/tag "([^"]+)"/);
+      const tag = tagMatch ? tagMatch[1] : 'unknown';
+      error.message = `模板语法错误：发现未闭合的循环标签 "{#${tag}"。请检查Word模板，确保每个 "{#${tag}}" 都有对应的 "{/${tag}}"。`;
+    } else if (error.message.includes('Closing tag does not match')) {
+      code = ErrorCode.TEMPLATE_ERROR;
+      error.message = "模板语法错误：循环闭合标签不匹配。请检查嵌套结构。";
+    } else if ((error as any).properties && (error as any).properties.errors instanceof Array) {
+      // Handle MultiError from docxtemplater
+      const errors = (error as any).properties.errors as Error[];
+      if (errors.length > 0) {
+        // Recursively process the first error to get a meaningful message
+        const firstError = errors[0];
+        const processed = DocxGenerationError.fromError(firstError, defaultCode);
+        // Append hint about multiple errors
+        error.message = `${processed.message} (以及其他 ${errors.length - 1} 个错误)`;
+        code = processed.code;
+      }
     }
-
-    return new DocxGenerationError(error.message, code, {
-      originalError: error.name,
-      stack: error.stack
-    });
   }
 }
 
