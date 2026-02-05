@@ -21,8 +21,15 @@ import { QualityRule, RuleExecutionResult, BatchExecutionResult } from '../types
 import { ruleRouter } from '../services/ruleRouter';
 
 export const SmartExcel: React.FC = () => {
-  const [filesData, setFilesData] = useState<ExcelData[]>([]);
-  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const {
+    filesData,
+    activeFileId,
+    setFilesData,
+    setActiveFileId,
+    setExcelData: setGlobalExcelData, // Rename to avoid conflict if needed, though we use addFiles logic mostly
+    setView
+  } = useWorkspace();
+
   const [activeSheetName, setActiveSheetName] = useState<string>('');
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
 
@@ -32,14 +39,10 @@ export const SmartExcel: React.FC = () => {
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
 
-  const { setExcelData, setView } = useWorkspace();
-
   // 多步分析系统状态
   const [taskState, setTaskState] = useState<MultiStepTask | null>(null);
   const [agenticLogs, setAgenticLogs] = useState<AgenticLogEntry[]>([]);
   const [useAgenticMode, setUseAgenticMode] = useState(true); // 默认使用多步分析模式
-  // ✅ 修复：移除 orchestrator 状态，现在通过 API 调用后端服务
-  // const [orchestrator, setOrchestrator] = useState<AgenticOrchestrator | null>(null);
 
   // 数据质量检查状态
   const [workMode, setWorkMode] = useState<WorkMode>('processing'); // 工作模式：数据处理 | 质量检查
@@ -55,9 +58,6 @@ export const SmartExcel: React.FC = () => {
   // 进度监控回调
   const handleProgressUpdate = useCallback((state: MultiStepTask) => {
     setTaskState(state);
-
-    // ✅ 修复：不再需要从 orchestrator 获取日志（日志现在通过 API 返回）
-    // 日志将通过 API 轮询或在结果中返回
 
     // 更新进度日志
     if (state.progress.percentage > 0) {
@@ -203,16 +203,6 @@ export const SmartExcel: React.FC = () => {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    // ✅ 修复：取消逻辑现在通过任务ID和 API 实现
-    // 如果有当前运行的任务，可以通过 API 取消
-    // TODO: 实现通过 API 取消任务的逻辑
-    // if (currentTaskId) {
-    //   try {
-    //     await smartProcessApi.cancel(currentTaskId);
-    //   } catch (error) {
-    //     logger.error('Failed to cancel task via API', error);
-    //   }
-    // }
 
     setIsProcessing(false);
     setLogs(prev => [{
@@ -233,7 +223,7 @@ export const SmartExcel: React.FC = () => {
     } else {
       setActiveSheetName('');
     }
-  }, [activeFileId, filesData]);
+  }, [activeFileId, filesData]); // activeSheetName removed from dep to avoid loop, but if activeFile changes we want reset.
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -246,7 +236,7 @@ export const SmartExcel: React.FC = () => {
           logger.error(`Error reading file ${e.target.files[i].name}`, err);
         }
       }
-      setFilesData(prev => [...prev, ...newFiles]);
+      setFilesData([...filesData, ...newFiles]); // Use global setter
       if (!activeFileId && newFiles.length > 0) {
         setActiveFileId(newFiles[0].id);
         setActiveSheetName(newFiles[0].currentSheetName);
@@ -591,7 +581,7 @@ export const SmartExcel: React.FC = () => {
 
   const handleSendToGenerator = (file: ExcelData, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setExcelData(file);
+    setGlobalExcelData(file);
     // Auto-select the active sheet if not set? 
     // WorkspaceContext doesn't treat sheets specially, just passes data. DocumentSpace handles it.
     setView(AppView.DOCUMENT_SPACE);

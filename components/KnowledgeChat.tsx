@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Book, Paperclip, Bot, User, Trash2, FileText } from 'lucide-react';
+import { Send, Book, Paperclip, Bot, User, Trash2, FileText, Database, Link } from 'lucide-react';
 import { ChatMessage } from '../types';
 import { chatWithKnowledgeBase } from '../services/aiProxyService';
 import ReactMarkdown from 'react-markdown';
@@ -8,6 +8,8 @@ import mammoth from 'mammoth';
 // Use explicit named imports or fallback to default if necessary
 import * as pdfjsLib from 'pdfjs-dist';
 import { logger } from '@/utils/logger';
+import { useWorkspace } from '../contexts/WorkspaceContext';
+import { formatWorkspaceFilesForAI } from '../services/dataSerializer';
 
 // Handle PDF.js export structure differences (ESM vs CJS interop)
 const pdfjs = pdfjsLib.default ? (pdfjsLib.default as any) : pdfjsLib;
@@ -26,15 +28,27 @@ interface KnowledgeFile {
   uploadTime: Date;
 }
 
-export const KnowledgeChat: React.FC = () => {
+const KnowledgeChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: '你好！我是您的财务与审计助手。您可以在右侧上传最多5个知识库文档（支持 Excel, PDF, Word, CSV, TXT），我会依据这些内容回答您的问题。', timestamp: Date.now() }
+    { role: 'model', text: '你好！我是您的财务与审计助手。您可以在右侧上传知识库文档，或者连接当前工作区的 Excel 数据进行分析。', timestamp: Date.now() }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [knowledgeFiles, setKnowledgeFiles] = useState<KnowledgeFile[]>([]);
   const [showKB, setShowKB] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Workspace Integration
+  const { filesData, activeFileId } = useWorkspace();
+  const [useExcelContext, setUseExcelContext] = useState(false);
+
+  // Auto-enable Excel Context if there are files
+  useEffect(() => {
+    if (filesData.length > 0 && !useExcelContext) {
+      // Optional: Could auto-enable, but let's let user decide to avoid token usage
+      // setUseExcelContext(true);
+    }
+  }, [filesData.length]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,15 +66,22 @@ export const KnowledgeChat: React.FC = () => {
     setInput('');
     setLoading(true);
 
-    // 合并所有知识库文件内容
-    const combinedKnowledgeText = knowledgeFiles.map(file =>
-      `--- 文件: ${file.name} (${file.type}) ---\n${file.content}`
+    // 1. 合并静态知识库文件内容
+    let combinedContext = knowledgeFiles.map(file =>
+      `--- 知识库文件: ${file.name} (${file.type}) ---\n${file.content}`
     ).join('\n\n');
+
+    // 2. 注入动态 Excel 工作区数据
+    if (useExcelContext && filesData.length > 0) {
+      const excelContext = formatWorkspaceFilesForAI(filesData, activeFileId);
+      combinedContext = `${excelContext}\n\n${combinedContext}`;
+      logger.debug("Injected Excel Context length:", excelContext.length);
+    }
 
     const botResponseText = await chatWithKnowledgeBase(
       userMsg.text,
       messages.map(m => ({ role: m.role, text: m.text })),
-      combinedKnowledgeText
+      combinedContext
     );
 
     const botMsg: ChatMessage = { role: 'model', text: botResponseText, timestamp: Date.now() };
@@ -104,7 +125,7 @@ export const KnowledgeChat: React.FC = () => {
         // Parse PDF
         fileType = 'pdf';
         const buffer = await file.arrayBuffer();
-        // Use the resolved pdfjs object
+        // Use the resolved pdfjs object as distinct from imported namespace
         const loadingTask = pdfjs.getDocument({ data: buffer });
         const pdf = await loadingTask.promise;
         let pdfText = "";
@@ -195,11 +216,34 @@ export const KnowledgeChat: React.FC = () => {
       {/* Chat Area */}
       <div className="flex-1 flex flex-col relative">
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white z-10">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <Bot className="w-5 h-5 text-emerald-600" />
-            审计助手
-          </h2>
-          <button 
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Bot className="w-5 h-5 text-emerald-600" />
+              审计助手
+            </h2>
+
+            {/* Context Toggle */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all cursor-pointer ${useExcelContext && filesData.length > 0
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-slate-50 border-slate-200 text-slate-500'
+              }`} onClick={() => {
+                if (filesData.length === 0) {
+                  alert('请先在“数据工坊”或右上角添加 Excel 文件');
+                  return;
+                }
+                setUseExcelContext(!useExcelContext);
+              }}>
+              <Database className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">
+                {filesData.length > 0 ? `当前工作区 (${filesData.length})` : '未连接数据'}
+              </span>
+              <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${useExcelContext && filesData.length > 0 ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                <div className={`w-3 h-3 bg-white rounded-full shadow-sm transition-transform ${useExcelContext && filesData.length > 0 ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </div>
+          </div>
+
+          <button
             onClick={() => setShowKB(!showKB)}
             className={`p-2 rounded-lg transition-colors ${showKB ? 'bg-emerald-50 text-emerald-600' : 'text-slate-400 hover:bg-slate-50'}`}
           >
@@ -213,18 +257,17 @@ export const KnowledgeChat: React.FC = () => {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-slate-200' : 'bg-emerald-600'}`}>
                 {msg.role === 'user' ? <User className="w-5 h-5 text-slate-600" /> : <Bot className="w-5 h-5 text-white" />}
               </div>
-              <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                msg.role === 'user' 
-                  ? 'bg-slate-800 text-white rounded-tr-none' 
+              <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
+                  ? 'bg-slate-800 text-white rounded-tr-none'
                   : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
-              }`}>
+                }`}>
                 <ReactMarkdown>{msg.text}</ReactMarkdown>
               </div>
             </div>
           ))}
           {loading && (
             <div className="flex gap-3">
-               <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm">
@@ -246,7 +289,7 @@ export const KnowledgeChat: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="询问关于审计规范或财务数据的问题..."
+              placeholder={useExcelContext ? "已连接工作区，可以询问表格数据相关的问题..." : "询问关于审计规范或财务数据的问题..."}
               className="flex-1 bg-transparent border-none outline-none px-2 text-slate-700 placeholder:text-slate-400"
             />
             <button
@@ -271,7 +314,7 @@ export const KnowledgeChat: React.FC = () => {
               支持上传审计准则、Word、PDF 或 Excel 文件作为上下文。
             </p>
           </div>
-          
+
           <div className="p-4 space-y-4 flex-1 overflow-y-auto">
             <label className="block w-full border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:bg-slate-50 hover:border-emerald-400 transition-colors group">
               <input
