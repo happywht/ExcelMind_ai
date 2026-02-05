@@ -782,6 +782,64 @@ export const DocumentSpace: React.FC = () => {
       // 构建映射数据
       let generationSource = primarySheetData;
 
+      // ==================================================================================
+      // Phase 7 Fix: Pre-Calculate Virtual Columns
+      // Reason: Virtual Columns must exist BEFORE GroupBy decision
+      // ==================================================================================
+      if (schemeToUse.virtualColumns && schemeToUse.virtualColumns.length > 0) {
+        // We must process sequentially if there are AI columns (for safety), or parallel for others
+        // using Promise.all
+        generationSource = await Promise.all(primarySheetData.map(async (row, rowIndex) => {
+          const enrichedRow = { ...row }; // Shallow copy
+
+          for (const vc of schemeToUse.virtualColumns!) {
+            const key = vc.name;
+            // Note: Virtual Columns in Excel are accessed via their Name (e.g. "[虚拟] 序号")
+
+            if (vc.type === 'const') {
+              // Hotfix 1: Detect and execute JS code patterns in "const" type
+              // AI sometimes puts "new Date()..." into value string
+              const codePattern = /^(new Date|Math\.|Date\.)/i;
+              if (typeof vc.value === 'string' && codePattern.test(vc.value.trim())) {
+                try {
+                  // Safe-ish execution for simple expressions
+                  const safeFn = new Function(`return ${vc.value}`);
+                  enrichedRow[key] = safeFn();
+                } catch (e) {
+                  // Fallback to literal if exec fails
+                  enrichedRow[key] = vc.value;
+                }
+              } else {
+                enrichedRow[key] = vc.value;
+              }
+            } else if (vc.type === 'var') {
+              if (vc.value === 'CurrentDate') enrichedRow[key] = new Date().toLocaleDateString();
+              else if (vc.value === 'CurrentTime') enrichedRow[key] = new Date().toLocaleTimeString();
+              else if (vc.value === 'RowIndex') enrichedRow[key] = rowIndex + 1;
+              else if (vc.value === 'UUID') enrichedRow[key] = crypto.randomUUID();
+            } else if (vc.type === 'ai') {
+              // Limited AI for Virtual Columns (First 3 rows only for preview/safety)
+              if (rowIndex < 3) {
+                try {
+                  const prompt = vc.aiPrompt || vc.value;
+                  let hydratedPrompt = prompt;
+                  Object.keys(row).forEach(header => {
+                    hydratedPrompt = hydratedPrompt.replace(new RegExp(`\\{\\{${header}\\}\\}`, 'g'), String(row[header] || ''));
+                  });
+                  const aiRes = await aiProcessingService.generateCellContent(hydratedPrompt, row);
+                  enrichedRow[key] = aiRes.result || '[AI Error]';
+                } catch (e) {
+                  enrichedRow[key] = '[AI Failed]';
+                }
+              } else {
+                enrichedRow[key] = '[AI Preview Limited]';
+              }
+            }
+          }
+          return enrichedRow;
+        }));
+      }
+
       // Phase 6: Group By Loop Detection
       const groupByLoop = schemeToUse.loopMappings?.find(m => m.type === 'group_by');
       if (groupByLoop && groupByLoop.groupByColumn) {
@@ -789,8 +847,16 @@ export const DocumentSpace: React.FC = () => {
         const seenKeys = new Set<string>();
         const uniqueRows: any[] = [];
 
-        primarySheetData.forEach(row => {
-          const val = String(row[keyCol] || '');
+        // Now generationSource has Virtual Columns!
+        generationSource.forEach(row => {
+          let val = String(row[keyCol] || '');
+
+          // Hotfix 3: Handle undefined/empty group keys robustly
+          // If key is missing, treat as "Default_Group" to ensure single merged document
+          if (val === 'undefined' || val === 'null' || val === '') {
+            val = 'Default_Merge_Group';
+          }
+
           if (val && !seenKeys.has(val)) {
             seenKeys.add(val);
             uniqueRows.push(row); // Use first row as representative
@@ -798,6 +864,20 @@ export const DocumentSpace: React.FC = () => {
         });
 
         if (uniqueRows.length > 0) {
+          // IMPORTANT: If we are in GroupBy Mode, the 'generationSource' for the MAIN LOOP
+          // should act as the "Group Heads".
+          // The 'row' passed to 'executeLoopProcessing' will be one of these heads.
+          // The 'executeLoopProcessing' needs to find children from the FULL 'primarySheetData' (enriched).
+
+          // Wait: executeLoopProcessing uses 'allSheetsData'.
+          // We need to make sure loopProcessingService can find the rows using the Virtual Column Key.
+          // If the Key is a Virtual Column, it won't exist in 'excelData.sheets'.
+          // ISSUE: loopProcessingService reads from 'excelData.sheets'.
+          // FIX: We must temporarily update 'excelData.sheets[sheetToUse]' with our Enriched Data
+          // so that loopProcessingService can find the grouped children!
+
+          excelData.sheets[sheetToUse] = generationSource; // Update the in-memory sheet data with enriched rows
+
           generationSource = uniqueRows;
           addLog('generating', 'info', `Group By 模式: 依据 "${keyCol}" 合并为 ${uniqueRows.length} 个文档`);
         }
@@ -805,49 +885,84 @@ export const DocumentSpace: React.FC = () => {
 
       const mappedDataList = await Promise.all(generationSource.map(async (row: any, rowIndex: number) => {
         const mappedData: any = {};
+        const currentRow = { ...row }; // Create a mutable copy for this generation steps
+
+        // ==================================================================================
+        // Phase 7 Fix: Loop & Flattening Logic Moved to START
+        // Reason: Flattened variables (e.g. Name_1) must exist in currentRow BEFORE standard mapping runs
+        // ==================================================================================
+
+        let loopResults = {}; // Capture for merging later
+
+        // 3. Phase 6: Loop Mappings (使用 loopProcessingService)
+        if (schemeToUse.loopMappings && schemeToUse.loopMappings.length > 0) {
+          loopResults = executeLoopProcessing(
+            currentRow, // Use currentRow which might be enriched
+            schemeToUse.loopMappings,
+            excelData.sheets,
+            rowIndex,
+            loopIndexes
+          );
+
+          // Phase 7: Flattening Logic (One-to-Many Fixed Slot Mapping)
+          // Automatically flatten group children into indexed fields (e.g., Name_1, Name_2)
+          Object.entries(loopResults).forEach(([loopKey, loopValue]) => {
+            if (Array.isArray(loopValue) && loopValue.length > 0) {
+              loopValue.forEach((childItem, index) => {
+                const suffix = `_${index + 1}`; // 1-based index
+                Object.entries(childItem).forEach(([childField, childVal]) => {
+                  // Inject: Field_1, Field_2
+                  const flattenedKey = `${childField}${suffix}`;
+
+                  // 1. Add to mappedData (for direct access via Docxtemplater if keys match)
+                  mappedData[flattenedKey] = childVal as string | number | boolean;
+
+                  // 2. ALSO Inject into currentRow so Standard Mapping loop can find it!
+                  // This is crucial for mappings like {{Name1}} -> Name_1
+                  currentRow[flattenedKey] = childVal;
+
+                  // Hotfix 2: Alias Recovery
+                  // AI often aliases columns inside loops (e.g. "InnerName" -> "姓名")
+                  // But Main Mapping expects "姓名_1". We must bridge this gap.
+                  const loopConfig = schemeToUse.loopMappings?.find(l =>
+                    l.loopPlaceholder.replace(/^\{\#|\}$/g, '').replace(/^#/, '') === loopKey
+                  );
+
+                  if (loopConfig) {
+                    // Find if 'childField' (e.g. InnerName) maps to a real Excel Column
+                    const mappingDef = loopConfig.mappings.find(m =>
+                      m.placeholder.replace(/\{\{|\}\}/g, '').trim() === childField
+                    );
+
+                    if (mappingDef && mappingDef.excelColumn && mappingDef.excelColumn !== childField) {
+                      const realColName = mappingDef.excelColumn;
+                      const recoverKey = `${realColName}${suffix}`; // e.g. "姓名_1"
+
+                      if (mappedData[recoverKey] === undefined) {
+                        mappedData[recoverKey] = childVal as any;
+                        currentRow[recoverKey] = childVal;
+                      }
+                    }
+                  }
+                });
+              });
+            }
+          });
+        }
 
         // 1. 处理主Sheet的字段映射
         for (const mapping of schemeToUse.mappings) {
           const key = mapping.placeholder.replace(/\{\{|\}\}/g, '').trim();
 
-          // Phase 3: Virtual Column Support
+          // Phase 3: Virtual Column Support (Legacy / Direct Logic)
+          // Simplified: We already enriched the data in Pre-processing phase!
+          // So we can just read from the row.
           if (mapping.excelColumn.startsWith('[虚拟] ')) {
-            const exactVc = schemeToUse.virtualColumns?.find(v => v.name === mapping.excelColumn);
-
-            if (exactVc) {
-              if (exactVc.type === 'const') {
-                mappedData[key] = exactVc.value;
-              } else if (exactVc.type === 'var') {
-                if (exactVc.value === 'CurrentDate') mappedData[key] = new Date().toLocaleDateString();
-                else if (exactVc.value === 'CurrentTime') mappedData[key] = new Date().toLocaleTimeString();
-                else if (exactVc.value === 'RowIndex') mappedData[key] = rowIndex + 1;
-                else if (exactVc.value === 'UUID') mappedData[key] = crypto.randomUUID();
-              } else if (exactVc.type === 'ai') {
-                // Phase 4: AI Content Generation
-                if (rowIndex < 3) {
-                  try {
-                    const prompt = exactVc.aiPrompt || exactVc.value;
-                    let hydratedPrompt = prompt;
-                    // Simple variable substitution in prompt
-                    Object.keys(row).forEach(header => {
-                      hydratedPrompt = hydratedPrompt.replace(new RegExp(`\\{\\{${header}\\}\\}`, 'g'), String(row[header] || ''));
-                    });
-
-                    const aiRes = await aiProcessingService.generateCellContent(hydratedPrompt, row);
-                    mappedData[key] = aiRes.result || '[AI Error]';
-                  } catch (e) {
-                    mappedData[key] = '[AI Failed]';
-                  }
-                } else {
-                  mappedData[key] = '[AI Preview Limited]';
-                }
-              }
-            } else {
-              mappedData[key] = ''; // Virtual column definition not found
-            }
+            // Direct read because row is now enriched
+            mappedData[key] = currentRow[mapping.excelColumn] || '';
           } else {
-            // Standard Excel Column Mapping
-            mappedData[key] = row[mapping.excelColumn];
+            // Standard Excel Column Mapping (Read from currentRow which has Flattened vars)
+            mappedData[key] = currentRow[mapping.excelColumn];
           }
         }
 
@@ -894,35 +1009,8 @@ export const DocumentSpace: React.FC = () => {
 
         }
 
-        // 3. Phase 6: Loop Mappings (使用 loopProcessingService)
-        if (schemeToUse.loopMappings && schemeToUse.loopMappings.length > 0) {
-
-          const loopResults = executeLoopProcessing(
-            row,
-            schemeToUse.loopMappings,
-            excelData.sheets,
-            rowIndex,
-            loopIndexes
-          );
-
-          // Phase 7: Flattening Logic (One-to-Many Fixed Slot Mapping)
-          // Automatically flatten group children into indexed fields (e.g., Name_1, Name_2)
-          Object.entries(loopResults).forEach(([loopKey, loopValue]) => {
-            if (Array.isArray(loopValue) && loopValue.length > 0) {
-              loopValue.forEach((childItem, index) => {
-                const suffix = `_${index + 1}`; // 1-based index
-                Object.entries(childItem).forEach(([childField, childVal]) => {
-                  // Only flatten distinct values (ignore if same as parent, though uncommon in GroupBy)
-                  // Inject: Field_1, Field_2
-                  mappedData[`${childField}${suffix}`] = childVal as string | number | boolean;
-                });
-              });
-            }
-          });
-
-          // Merge loop results into mappedData (Keep original structure for Loop Tags)
-          Object.assign(mappedData, loopResults);
-        }
+        // Merge loop results into mappedData (Keep original structure for Loop Tags)
+        Object.assign(mappedData, loopResults);
 
         return mappedData;
       }));

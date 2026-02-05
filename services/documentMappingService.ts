@@ -79,8 +79,8 @@ export async function generateFieldMappingV2(params: GenerateMappingParamsV2): P
 
     // 调用智谱AI
     const response = await getClient().messages.create({
-      model: "glm-4.6",
-      max_tokens: 8192, // 增加token限制以支持多Sheet分析
+      model: "glm-4.7", // 升级到 GLM-4.7
+      max_tokens: 8192,
       messages: [{
         role: "user",
         content: prompt
@@ -90,8 +90,49 @@ export async function generateFieldMappingV2(params: GenerateMappingParamsV2): P
     const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
     if (!text) throw new Error("AI未返回响应");
 
-    // 解析AI响应（支持跨Sheet映射）
-    const mappingScheme = parseMultiSheetMappingResponse(text, allSheetsInfo);
+    // ===========================================
+    // Phase 8: Self-Correction (Reflection Loop)
+    // 增加一层模型自判断
+    // ===========================================
+    let mappingScheme = parseMultiSheetMappingResponse(text, allSheetsInfo);
+
+    // Self-Check Prompt
+    const checkPrompt = `
+      我刚刚生成了一个文档映射方案，请评估其是否符合用户指令。
+      
+      【用户指令】
+      "${userInstruction}"
+      
+      【生成的方案 (JSON)】
+      ${JSON.stringify(mappingScheme, null, 2)}
+      
+      【评估要求】
+      1. 方案是否覆盖了用户的核心意图（如筛选条件、数据分组、多Sheet关联）？
+      2. 关键占位符是否已映射？
+      
+      如果方案完美，请直接返回 "PASS"。
+      如果存在严重问题，请返回修复后的完整JSON（格式同上）。不要解释，只返回修复后的JSON。
+    `;
+
+    try {
+      const checkResponse = await getClient().messages.create({
+        model: "glm-4.7", // 使用 4.7 进行校验
+        max_tokens: 8192,
+        messages: [{ role: "user", content: checkPrompt }]
+      });
+
+      const checkText = checkResponse.content[0]?.type === 'text' ? checkResponse.content[0].text.trim() : "";
+      if (checkText && checkText !== "PASS" && checkText.startsWith("{")) {
+        logger.info("AI Self-Correction Triggered: Updating Mapping Scheme");
+        const improvedScheme = parseMultiSheetMappingResponse(checkText, allSheetsInfo);
+        // Only replace if new scheme is valid and has high confidence
+        if (improvedScheme && improvedScheme.mappings.length > 0) {
+          mappingScheme = improvedScheme;
+        }
+      }
+    } catch (checkError) {
+      logger.warn("Self-Correction failed, using original result:", checkError);
+    }
 
     // ===========================================
     // Phase 2: Context-Aware Auto-Formatting (Heuristic Layer)
@@ -179,10 +220,10 @@ function buildMultiSheetMappingPrompt(params: MultiSheetMappingPromptParams): st
   const sheetsOverview = allSheetsInfo.map(sheet => {
     return `
 工作表名称: ${sheet.sheetName}
-- 数据行数: ${sheet.rowCount}
+- 数据行数: ${sheet.rowCount} (共${sheet.rowCount}行)
 - 字段列表: ${sheet.headers.join(', ')}
-- 样本数据(前${SAMPLING_CONFIG.DOCUMENT_MAPPING.PREVIEW_ROWS}行):
-${JSON.stringify(sheet.sampleData.slice(0, SAMPLING_CONFIG.DOCUMENT_MAPPING.PREVIEW_ROWS), null, 2)}
+- 样本数据(前5行):
+${JSON.stringify(sheet.sampleData.slice(0, 5), null, 2)}
 `;
   }).join('\n');
 
