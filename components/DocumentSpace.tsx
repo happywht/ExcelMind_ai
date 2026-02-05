@@ -16,6 +16,8 @@ import { parseWordTemplate, createTemplateFile, highlightPlaceholdersInHtml } fr
 import { generateFieldMapping } from '../services/documentMappingService';
 import { generateMultipleDocuments, downloadDocumentsAsZip, downloadDocument } from '../services/docxGeneratorService';
 import { TemplateFile, MappingScheme, DocumentProcessingLog, GeneratedDocument } from '../types/documentTypes';
+import { generateScheme, downloadSchemeFile, parseScheme, validateSchemeAgainstTemplate } from '../services/schemeService';
+import { ExcelMindScheme } from '../types/scheme'; // Import the type
 
 /**
  * 文档空间主组件
@@ -119,6 +121,92 @@ export const DocumentSpace: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Export Configuration
+  const handleExportScheme = () => {
+    if (!templateFile || !mappingScheme) return;
+
+    try {
+      // 1. Generate Scheme Object
+      const scheme = generateScheme(
+        templateFile.placeholders,
+        mappingScheme.mappings,
+        [], // Loop configs not yet exposed in DocumentSpace state, need to refactor if we want to save them. 
+        // Currently mappingScheme doesn't strictly hold loop configs unless we added it to the type.
+        // verifying types... MappingScheme in documentTypes.ts usually has mappings. 
+        // For now passing empty array or need to check if we can get it.
+        [], // Virtual columns
+        {
+          sourceTemplateName: templateFile.name,
+          description: `Auto-generated from ${templateFile.name}`
+        }
+      );
+
+      // 2. Download
+      const fileName = templateFile.name.replace('.docx', '_config.ems');
+      downloadSchemeFile(scheme, fileName);
+      addLog('mapping', 'success', `配置已导出: ${fileName}`);
+    } catch (e) {
+      addLog('mapping', 'error', `导出失败: ${e}`);
+    }
+  };
+
+  // Import Configuration
+  const handleImportScheme = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const result = parseScheme(text);
+
+      if (!result.valid || !result.scheme) {
+        addLog('mapping', 'error', `配置文件无效: ${result.errors.join(', ')}`);
+        return;
+      }
+
+      const scheme = result.scheme;
+
+      // Validate against current template (if loaded)
+      if (templateFile) {
+        const validation = validateSchemeAgainstTemplate(scheme, templateFile.placeholders);
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach(w => addLog('mapping', 'warning', w));
+        }
+      } else {
+        addLog('mapping', 'warning', '未加载模板，无法验证配置的兼容性。建议先上传对应的 Word 模板。');
+      }
+
+      // Restore State
+      // Reconstruct MappingScheme object from the saved rules
+      // Note: We might be missing 'explanation' or 'unmappedPlaceholders' which usually come from AI.
+      // We can re-calculate unmapped placeholders.
+
+      const restoredMapping: MappingScheme = {
+        mappings: scheme.config.mappingRules,
+        unmappedPlaceholders: [], // TODO: Recalculate
+        explanation: "Imported from configuration file.",
+        filterCondition: "" // TODO: Save this in global settings?
+      };
+
+      // Recalculate unmapped if template exists
+      if (templateFile) {
+        const mappedPlaceholders = new Set(restoredMapping.mappings.map(m => m.placeholder));
+        restoredMapping.unmappedPlaceholders = templateFile.placeholders
+          .map(p => p.name)
+          .filter(n => !mappedPlaceholders.has(n));
+      }
+
+      setMappingScheme(restoredMapping);
+      addLog('mapping', 'success', `配置已导入，恢复了 ${scheme.config.mappingRules.length} 个映射规则`);
+
+    } catch (e) {
+      addLog('mapping', 'error', `导入失败: ${e}`);
+    }
+
+    // Reset input
+    e.target.value = '';
   };
 
   // AI 处理进度
@@ -317,15 +405,39 @@ export const DocumentSpace: React.FC = () => {
                 </>
               )}
             </button>
+
+            {/* 导入配置按钮 */}
+            <div className="flex justify-center mt-2">
+              <label className="text-xs text-slate-500 hover:text-orange-500 cursor-pointer flex items-center gap-1 transition-colors">
+                <Upload className="w-3 h-3" />
+                导入配置 (.ems)
+                <input
+                  type="file"
+                  accept=".ems,.json"
+                  onChange={handleImportScheme}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
 
           {/* 映射方案显示 */}
           {mappingScheme && (
             <div className="space-y-3">
-              <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-emerald-500" />
-                映射方案
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  映射方案
+                </h3>
+                <button
+                  onClick={handleExportScheme}
+                  className="text-xs flex items-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors"
+                  title="导出配置"
+                >
+                  <Download className="w-3 h-3" />
+                  保存配置
+                </button>
+              </div>
               <div className="bg-slate-50 rounded-lg p-3 space-y-2">
                 <p className="text-xs text-slate-600 mb-2">{mappingScheme.explanation}</p>
 
@@ -484,7 +596,7 @@ export const DocumentSpace: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

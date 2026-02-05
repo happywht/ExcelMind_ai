@@ -35,7 +35,8 @@ import {
   ChevronDown,
   ChevronRight,
   List,
-  Wand2
+  Wand2,
+  Download
 } from 'lucide-react';
 import { MappingScheme, VirtualColumn } from '../../types/documentTypes';
 
@@ -56,7 +57,8 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
   excelHeaders,
   sampleData,
   onMappingChange,
-  allSheetsHeaders = {}
+  allSheetsHeaders = {},
+  onExportScheme
 }) => {
 
   const [isEditing, setIsEditing] = useState(false);
@@ -504,6 +506,18 @@ const MappingEditor: React.FC<MappingEditorProps> = ({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Export Button */}
+            {onExportScheme && (
+              <button
+                onClick={onExportScheme}
+                className="flex items-center gap-1 text-slate-500 hover:text-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors text-sm font-medium border border-transparent hover:border-emerald-200"
+                title="导出配置 (.ems)"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">保存配置</span>
+              </button>
+            )}
+
             {/* 映射进度 */}
             <div className="flex items-center gap-3 pr-4 border-r border-slate-200">
               <div className="text-right">

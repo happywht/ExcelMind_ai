@@ -77,6 +77,8 @@ export interface DocumentSpaceHandlers {
   onTabChange: (tab: DocumentSpaceTab) => void;
   onDocSelect: (doc: GeneratedDocument | null) => void;
   onSheetChange: (sheetName: string) => void;
+  onExportScheme: () => void;
+  onImportScheme: (file: File) => Promise<void>;
 }
 
 // ============================================================================
@@ -105,6 +107,7 @@ export interface DocumentSpaceSidebarProps {
   onGenerateDocs: () => Promise<void>;
   onDownloadDoc: (doc: GeneratedDocument) => void;
   onDownloadAll: () => Promise<void>;
+  onImportScheme: (file: File) => Promise<void>;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -120,6 +123,11 @@ export interface DocumentSpaceMainProps {
   onTabChange: (tab: DocumentSpaceTab) => void;
   onDocSelect: (doc: GeneratedDocument | null) => void;
   onSheetChange: (sheetName: string) => void;
+  onTemplateFileChange: (templateFile: TemplateFile) => void;
+  onMappingChange: (scheme: MappingScheme) => void;
+  aiProgress?: { current: number; total: number } | null;
+  allSheetsHeaders: Record<string, string[]>;
+  onExportScheme: () => void;
 }
 
 export interface TemplatePreviewProps {
@@ -136,7 +144,10 @@ export interface MappingEditorProps {
   mappingScheme: MappingScheme;
   templatePlaceholders: string[];
   excelHeaders: string[];
+  sampleData?: Record<string, any>;
   onMappingChange: (mapping: MappingScheme) => void;
+  allSheetsHeaders?: Record<string, string[]>;
+  onExportScheme?: () => void;
 }
 
 export interface DocumentListProps {

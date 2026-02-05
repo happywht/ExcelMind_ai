@@ -55,6 +55,7 @@ interface DocumentSpaceMainProps {
   onMappingChange: (scheme: MappingScheme) => void;
   aiProgress?: { current: number; total: number } | null;
   allSheetsHeaders: Record<string, string[]>;
+  onExportScheme: () => void;
 }
 
 const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
@@ -71,10 +72,12 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
   onTemplateFileChange,
   onMappingChange,
   aiProgress,
-  allSheetsHeaders
+  allSheetsHeaders,
+  onExportScheme
 }) => {
   // 模板上传弹窗状态
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   // Phase 5: View Mode for Mapping Tab
   const [viewMode, setViewMode] = useState<'classic' | 'agent'>('classic');
@@ -218,6 +221,7 @@ const DocumentSpaceMain: React.FC<DocumentSpaceMainProps> = ({
               sampleData={excelData?.sheets?.[excelData.currentSheetName]?.[0]}
               onMappingChange={onMappingChange}
               allSheetsHeaders={allSheetsHeaders}
+              onExportScheme={onExportScheme}
             />
           )
         ) : (

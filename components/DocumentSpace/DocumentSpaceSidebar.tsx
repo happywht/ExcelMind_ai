@@ -68,6 +68,7 @@ interface DocumentSpaceSidebarProps {
   onGenerationModeChange: (mode: GenerationMode) => void;
   onAggregateConfigChange: (config: AggregateConfig) => void;
   onDownloadAll: () => Promise<void>;
+  onImportScheme?: (file: File) => Promise<void>;
 }
 
 const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
@@ -93,6 +94,7 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
   onGenerateDocs,
   onDownloadDoc,
   onDownloadAll,
+  onImportScheme,
   generationMode,
   aggregateConfig,
   onAggregateConfigChange,
@@ -424,6 +426,27 @@ const DocumentSpaceSidebar: React.FC<DocumentSpaceSidebarProps> = ({
                     <span className="text-sm font-medium">点击上传 Excel 数据</span>
                   </div>
                 )}
+              </label>
+            </div>
+
+            {/* 导入配置按钮 */}
+            <div className="flex justify-end px-1 -mt-2">
+              <label className="text-xs text-slate-500 hover:text-emerald-600 cursor-pointer flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-emerald-50" title="导入已保存的映射配置 (.ems)">
+                <Upload className="w-3 h-3" />
+                导入配置
+                <input
+                  type="file"
+                  accept=".ems,.json"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && onImportScheme) {
+                      onImportScheme(file);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="hidden"
+                  disabled={isProcessing}
+                />
               </label>
             </div>
 

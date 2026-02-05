@@ -69,6 +69,7 @@ import DocumentSpaceSidebar from './DocumentSpaceSidebar';
 import DocumentSpaceMain from './DocumentSpaceMain';
 import { aiBatchService } from '../../services/aiBatchService';
 import { executeLoopProcessing } from '../../services/loopProcessingService';
+import { generateScheme, parseScheme, validateSchemeAgainstTemplate, downloadSchemeFile } from '../../services/schemeService';
 
 export const DocumentSpace: React.FC = () => {
   const { currentExcelData, currentTemplate, setExcelData: setWorkspaceExcelData, setTemplate: setWorkspaceTemplate } = useWorkspace();
@@ -1182,6 +1183,56 @@ export const DocumentSpace: React.FC = () => {
     }
   }, [excelData, addLog]);
 
+  // ===== 10. 导入/导出映射方案 =====
+  const handleExportScheme = useCallback(() => {
+    if (!mappingScheme) {
+      addLog('scheme_export', 'error', '没有可导出的映射方案');
+      return;
+    }
+    try {
+      const schemeJson = JSON.stringify(mappingScheme, null, 2);
+      const blob = new Blob([schemeJson], { type: 'application/json' });
+      const fileName = `mapping_scheme_${Date.now()}.json`;
+      downloadDocument(blob, fileName);
+      addLog('scheme_export', 'success', `映射方案已导出为 ${fileName}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog('scheme_export', 'error', `导出映射方案失败: ${errorMessage}`);
+    }
+  }, [mappingScheme, addLog]);
+
+  const handleImportScheme = useCallback(async (file: File) => {
+    if (!file.name.endsWith('.json')) {
+      addLog('scheme_import', 'error', '请上传.json格式的映射方案文件');
+      return;
+    }
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const content = e.target?.result as string;
+          const importedScheme: MappingScheme = JSON.parse(content);
+
+          // Basic validation for imported scheme structure
+          if (!importedScheme.mappings || !Array.isArray(importedScheme.mappings)) {
+            throw new Error('导入的映射方案结构不正确');
+          }
+
+          setMappingScheme(importedScheme);
+          setActiveTab('mapping');
+          addLog('scheme_import', 'success', `映射方案 "${file.name}" 导入成功`);
+        } catch (parseError) {
+          const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+          addLog('scheme_import', 'error', `解析映射方案文件失败: ${errorMessage}`);
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addLog('scheme_import', 'error', `导入映射方案失败: ${errorMessage}`);
+    }
+  }, [addLog]);
+
   // ===== 计算属性 =====
 
   const canGenerateMapping = useMemo(() => {
@@ -1243,8 +1294,9 @@ export const DocumentSpace: React.FC = () => {
           onEnabledSheetsChange={setEnabledSheets}
           onGenerateMapping={handleGenerateMapping}
           onGenerateDocs={handleGenerateDocs}
-          onDownloadDoc={handleDownloadDoc}
-          onDownloadAll={handleDownloadAll}
+          onDownloadDoc={(doc) => downloadDocument(doc.blob, doc.fileName)}
+          onDownloadAll={() => downloadDocumentsAsZip(generatedDocs, `批量文档_${Date.now()}.zip`)}
+          onImportScheme={handleImportScheme}
         />
       </div>
 
@@ -1258,11 +1310,17 @@ export const DocumentSpace: React.FC = () => {
         allSheetsHeaders={allSheetsHeaders}
         selectedDoc={selectedDoc}
         performanceMetrics={performanceMetrics}
-        onTabChange={handleTabChange}
-        onDocSelect={handleDocSelect}
-        onSheetChange={handleSheetChange}
+        onTabChange={setActiveTab}
+        onDocSelect={setSelectedDoc}
+        onSheetChange={(name) => {
+          if (excelData) {
+            setExcelData({ ...excelData, currentSheetName: name });
+          }
+        }}
         onTemplateFileChange={setTemplateFile}
         onMappingChange={setMappingScheme}
+        aiProgress={null}
+        onExportScheme={handleExportScheme}
       />
     </div>
   );
