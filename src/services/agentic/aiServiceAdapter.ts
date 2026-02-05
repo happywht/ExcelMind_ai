@@ -62,7 +62,7 @@ export class AIServiceAdapter implements IAIService {
   async analyze(prompt: string): Promise<string> {
     try {
       const response = await this.getClient().messages.create({
-        model: 'glm-4.6',
+        model: 'glm-4.7',
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }]
       });
@@ -93,7 +93,7 @@ export class AIServiceAdapter implements IAIService {
 直接返回可执行的Python代码。`;
 
       const response = await this.getClient().messages.create({
-        model: 'glm-4.6',
+        model: 'glm-4.7',
         max_tokens: 3000,
         messages: [{ role: 'user', content: enhancedPrompt }]
       });

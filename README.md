@@ -40,18 +40,33 @@ npm run dev
 - **前端框架**: React 19 + TypeScript
 - **构建工具**: Vite
 - **样式**: Tailwind CSS
-- **AI服务**: 智谱AI (GLM-4.6)
+- **AI服务**: 智谱AI (GLM-4.7)
 - **文档处理**: XLSX, PDF.js, Mammoth
 
 ## 🔧 项目结构
 
 ```
-├── components/          # React组件
-│   ├── FormulaGen.tsx   # 公式生成器
-│   ├── KnowledgeChat.tsx # 知识聊天
-│   └── SmartExcel.tsx   # 智能Excel处理
-├── services/            # 服务层
-│   ├── zhipuService.ts  # 智谱AI服务
-│   └── excelService.ts  # Excel处理服务
-└── types.ts            # TypeScript类型定义
+├── src/                     # 源代码目录
+│   ├── components/          # React组件
+│   │   ├── FormulaGen.tsx   # 公式生成器
+│   │   ├── KnowledgeChat.tsx # 知识聊天
+│   │   └── SmartExcel.tsx   # 智能Excel处理
+│   ├── services/            # 服务层
+│   │   ├── zhipuService.ts  # 智谱AI服务
+│   │   ├── excelService.ts  # Excel处理服务
+│   │   └── agentic/         # Agent智能服务
+│   ├── types/               # TypeScript类型定义
+│   ├── hooks/               # React Hooks
+│   ├── utils/               # 工具函数
+│   └── pages/               # 页面组件
+├── server/                  # 后端服务器
+│   ├── routes/              # API路由
+│   ├── services/            # 后端服务
+│   └── websocket/           # WebSocket服务
+├── api/                     # API定义
+│   ├── controllers/         # API控制器
+│   └── middleware/          # 中间件
+├── public/                  # 静态资源
+├── scripts/                 # 构建脚本和工具
+└── tests/                   # 测试文件
 ```

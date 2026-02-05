@@ -53,7 +53,7 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
   enableAutoRepair: true,
   enableCaching: true,
   logLevel: 'info',
-  aiModel: 'glm-4.6',
+  aiModel: 'glm-4.7',
   maxTokens: 4096
 };
 

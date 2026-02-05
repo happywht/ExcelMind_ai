@@ -338,7 +338,7 @@ ${availableColumns.map((col, i) => `${i + 1}. ${col}`).join('\n')}
 
   try {
     const response = await getClient().messages.create({
-      model: "glm-4.6",
+      model: "glm-4.7",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }]
     });
@@ -380,7 +380,7 @@ export async function intelligentValueExtraction(
 
   try {
     const response = await getClient().messages.create({
-      model: "glm-4.6",
+      model: "glm-4.7",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }]
     });

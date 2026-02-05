@@ -269,7 +269,7 @@ export class PerformanceTracker {
     prefix?: string,
     excludeMethods: string[] = []
   ): ClassDecorator {
-    return function <T extends { new (...args: any[]): {} }>(constructor: T): { new (...args: any[]): {} } {
+    return function <T extends { new(...args: any[]): {} }>(constructor: T): { new(...args: any[]): {} } {
       return class extends constructor {
         constructor(...args: any[]) {
           super(...args);
@@ -278,8 +278,8 @@ export class PerformanceTracker {
           const prototype = constructor.prototype;
           const methodNames = Object.getOwnPropertyNames(prototype).filter(
             name => typeof prototype[name] === 'function' &&
-                    name !== 'constructor' &&
-                    !excludeMethods.includes(name)
+              name !== 'constructor' &&
+              !excludeMethods.includes(name)
           );
 
           // 装饰每个方法
@@ -476,7 +476,7 @@ export function TrackQuery(
  */
 export function TrackAICall(
   callType: 'formula' | 'chat' | 'data_processing' | 'mapping' = 'chat',
-  model: string = 'glm-4.6'
+  model: string = 'glm-4.7'
 ): MethodDecorator {
   return function (target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;

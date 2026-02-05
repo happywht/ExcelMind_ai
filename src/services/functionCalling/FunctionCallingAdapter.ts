@@ -199,7 +199,7 @@ export class FunctionCallingAdapter {
     });
 
     const response = await this.client.messages.create({
-      model: 'glm-4.6',
+      model: 'glm-4.7',
       max_tokens: 4096,
       messages: messages.map(msg => {
         if (msg.role === 'tool') {

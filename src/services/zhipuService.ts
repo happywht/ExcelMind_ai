@@ -137,7 +137,7 @@ export const generateExcelFormula = async (description: string): Promise<string>
 请生成最合适的Excel公式，不要包含markdown代码块或解释文字。`;
 
     const response = await getClient().messages.create({
-      model: "glm-4.6",
+      model: "glm-4.7",
       max_tokens: 1500, // 增加token限制以支持复杂公式
       messages: [{
         role: "user",
@@ -296,7 +296,7 @@ export const chatWithKnowledgeBase = async (
     });
 
     const response = await getClient().messages.create({
-      model: "glm-4.6",
+      model: "glm-4.7",
       max_tokens: 4096,
       messages: messages
     });
@@ -355,12 +355,14 @@ export const generateDataProcessingCode = async (
   userPrompt: string,
   filesPreview: ({ fileName: string; headers: string[]; sampleRows: any[]; metadata?: any } & {
     currentSheetName?: string;
-    sheets?: { [sheetName: string]: {
-      headers: string[];
-      sampleRows: any[];
-      rowCount: number;
-      metadata?: any;
-    }};
+    sheets?: {
+      [sheetName: string]: {
+        headers: string[];
+        sampleRows: any[];
+        rowCount: number;
+        metadata?: any;
+      }
+    };
   })[]
 ): Promise<AIProcessResult> => {
   const breaker = getCircuitBreaker();
@@ -563,7 +565,7 @@ print(json.dumps(files, ensure_ascii=False, default=str))
     logger.debug('[AI Service] Files count:', filesPreview.length);
 
     const response = await getClient().messages.create({
-      model: "glm-4.6",
+      model: "glm-4.7",
       max_tokens: 4096,
       messages: [{
         role: "user",

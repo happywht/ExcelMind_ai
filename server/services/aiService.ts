@@ -9,7 +9,7 @@ dotenv.config();
 
 class AIService {
     private client: Anthropic | null = null;
-    private model: string = 'glm-4-flash';
+    private model: string = 'glm-4.7';
 
     constructor() {
         this.initClient();
@@ -18,7 +18,7 @@ class AIService {
     private initClient() {
         const apiKey = process.env.ZHIPU_API_KEY;
         const baseURL = process.env.ZHIPU_BASE_URL || 'https://open.bigmodel.cn/api/anthropic';
-        this.model = process.env.ZHIPU_MODEL || 'glm-4-flash';
+        this.model = process.env.ZHIPU_MODEL || 'glm-4.7';
 
         if (!apiKey) {
             logger.warn('AI Service: ZHIPU_API_KEY not found in environment variables.');

@@ -203,7 +203,7 @@ export class AIQueryParser {
 
     try {
       const response = await getClient().messages.create({
-        model: "glm-4.6",
+        model: "glm-4.7",
         max_tokens: 2048,
         messages: [{ role: "user", content: prompt }]
       });
@@ -278,7 +278,7 @@ ${allColumns.slice(0, SAMPLING_CONFIG.QUERY_ENGINE.TOP_COLUMNS).map(col => `- ${
 
     try {
       const response = await getClient().messages.create({
-        model: "glm-4.6",
+        model: "glm-4.7",
         max_tokens: 2048,
         messages: [{ role: "user", content: prompt }]
       });
