@@ -9,7 +9,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // 加载环境变量
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// 在打包后，__dirname 指向 dist-package/backend/
+// .env 文件在 dist-package/.env
+const envPath = path.join(__dirname, '..', '.env');
+console.log('加载环境变量:', envPath);
+dotenv.config({ path: envPath });
+
+// 验证关键环境变量
+console.log('ZHIPU_API_KEY:', process.env.ZHIPU_API_KEY ? '已设置' : '未设置');
 
 const PORT = 3001;
 const HOST = 'localhost';

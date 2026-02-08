@@ -21,6 +21,13 @@ const getEnvVar = (key: string, defaultValue: string): string => {
 
 // 优化API_BASE_URL处理，确保URL格式正确
 export const API_BASE_URL = (() => {
+  // Electron 环境: 使用 preload 通过 contextBridge 注入的配置
+  const electronEnv = (window as any).__ELECTRON_ENV__;
+  if (electronEnv && electronEnv.IS_ELECTRON) {
+    console.log('[config] 检测到 Electron 环境，使用:', electronEnv.API_BASE_URL);
+    return electronEnv.API_BASE_URL;
+  }
+
   // 修复：使用相对路径 /api，而不是 /api/v2
   // 前端API客户端会在其基础上添加具体的版本路径
   const url = getEnvVar('VITE_API_BASE_URL', '/api');

@@ -162,24 +162,33 @@ ${JSON.stringify(data.slice(0, 10), null, 2)}
    */
   private async callAIService(prompt: string): Promise<any> {
     try {
-      // 修复API Base URL配置问题
-      // 环境变量可能包含完整URL或相对路径
-      let API_BASE_URL = (globalThis as any).__VITE_API_BASE_URL__ || '/api/v2';
+      // 获取API Base URL
+      let API_BASE_URL: string;
 
-      // 如果是相对路径，构建完整URL
-      if (!API_BASE_URL.startsWith('http')) {
-        API_BASE_URL = `http://localhost:3001${API_BASE_URL}`;
+      // Electron 环境: 使用 preload 通过 contextBridge 注入的配置
+      const electronEnv = (globalThis as any).__ELECTRON_ENV__;
+      if (electronEnv && electronEnv.IS_ELECTRON) {
+        API_BASE_URL = electronEnv.API_BASE_URL;
+        console.log('[AI Rule Executor] 检测到 Electron 环境，使用:', API_BASE_URL);
+      } else {
+        // 环境变量可能包含完整URL或相对路径
+        API_BASE_URL = (globalThis as any).__VITE_API_BASE_URL__ || '/api';
+
+        // 如果是相对路径，构建完整URL（开发环境）
+        if (!API_BASE_URL.startsWith('http')) {
+          API_BASE_URL = `http://localhost:3001${API_BASE_URL}`;
+        }
       }
 
       // 移除末尾的斜杠
       API_BASE_URL = API_BASE_URL.replace(/\/$/, '');
 
       console.log('[AI Rule Executor] 调用AI服务:', {
-        url: `${API_BASE_URL}/ai/chat`,
+        url: `${API_BASE_URL}/v2/ai/chat`,
         promptLength: prompt.length
       });
 
-      const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+      const response = await fetch(`${API_BASE_URL}/v2/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -233,7 +242,7 @@ ${JSON.stringify(data.slice(0, 10), null, 2)}
 
       // 尝试从content中提取JSON
       const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) ||
-                       content.match(/\{[\s\S]*\}/);
+        content.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
         const jsonStr = jsonMatch[1] || jsonMatch[0];

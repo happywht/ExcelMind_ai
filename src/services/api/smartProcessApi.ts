@@ -15,8 +15,16 @@ import { TaskResult } from '../types/agenticTypes';
  *
  * 开发环境: 使用相对路径 /api，Vite代理会转发到后端
  * 生产环境: 使用相对路径 /api 或完整URL（取决于部署配置）
+ * Electron环境: 使用 preload 注入的完整 URL
  */
 const getApiBaseUrl = (): string => {
+  // Electron 环境: 使用 preload 通过 contextBridge 注入的配置
+  const electronEnv = (window as any).__ELECTRON_ENV__;
+  if (electronEnv && electronEnv.IS_ELECTRON) {
+    console.log('[smartProcessApi] 检测到 Electron 环境，使用:', electronEnv.API_BASE_URL);
+    return electronEnv.API_BASE_URL;
+  }
+
   // 优先使用环境变量配置
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
@@ -32,6 +40,7 @@ const getApiBaseUrl = (): string => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
+console.log('[smartProcessApi] API_BASE_URL 已设置为:', API_BASE_URL);
 
 /**
  * 获取认证令牌

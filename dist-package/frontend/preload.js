@@ -195,15 +195,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 
-// 设置一些全局变量供前端使用
-window.isElectron = true;
-window.electronPlatform = process.platform;// 设置一些全局变量供前端使用
-window.isElectron = true;
-window.electronPlatform = process.platform;
-
-// Electron 环境 API 配置
-window.__IS_ELECTRON__ = true;
-window.__ELECTRON_API_BASE_URL__ = 'http://localhost:3001';
+// 暴露 Electron 环境配置到渲染进程
+contextBridge.exposeInMainWorld('__ELECTRON_ENV__', {
+  IS_ELECTRON: true,
+  API_BASE_URL: 'http://localhost:3001/api',
+  PLATFORM: process.platform
+});
 
 console.log('[Preload] Electron 环境配置已注入');
-console.log('[Preload] API_BASE_URL:', window.__ELECTRON_API_BASE_URL__);
+console.log('[Preload] API_BASE_URL: http://localhost:3001/api');
