@@ -62,8 +62,13 @@ if not exist "%NODE_EXE%" (
 REM 检查 Node.js 版本
 for /f "tokens=*" %%i in ('"%NODE_EXE%" -v') do set NODE_VERSION=%%i
 echo [检测] Node.js 版本: %NODE_VERSION%
-echo %NODE_VERSION% | findstr /r "v1[6-9]\|v[2-9][0-9]" >nul
-if errorlevel 1 (
+
+REM 提取主版本号（去掉 v 前缀）
+set VERSION_NUM=%NODE_VERSION:~1%
+for /f "tokens=1 delims=." %%a in ("%VERSION_NUM%") do set MAJOR_VERSION=%%a
+
+REM 检查主版本号是否 >= 16
+if %MAJOR_VERSION% LSS 16 (
     echo [警告] Node.js 版本过低，建议使用 v16 或更高版本
     echo 当前版本: %NODE_VERSION%
     echo.
@@ -78,29 +83,38 @@ start "ExcelMind AI - 后端服务器" "%NODE_EXE%" backend\index.js
 REM 等待后端启动（重试机制）
 echo [等待] 后端服务器启动中...
 set RETRY=0
+
 :HEALTH_CHECK
 set /a RETRY+=1
 timeout /t 2 /nobreak >nul
 
-powershell -Command "try { Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul
-if errorlevel 1 (
-    if %RETRY% LSS 5 (
-        echo [重试] 后端启动中... (%RETRY%/5)
-        goto HEALTH_CHECK
-    ) else (
-        echo [错误] 后端启动失败！
-        echo.
-        echo 请检查：
-        echo 1. 后端窗口的错误信息
-        echo 2. logs\startup.log 日志文件
-        echo 3. .env 配置是否正确
-        echo.
-        pause
-        exit /b 1
-    )
+REM 健康检查
+powershell -Command "try { $response = Invoke-WebRequest -Uri 'http://localhost:3001/health' -UseBasicParsing -TimeoutSec 2; exit 0 } catch { exit 1 }" >nul 2>nul
+
+if %ERRORLEVEL% EQU 0 (
+    echo [成功] 后端服务器已就绪 ✓
+    echo.
+    goto BACKEND_READY
 )
-echo [成功] 后端服务器已就绪 ✓
+
+REM 健康检查失败
+if %RETRY% LSS 5 (
+    echo [重试] 后端启动中... (%RETRY%/5^)
+    goto HEALTH_CHECK
+)
+
+REM 超过重试次数
+echo [错误] 后端启动失败！
 echo.
+echo 请检查：
+echo 1. 后端窗口的错误信息
+echo 2. logs\startup.log 日志文件
+echo 3. .env 配置是否正确
+echo.
+pause
+exit /b 1
+
+:BACKEND_READY
 
 echo [2/2] 启动前端应用...
 echo.
