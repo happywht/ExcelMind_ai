@@ -13,6 +13,13 @@ import { AIProcessResult } from '../types';
  * 根据环境自动选择正确的API地址
  */
 const getApiBaseUrl = (): string => {
+  // Electron 环境: 使用 preload 通过 contextBridge 注入的配置
+  const electronEnv = (window as any).__ELECTRON_ENV__;
+  if (electronEnv && electronEnv.IS_ELECTRON) {
+    console.log('[aiProxyService] 检测到 Electron 环境，使用:', electronEnv.API_BASE_URL);
+    return electronEnv.API_BASE_URL;
+  }
+
   // 开发环境: 使用Vite代理或直接连接到后端服务器
   if (import.meta.env.DEV) {
     return import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
@@ -23,6 +30,7 @@ const getApiBaseUrl = (): string => {
 };
 
 const API_BASE_URL = getApiBaseUrl();
+console.log('[aiProxyService] API_BASE_URL 已设置为:', API_BASE_URL);
 
 /**
  * 获取客户端ID

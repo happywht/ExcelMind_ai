@@ -1,0 +1,12 @@
+{
+    "name": "excelmind-ai",
+    "version": "1.0.0",
+    "main": "electron.cjs",
+    "type": "module",
+    "scripts": {
+        "start": "electron ."
+    },
+    "dependencies": {
+        "electron": "^40.2.1"
+    }
+}

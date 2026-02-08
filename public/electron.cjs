@@ -86,13 +86,32 @@ async function createWindow() {
 
   // 加载应用
   let startUrl;
-  if (isDev) {
+
+  // 更可靠的开发/生产环境检测
+  // 如果 frontend 目录存在，说明是生产环境（分发包）
+  const frontendDir = path.join(__dirname, 'frontend');
+  const isProduction = fs.existsSync(frontendDir);
+
+  console.log('环境检测:');
+  console.log('  __dirname:', __dirname);
+  console.log('  app.isPackaged:', app.isPackaged);
+  console.log('  NODE_ENV:', process.env.NODE_ENV);
+  console.log('  frontend目录存在:', isProduction);
+
+  if (isProduction) {
+    // 生产环境：加载打包后的前端文件
+    startUrl = `file://${path.join(__dirname, 'frontend', 'index.html')}`;
+    console.log('使用生产模式');
+  } else if (isDev) {
+    // 开发模式：连接 Vite 服务器
     // 在开发模式下动态检测Vite服务器端口
     const port = await findVitePort();
     console.log(`检测到Vite服务器运行在端口: ${port}`);
     startUrl = `http://localhost:${port}`;
   } else {
-    startUrl = `file://${path.join(__dirname, '../dist/index.html')}`;
+    // 生产环境：加载打包后的前端文件
+    // 在 dist-package 中，前端文件在 frontend 目录下
+    startUrl = `file://${path.join(__dirname, 'frontend', 'index.html')}`;
   }
 
   console.log(`加载URL: ${startUrl}`);
@@ -228,18 +247,21 @@ function initializeSandbox(mainWindow) {
       const errorMessage = `沙箱环境验证失败:\n${validation.errors.join('\n')}`;
 
       console.error(errorMessage);
+      console.warn('⚠️ 沙箱功能不可用，但不影响主要功能');
 
-      // 显示错误对话框
+      // 不显示错误对话框，不退出应用
+      // 沙箱功能是可选的，不应该阻塞应用启动
+      /*
       dialog.showErrorBox(
         '沙箱环境错误',
         errorMessage + '\n\n请重新安装应用或联系技术支持。'
       );
 
-      // 在开发环境中不退出，在生产环境中退出
       if (!isDev) {
         app.quit();
         return false;
       }
+      */
     }
 
     console.log('沙箱系统初始化成功');

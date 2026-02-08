@@ -1,0 +1,35 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "target": "ES2020",
+        "lib": [
+            "ES2020"
+        ],
+        "outDir": "./dist-backend",
+        "rootDir": ".",
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "strict": false,
+        "noEmit": false
+    },
+    "include": [
+        "server/**/*",
+        "api/**/*",
+        "src/utils/**/*",
+        "src/services/**/*",
+        "src/types/**/*",
+        "src/config/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "dist-*",
+        "tests",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/__tests__/**"
+    ]
+}
