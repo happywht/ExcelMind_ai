@@ -77,8 +77,8 @@ if %MAJOR_VERSION% LSS 16 (
 echo [1/2] 启动后端服务器...
 echo.
 
-REM 启动后端（新窗口，重定向日志）
-start "ExcelMind AI - 后端服务器" "%NODE_EXE%" backend\index.js
+REM 启动后端（新窗口）
+start "ExcelMind-AI-Backend" "%NODE_EXE%" "%CD%\backend\index.js"
 
 REM 等待后端启动（重试机制）
 echo [等待] 后端服务器启动中...
