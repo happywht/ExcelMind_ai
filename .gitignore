@@ -30,6 +30,11 @@ out/
 release/
 app/
 
+# Distribution package (exclude large files)
+dist-package/nodejs/
+dist-package/node_modules/
+dist-package/logs/
+
 # Environment variables
 .env
 .env.local
