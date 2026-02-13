@@ -79,24 +79,73 @@ export const SmartExcel: React.FC = () => {
             return `Headers: ${Object.keys(data[0] || {}).join(', ')}\nSample: ${JSON.stringify(data.slice(0, 3))}`;
           }
           case 'execute_python': {
+            addLog('Sandbox', 'pending', '正在沙箱中执行 Python 代码...');
+            console.log('[Sandbox] Running Python code:', params.code);
+
             const currentDataMap = Object.fromEntries(currentFiles.map(f => [f.fileName, f.sheets]));
-            const newData = await runPython(params.code, currentDataMap);
+            const { data: newData, logs, result } = await runPython(params.code, currentDataMap);
+
             setFilesData(prev => {
               const updated = [...prev];
+              const newFileIds = new Set<string>(); // To track new files added by Python
               Object.entries(newData).forEach(([fn, sheets]) => {
-                const f = updated.find(x => x.fileName === fn);
-                if (f) {
-                  f.sheets = typeof sheets === 'object' && !Array.isArray(sheets) ? sheets : { 'Result': sheets };
+                const sheetObj = typeof sheets === 'object' && !Array.isArray(sheets) ? sheets : { 'Result': sheets };
+
+                // Calculate metadata for the new sheets
+                const metadata: { [sheet: string]: { rowCount: number; columnCount: number; comments: any } } = {};
+                Object.entries(sheetObj).forEach(([sname, sdata]: [string, any]) => {
+                  const rows = Array.isArray(sdata) ? sdata : [];
+                  metadata[sname] = {
+                    rowCount: rows.length,
+                    columnCount: rows.length > 0 ? Object.keys(rows[0]).length : 0,
+                    comments: {}
+                  };
+                });
+
+                const existingFileIdx = updated.findIndex(x => x.fileName === fn);
+                if (existingFileIdx !== -1) {
+                  updated[existingFileIdx] = {
+                    ...updated[existingFileIdx],
+                    sheets: sheetObj,
+                    metadata: { ...(updated[existingFileIdx].metadata || {}), ...metadata },
+                    currentSheetName: Object.keys(sheetObj)[0]
+                  };
                 } else {
-                  const s = typeof sheets === 'object' && !Array.isArray(sheets) ? sheets : { 'Result': sheets };
-                  updated.push({ id: fn + Date.now(), fileName: fn, sheets: s, currentSheetName: Object.keys(s)[0] });
+                  const newFileId = fn + '-' + Date.now();
+                  updated.push({
+                    id: newFileId,
+                    fileName: fn,
+                    sheets: sheetObj,
+                    metadata: metadata,
+                    currentSheetName: Object.keys(sheetObj)[0]
+                  });
+                  newFileIds.add(newFileId);
                 }
               });
               filesDataRef.current = updated;
+
+              // Select newly added files and set active if none is active
+              setSelectedFileIds(prevSelected => {
+                const newSelection = new Set(prevSelected);
+                newFileIds.forEach(id => newSelection.add(id));
+                return newSelection;
+              });
+              if (!activeFileId && updated.length > 0) {
+                setActiveFileId(updated[0].id);
+              }
               return updated;
             });
+
             setLastGeneratedCode(params.code);
-            return "Execution successful.";
+
+            // Return detailed feedback to AI
+            let observation = "Execution successful.";
+            if (logs) observation += `\nLogs:\n${logs}`;
+            if (result !== null && result !== undefined) {
+              const resultStr = typeof result === 'object' ? JSON.stringify(result).slice(0, 1000) : String(result);
+              observation += `\nResult of last expression:\n${resultStr}`;
+            }
+            return observation;
           }
           default: return "Tool executed.";
         }
