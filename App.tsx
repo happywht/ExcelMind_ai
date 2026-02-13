@@ -14,7 +14,7 @@ const Dashboard: React.FC<{ setView: (v: AppView) => void }> = ({ setView }) => 
     </div>
 
     <div className="grid md:grid-cols-3 gap-6">
-      <div 
+      <div
         onClick={() => setView(AppView.SMART_OPS)}
         className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:border-emerald-500/30 transition-all cursor-pointer relative overflow-hidden"
       >
@@ -24,7 +24,7 @@ const Dashboard: React.FC<{ setView: (v: AppView) => void }> = ({ setView }) => 
         <p className="text-slate-500 relative z-10">使用自然语言指令（如“筛选收入大于5000的行”），自动过滤、排序和转换您的 Excel 文件。</p>
       </div>
 
-      <div 
+      <div
         onClick={() => setView(AppView.FORMULA)}
         className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:border-blue-500/30 transition-all cursor-pointer relative overflow-hidden"
       >
@@ -34,7 +34,7 @@ const Dashboard: React.FC<{ setView: (v: AppView) => void }> = ({ setView }) => 
         <p className="text-slate-500 relative z-10">无需手动搜索。只需描述您的逻辑，即可一键复制生成的 Excel 公式。</p>
       </div>
 
-      <div 
+      <div
         onClick={() => setView(AppView.KNOWLEDGE_CHAT)}
         className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:border-purple-500/30 transition-all cursor-pointer relative overflow-hidden"
       >
@@ -49,6 +49,7 @@ const Dashboard: React.FC<{ setView: (v: AppView) => void }> = ({ setView }) => 
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.DASHBOARD);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const renderView = () => {
     switch (currentView) {
@@ -65,8 +66,13 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans">
-      <Sidebar currentView={currentView} setView={setCurrentView} />
-      <main className="flex-1 h-full overflow-hidden relative">
+      <Sidebar
+        currentView={currentView}
+        setView={setCurrentView}
+        isExpanded={isSidebarExpanded}
+        setExpanded={setIsSidebarExpanded}
+      />
+      <main className="flex-1 h-full overflow-hidden relative transition-all duration-300 ease-in-out">
         {renderView()}
       </main>
     </div>
