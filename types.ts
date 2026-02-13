@@ -11,11 +11,19 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface SheetMetadata {
+  comments: { [cellAddress: string]: string };
+  notes?: { [cellAddress: string]: string };
+  rowCount: number;
+  columnCount: number;
+}
+
 export interface ExcelData {
   id: string; // Unique ID for React keys
   fileName: string;
-  sheets: { [sheetName: string]: any[] }; // Array of objects
+  sheets: { [sheetName: string]: any[] }; // Array of objects mapping column headers to row values
   currentSheetName: string;
+  metadata?: { [sheetName: string]: SheetMetadata };
 }
 
 export interface ProcessingLog {
@@ -25,9 +33,18 @@ export interface ProcessingLog {
   message: string;
 }
 
-// We no longer use simple operation lists. 
-// We now rely on the AI to generate a transformation script.
+// Agentic reasoning types
+export interface AgenticStep {
+  thought: string;
+  action: {
+    tool: 'inspect_sheet' | 'read_rows' | 'execute_python' | 'finish';
+    params: any;
+  };
+  observation?: string;
+}
+
 export interface AIProcessResult {
-  code: string;
+  steps: AgenticStep[];
   explanation: string;
+  finalCode?: string;
 }

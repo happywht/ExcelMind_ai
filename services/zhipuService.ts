@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { AIProcessResult } from '../types';
+import { AIProcessResult, AgenticStep } from '../types';
 
 // 配置智谱AI
 const client = new Anthropic({
@@ -216,98 +216,157 @@ export const chatWithKnowledgeBase = async (
 };
 
 /**
- * Generates JavaScript code to transform the dataset based on user prompt.
- * Now supports 'Observe-Think-Action' loop by receiving sample data.
+ * Enhanced Agentic Loop (Observe-Think-Act-Verify)
+ * @param userPrompt User's data processing request
+ * @param initialContext Initial metadata and samples for all files
+ * @param onStep Callback for UI updates on each step
+ * @param executeTool Callback to execute a tool and return an observation string
  */
+export const runAgenticLoop = async (
+  userPrompt: string,
+  initialContext: any,
+  onStep: (step: AgenticStep) => void,
+  executeTool?: (tool: string, params: any) => Promise<string>
+): Promise<AIProcessResult> => {
+  const messages: any[] = [
+    {
+      role: "user",
+      content: `你是一个专家级数据处理智能体 (Data Agent)。你的工作是根据用户需求处理 Excel 数据。
+你需要通过 [Observe - Think - Action - Verify] 的循环来完成任务。
+
+**当前可用工具**:
+1. \`inspect_sheet(fileName, sheetName)\`: 获取特定工作表的列头和数据样本。
+2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行数范围的数据。
+3. \`execute_python(code)\`: 运行 Python 代码进行实际的数据转换。必须包含把结果存回 files 变量的逻辑。
+4. \`finish()\`: 当任务完全完成且经过验证后调用。
+
+**运行环境**:
+- Python 3.x (Pyodide), 包含 \`pandas\`, \`numpy\`。
+- \`files\` 变量是一个字典。 Key 是文件名，Value 是数据。
+- 任务目标是根据提示动态决定是否需要观察数据后再编写代码。
+
+**输出要求 (必须是合法 JSON)**:
+{
+  "thought": "你的详细思考过程：我看到了什么，我缺少什么信息，我下一步要做什么。",
+  "action": {
+    "tool": "inspect_sheet" | "read_rows" | "execute_python" | "finish",
+    "params": { ... }
+  }
+}
+
+**规则**:
+1. **优先观察**: 在编写复杂转换逻辑前，如果不确定数据结构，请先 \`inspect_sheet\`。
+2. **逐步反馈**: 每次 action 后，你会得到一个 observation。利用它来调整后续计划。
+
+用户任务: "${userPrompt}"
+
+初始上下文 (概览):
+${JSON.stringify(initialContext, null, 2)}
+`
+    }
+  ];
+
+  const steps: AgenticStep[] = [];
+  let finalExplanation = "";
+  let finalCode = "";
+
+  for (let turn = 0; turn < 10; turn++) {
+    try {
+      const response = await client.messages.create({
+        model: "glm-4.6",
+        max_tokens: 4096,
+        messages: messages
+      });
+
+      const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
+      if (!text) throw new Error("AI 返回内容为空");
+
+      // Extract JSON
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      let stepData;
+      try {
+        stepData = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+      } catch (e) {
+        console.warn("Retrying JSON parse with cleaned text");
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        stepData = JSON.parse(cleaned);
+      }
+
+      const step: AgenticStep = {
+        thought: stepData.thought,
+        action: stepData.action
+      };
+
+      onStep(step);
+      steps.push(step);
+
+      // Save to history
+      messages.push({ role: "assistant", content: text });
+
+      if (step.action.tool === 'finish') {
+        finalExplanation = step.thought;
+        break;
+      }
+
+      if (step.action.tool === 'execute_python') {
+        finalCode = step.action.params.code;
+      }
+
+      // Execute tool if executor is provided
+      if (executeTool) {
+        try {
+          const observation = await executeTool(step.action.tool, step.action.params);
+          step.observation = observation;
+          messages.push({
+            role: "user",
+            content: `Observation from ${step.action.tool}:\n${observation}`
+          });
+
+          // Continue loop to next turn
+          continue;
+        } catch (toolError: any) {
+          messages.push({
+            role: "user",
+            content: `Error executing ${step.action.tool}: ${toolError.message}. Please try a different approach.`
+          });
+          continue;
+        }
+      }
+
+      // If no executor (one-shot mode for UI compatibility), break after first tool
+      break;
+    } catch (error: any) {
+      console.error("Agentic Loop error at turn", turn, error);
+      if (turn === 9) throw error;
+      messages.push({ role: "user", content: `System Error: ${error.message}. Please rethink or continue.` });
+    }
+  }
+
+  return { steps, explanation: finalExplanation, finalCode };
+};
+
 export const generateDataProcessingCode = async (
   userPrompt: string,
   filesPreview: { fileName: string; headers: string[]; sampleRows: any[] }[]
 ): Promise<AIProcessResult> => {
-  try {
-    // Construct a rich observation context
-    const fileObservationStr = filesPreview.map(f =>
-      `--- FILE: "${f.fileName}" ---
-       HEADERS: ${JSON.stringify(f.headers)}
-       SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS):
-       ${JSON.stringify(f.sampleRows)}
-       `
-    ).join('\n\n');
+  // Legacy fallback for simple one-shot generation
+  // Transform filesPreview into the initialContext format expected by runAgenticLoop
+  const initialContext = filesPreview.map(f => ({
+    fileName: f.fileName,
+    // Assuming each filePreview represents a single sheet for simplicity in this wrapper
+    // In a real multi-sheet scenario, filesPreview would need to be structured differently
+    sheets: ["Sheet1"], // Placeholder, as filesPreview doesn't explicitly provide sheet names
+    sample: f.sampleRows // Simplified for legacy
+  }));
 
-    const systemInstruction = `
-      你是一个高级数据处理智能体 (Data Engineer Agent)。你的运行环境是浏览器的 Web Worker (JavaScript)。
-      你需要执行 [Observe - Think - Action] 的循环来处理用户任务。
+  // The onStep callback is a no-op here as this function returns the final result directly
+  const result = await runAgenticLoop(userPrompt, initialContext, () => { });
 
-      **Phase 1: OBSERVE (观察)**
-      你拥有以下文件的样本数据。请仔细阅读样本数据的内容，而不仅仅是列头。
-      ${fileObservationStr}
-
-      **Phase 2: THINK (思考)**
-      1. 分析用户需求。
-      2. **关键步骤**: 在不同文件中寻找对应列。
-         - 不要盲目假设列名（例如不要假设名字一定在 'A' 列）。
-         - *必须* 根据样本数据的内容来推断。例如：如果用户说"排除名单"，请在文件样本中寻找包含人名的那一列（可能是 "name", "姓名", "employee_id" 等）。
-         - 如果需要跨文件匹配（例如 "File A 中的人名不在 File B 中"），请确保你找到了两个文件中内容格式一致的列（例如都是 "张三" 格式，而不是一个 "张三" 一个 "ID:123"）。
-      3. 规划数据转换逻辑。
-
-      **Phase 3: ACTION (行动/代码生成)**
-      生成一段 JavaScript 代码来执行任务。
-
-      **输入数据结构**:
-      变量 \`files\` 是一个对象。 Key 是文件名，Value 是数据数组。
-      例如: \`files['data.xlsx']\` 是一个对象数组。
-
-      **代码编写规则**:
-      1. **Robust Matching**: 字符串比较时，建议使用 \`.toString().trim()\`, 甚至在必要时匹配前需要归一化。
-      2. **Direct Manipulation**: 直接修改 \`files\` 对象或添加新的 Key (新文件)。
-      3. **MUST RETURN**: 代码的最后一句必须是 \`return files;\`，确保返回修改后的数据。
-      4. **No External Libs**: 只能使用原生 JS (ES6+)。
-      5. **Safety**: 代码只包含函数体，不要包含 \`function() {}\` 包裹。
-      6. **Error Handling**: 在可能出错的地方使用 try-catch，但仍然要 return files。
-      7. **变量声明**: 使用 let/const 而不是 var。
-
-      **强制要求**:
-      - 代码必须以 \`return files;\` 结尾
-      - 如果创建新文件，格式必须为: \`files['新文件名.xlsx'] = newData;\`
-      - 确保处理后的数据是数组格式
-
-      **输出格式 (JSON)**:
-      {
-        "explanation": "你的思考过程。明确说明：你识别出 File A 的 '某列' 对应 File B 的 '某列'，并计划如何处理。",
-        "code": "你的 JavaScript 代码字符串"
-      }
-    `;
-
-    const response = await client.messages.create({
-      model: "glm-4.6",
-      max_tokens: 4096,
-      messages: [{
-        role: "user",
-        content: `${systemInstruction}\n\n用户任务：${userPrompt}`
-      }]
-    });
-
-    const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
-    if (!text) throw new Error("No response from AI");
-
-    // 尝试解析JSON响应
-    let result: AIProcessResult;
-    try {
-      result = JSON.parse(text);
-    } catch (parseError) {
-      // 如果解析失败，创建一个基本响应
-      result = {
-        explanation: "AI 响应格式解析失败，原始响应：" + text,
-        code: "// AI 响应解析失败，请重试"
-      };
-    }
-
-    return result;
-
-  } catch (error) {
-    console.error("Code Gen Error:", error);
-    return {
-      code: "",
-      explanation: "理解指令失败，AI 无法分析样本数据，请检查文件格式或重试。"
-    };
-  }
+  // runAgenticLoop returns { steps, explanation, finalCode }
+  // We need to map this to the AIProcessResult expected by the original interface
+  return {
+    steps: result.steps,
+    explanation: result.explanation,
+    finalCode: result.finalCode
+  };
 };

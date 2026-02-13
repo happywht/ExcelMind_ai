@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square } from 'lucide-react';
-import { readExcelFile, exportToExcel, executeTransformation } from '../services/excelService';
-import { generateDataProcessingCode } from '../services/zhipuService';
-import { ExcelData, ProcessingLog } from '../types';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Search, Eye, Terminal, Info, ChevronRight, MessageSquare } from 'lucide-react';
+import { readExcelFile, exportMultipleSheetsToExcel, exportToExcel } from '../services/excelService';
+import { runAgenticLoop } from '../services/zhipuService';
+import { runPython } from '../services/pyodideService';
+import { ExcelData, ProcessingLog, AgenticStep } from '../types';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
@@ -10,14 +11,22 @@ export const SmartExcel: React.FC = () => {
   const [filesData, setFilesData] = useState<ExcelData[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
-  
   const [command, setCommand] = useState('');
+
+  // Ref to keep track of the latest data during the async loop to avoid stale closures
+  const filesDataRef = useRef<ExcelData[]>(filesData);
+  useEffect(() => {
+    filesDataRef.current = filesData;
+  }, [filesData]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
+  const [agentSteps, setAgentSteps] = useState<AgenticStep[]>([]);
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const activeFile = useMemo(() => filesData.find(f => f.id === activeFileId), [filesData, activeFileId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -37,90 +46,76 @@ export const SmartExcel: React.FC = () => {
     }
   };
 
+  const addLog = (fileName: string, status: 'pending' | 'success' | 'error', message: string) => {
+    setLogs(prev => [{ id: Date.now().toString() + Math.random(), fileName, status, message }, ...prev]);
+  };
+
   const handleRun = async () => {
     if (filesData.length === 0 || !command.trim()) return;
     setIsProcessing(true);
-    setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'pending', message: '正在启动智能分析循环 (Observe-Think-Action)...' }, ...prev]);
-    setLastGeneratedCode('');
+    setAgentSteps([]);
+    addLog('System', 'pending', '🚀 启动智能推理中枢 (Observe-Think-Act-Verify)...');
 
     try {
-      // 1. Prepare Metadata with Samples (The "Observe" phase context)
-      // We send headers AND the first 5 rows of data so the AI can infer column meanings by content.
-      const filesPreview = filesData.map(f => {
-        const data = f.sheets[f.currentSheetName] || [];
-        const headers = data.length > 0 ? Object.keys(data[0]) : [];
-        const sampleRows = data.slice(0, 5); // Take top 5 rows as samples
-        return { fileName: f.fileName, headers, sampleRows };
-      });
+      // 1. Initial Context
+      const initialContext = filesData.map(f => ({
+        fileName: f.fileName,
+        sheets: Object.keys(f.sheets),
+        summary: f.metadata ? Object.entries(f.metadata).map(([s, meta]) => `${s}: ${meta.rowCount}行, ${meta.columnCount}列`) : []
+      }));
 
-      // 2. Generate Code Plan (The "Think" phase)
-      setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'pending', message: 'AI 正在观察样本数据并规划逻辑...' }, ...prev]);
-      
-      const { code, explanation } = await generateDataProcessingCode(command, filesPreview);
-      setLastGeneratedCode(code);
-      
-      setLogs(prev => [
-        { id: Date.now().toString(), fileName: 'AI', status: 'success', message: `逻辑规划: ${explanation}` },
-        ...prev
-      ]);
+      // 2. Define Tool Executor
+      const executeTool = async (tool: string, params: any): Promise<string> => {
+        console.log(`[AI Tool] Executing ${tool}`, params);
+        addLog('AI Tool', 'pending', `执行工具 ${tool}: ${JSON.stringify(params)}`);
 
-      // 3. Prepare Data Map for Execution
-      const datasets: { [fileName: string]: any[] } = {};
-      filesData.forEach(f => {
-        datasets[f.fileName] = f.sheets[f.currentSheetName] || [];
-      });
-
-      // 4. Execute Code (The "Action" phase)
-      console.log('执行AI生成的代码，代码长度:', code.length);
-      console.log('输入数据集:', Object.keys(datasets));
-
-      const resultDatasets = await executeTransformation(code, datasets);
-
-      console.log('AI处理结果:', Object.keys(resultDatasets), '数据量:', Object.values(resultDatasets).map(arr => arr.length));
-
-      // 验证结果数据
-      if (!resultDatasets || typeof resultDatasets !== 'object') {
-        throw new Error('AI返回的数据格式错误');
-      }
-
-      const updatedFilesData = [...filesData];
-      let processedFiles = 0;
-
-      Object.entries(resultDatasets).forEach(([fileName, data]) => {
-        if (Array.isArray(data)) {
-          const existingIndex = updatedFilesData.findIndex(f => f.fileName === fileName);
-          if (existingIndex >= 0) {
-            const f = updatedFilesData[existingIndex];
-            f.sheets[f.currentSheetName] = data;
-            processedFiles++;
-          } else {
-            updatedFilesData.push({
-              id: fileName + '-' + Date.now(),
-              fileName: fileName,
-              sheets: { 'Sheet1': data },
-              currentSheetName: 'Sheet1'
-            });
-            processedFiles++;
+        const currentFiles = filesDataRef.current;
+        switch (tool) {
+          case 'inspect_sheet': {
+            const { fileName, sheetName } = params;
+            const file = currentFiles.find(f => f.fileName === fileName);
+            if (!file) throw new Error(`找不到文件: ${fileName}`);
+            const data = file.sheets[sheetName] || [];
+            return `Headers: ${Object.keys(data[0] || {}).join(', ')}\nSample: ${JSON.stringify(data.slice(0, 3))}`;
           }
-        } else {
-          console.warn('跳过非数组数据:', fileName, typeof data);
+          case 'execute_python': {
+            const currentDataMap = Object.fromEntries(currentFiles.map(f => [f.fileName, f.sheets]));
+            const newData = await runPython(params.code, currentDataMap);
+            setFilesData(prev => {
+              const updated = [...prev];
+              Object.entries(newData).forEach(([fn, sheets]) => {
+                const f = updated.find(x => x.fileName === fn);
+                if (f) {
+                  f.sheets = typeof sheets === 'object' && !Array.isArray(sheets) ? sheets : { 'Result': sheets };
+                } else {
+                  const s = typeof sheets === 'object' && !Array.isArray(sheets) ? sheets : { 'Result': sheets };
+                  updated.push({ id: fn + Date.now(), fileName: fn, sheets: s, currentSheetName: Object.keys(s)[0] });
+                }
+              });
+              filesDataRef.current = updated;
+              return updated;
+            });
+            setLastGeneratedCode(params.code);
+            return "Execution successful.";
+          }
+          default: return "Tool executed.";
         }
-      });
+      };
+      // 3. Start Agent Loop (Continuous)
+      const onStep = (step: AgenticStep) => {
+        setAgentSteps(prev => [...prev, step]);
+        addLog('Agent Phase', 'success', step.thought);
+        console.log('[Agent Thought]', step.thought);
+      };
 
-      if (processedFiles === 0) {
-        throw new Error('没有成功处理任何文件数据');
-      }
+      const result = await runAgenticLoop(command, initialContext, onStep, executeTool);
 
-      setFilesData(updatedFilesData);
-      setLogs(prev => [{
-        id: Date.now().toString(),
-        fileName: 'System',
-        status: 'success',
-        message: `执行完成。处理了 ${processedFiles} 个文件。`
-      }, ...prev]);
+      addLog('System', 'success', `任务完成: ${result.explanation}`);
+      console.log('[System] Agentic Loop finished successfully.');
 
     } catch (e: any) {
-      setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'error', message: e.message }]);
+      console.error("Agentic Loop Error in UI:", e);
+      addLog('System', 'error', `核心引擎报错: ${e.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -137,287 +132,342 @@ export const SmartExcel: React.FC = () => {
     if (activeFileId === id) setActiveFileId(null);
   };
 
-  const toggleSelection = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedFileIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedFileIds.size === filesData.length) {
-      setSelectedFileIds(new Set());
-    } else {
-      setSelectedFileIds(new Set(filesData.map(f => f.id)));
-    }
-  };
-
   const handleBatchExport = async () => {
     if (selectedFileIds.size === 0) return;
-    
     setIsProcessing(true);
     const zip = new JSZip();
     let count = 0;
 
     filesData.forEach(file => {
       if (selectedFileIds.has(file.id)) {
-        const data = file.sheets[file.currentSheetName];
-        const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-        
-        // Generate buffer
+        Object.entries(file.sheets).forEach(([sheetName, data]) => {
+          const worksheet = XLSX.utils.json_to_sheet(data);
+          XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        });
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        
-        let fileName = file.fileName;
-        if (!fileName.endsWith('.xlsx')) fileName += '.xlsx';
-        
-        zip.file(fileName, excelBuffer);
+        zip.file(file.fileName.endsWith('.xlsx') ? file.fileName : `${file.fileName}.xlsx`, excelBuffer);
         count++;
       }
     });
 
     if (count > 0) {
-      try {
-        const content = await zip.generateAsync({ type: "blob" });
-        const url = window.URL.createObjectURL(content);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `excelmind_batch_export_${Date.now()}.zip`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-        setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'success', message: `成功打包并下载 ${count} 个文件。` }, ...prev]);
-      } catch (e) {
-        console.error(e);
-        setLogs(prev => [{ id: Date.now().toString(), fileName: 'System', status: 'error', message: '打包失败。' }, ...prev]);
-      }
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = window.URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `excelmind_export_${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
     setIsProcessing(false);
   };
 
-  const activeFile = filesData.find(f => f.id === activeFileId);
   const activeSheetData = activeFile ? activeFile.sheets[activeFile.currentSheetName] : null;
+  const activeSheetMeta = activeFile?.metadata ? activeFile.metadata[activeFile.currentSheetName] : null;
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">智能多文件处理工作区</h2>
-          <p className="text-sm text-slate-500">上传多个文件，进行跨表核对、合并或筛选</p>
+    <div className="h-full flex flex-col bg-slate-50 font-sans">
+      {/* Top Header */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-600 p-2 rounded-xl shadow-lg shadow-emerald-200">
+            <Layers className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-800">SmartExcel 智能工坊 <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded ml-2 uppercase tracking-wider">v2.0 Agentic</span></h1>
+            <p className="text-xs text-slate-500 font-medium">支持多表核对、单元格批注与 Python 沙箱处理</p>
+          </div>
         </div>
         <div className="flex gap-3">
-          <input
-            type="file"
-            multiple
-            accept=".xlsx, .xls"
-            onChange={handleFileUpload}
-            className="hidden"
-            ref={fileInputRef}
-          />
+          <input type="file" multiple accept=".xlsx, .xls" onChange={handleFileUpload} className="hidden" ref={fileInputRef} />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors font-medium text-sm border border-emerald-200"
+            className="group flex items-center gap-2 px-4 py-2 bg-white text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all font-semibold text-sm border border-slate-200 hover:border-emerald-200 shadow-sm"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
             添加文件
           </button>
+          <button
+            disabled={selectedFileIds.size === 0}
+            onClick={handleBatchExport}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-sm ${selectedFileIds.size > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+          >
+            <Archive className="w-4 h-4" />
+            导出选中 ({selectedFileIds.size})
+          </button>
         </div>
-      </div>
+      </header>
 
       <div className="flex-1 flex overflow-hidden">
-        
-        {/* Left Panel: Files & Console */}
-        <div className="w-[400px] flex flex-col border-r border-slate-200 bg-white shadow-sm z-10">
-          
-          {/* File List Header Actions */}
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <div className="flex items-center gap-2">
-               <button onClick={handleSelectAll} className="text-slate-500 hover:text-emerald-600 transition-colors" title="全选/取消全选">
-                 {filesData.length > 0 && selectedFileIds.size === filesData.length ? (
-                   <CheckSquare className="w-5 h-5 text-emerald-600" />
-                 ) : (
-                   <Square className="w-5 h-5" />
-                 )}
-               </button>
-               <span className="text-sm font-semibold text-slate-700">文件列表 ({filesData.length})</span>
+        {/* Left Control Panel */}
+        <aside className="w-[420px] flex flex-col border-r border-slate-200 bg-white z-10">
+          {/* File Storage Section */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">文件存储库 ({filesData.length})</span>
+              <button
+                onClick={() => setSelectedFileIds(filesData.length === selectedFileIds.size ? new Set() : new Set(filesData.map(f => f.id)))}
+                className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded hover:bg-slate-300 transition-colors font-bold"
+              >
+                {selectedFileIds.size === filesData.length ? '取消全选' : '全部选择'}
+              </button>
             </div>
-            {selectedFileIds.size > 0 && (
-              <button 
-                onClick={handleBatchExport}
-                className="text-xs flex items-center gap-1 bg-emerald-600 text-white px-3 py-1 rounded-lg hover:bg-emerald-700 transition-all shadow-sm"
-              >
-                <Archive className="w-3.5 h-3.5" />
-                下载选中 ({selectedFileIds.size})
-              </button>
-            )}
-          </div>
-          
-          {/* File List */}
-          <div className="flex-1 overflow-y-auto p-4 border-b border-slate-100">
-             {filesData.length === 0 ? (
-               <div className="text-center py-8 text-slate-400 border-2 border-dashed border-slate-100 rounded-xl">
-                 <p>工作区为空</p>
-                 <p className="text-xs mt-1">请添加 Excel 文件</p>
-               </div>
-             ) : (
-               <ul className="space-y-2">
-                 {filesData.map((f) => (
-                   <li 
-                     key={f.id} 
-                     onClick={() => setActiveFileId(f.id)}
-                     className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${
-                       activeFileId === f.id 
-                         ? 'bg-emerald-50 border-emerald-200 shadow-sm' 
-                         : 'bg-white border-slate-100 hover:bg-slate-50'
-                     }`}
-                   >
-                     <div className="flex items-center gap-3 overflow-hidden">
-                       <div 
-                         onClick={(e) => toggleSelection(f.id, e)}
-                         className="flex-shrink-0 text-slate-400 hover:text-emerald-600 transition-colors"
-                       >
-                         {selectedFileIds.has(f.id) ? <CheckSquare className="w-4 h-4 text-emerald-600" /> : <Square className="w-4 h-4" />}
-                       </div>
-                       <div className={`p-2 rounded-lg ${activeFileId === f.id ? 'bg-emerald-200 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                         <FileSpreadsheet className="w-4 h-4" />
-                       </div>
-                       <div className="truncate">
-                         <p className={`text-sm font-medium truncate ${activeFileId === f.id ? 'text-slate-800' : 'text-slate-600'}`}>{f.fileName}</p>
-                         <p className="text-xs text-slate-400">{f.sheets[f.currentSheetName]?.length || 0} 行</p>
-                       </div>
-                     </div>
-                     <button onClick={(e) => removeFile(f.id, e)} className="text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1">
-                       <Trash2 className="w-4 h-4" />
-                     </button>
-                   </li>
-                 ))}
-               </ul>
-             )}
+
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {filesData.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-100 rounded-2xl m-2">
+                  <Upload className="w-8 h-8 mb-2 opacity-50" />
+                  <p className="text-sm">点击上方按钮导入 Excel</p>
+                </div>
+              ) : (
+                filesData.map(f => (
+                  <div
+                    key={f.id}
+                    onClick={() => setActiveFileId(f.id)}
+                    className={`group relative p-3 rounded-2xl cursor-pointer transition-all border-2 ${activeFileId === f.id ? 'bg-emerald-50/50 border-emerald-500/30' : 'bg-white border-transparent hover:border-slate-100 hover:bg-slate-50'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div draggable="true" onClick={(e) => { e.stopPropagation(); setSelectedFileIds(prev => { const n = new Set(prev); n.has(f.id) ? n.delete(f.id) : n.add(f.id); return n; }); }}>
+                        {selectedFileIds.has(f.id) ? <CheckSquare className="w-4 h-4 text-emerald-600" /> : <Square className="w-4 h-4 text-slate-300" />}
+                      </div>
+                      <div className={`p-2 rounded-xl ${activeFileId === f.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-500'}`}>
+                        <FileSpreadsheet className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold truncate ${activeFileId === f.id ? 'text-emerald-900' : 'text-slate-700'}`}>{f.fileName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-slate-400 font-mono">{Object.keys(f.sheets).length} Sheets</span>
+                          {f.metadata && Object.values(f.metadata).some(m => Object.keys(m.comments).length > 0) && (
+                            <span className="text-[10px] flex items-center gap-0.5 text-blue-500 font-bold bg-blue-50 px-1 rounded">
+                              <MessageSquare className="w-2.5 h-2.5" /> 包含批注
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button onClick={(e) => removeFile(f.id, e)} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg text-slate-300 transition-all">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
-          {/* AI Command Area */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200">
-            <label className="block text-sm font-bold text-slate-700 mb-2 flex justify-between">
-              AI 指令
-              <button 
-                onClick={() => setShowCode(!showCode)} 
-                className="text-xs font-normal text-slate-400 hover:text-emerald-600 flex items-center gap-1"
-              >
-                <Code className="w-3 h-3" /> {showCode ? '隐藏代码' : '查看代码'}
+          {/* AI Reasoning Loop Display */}
+          <div className="h-[300px] border-t border-slate-200 flex flex-col bg-slate-900">
+            <div className="px-4 py-2 bg-slate-800 flex justify-between items-center border-b border-white/10">
+              <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest flex items-center gap-1.5">
+                <Terminal className="w-3 h-3" /> 推理控制台 / OTAV Loop
+              </span>
+              <button onClick={() => setShowCode(!showCode)} className="text-[10px] text-emerald-400 hover:underline">
+                {showCode ? '隐藏预览代码' : '查看代码'}
               </button>
-            </label>
-            
-            {showCode && lastGeneratedCode && (
-              <div className="mb-3 p-2 bg-slate-900 text-green-400 text-xs font-mono rounded-lg max-h-32 overflow-y-auto">
-                <pre>{lastGeneratedCode}</pre>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-3 custom-scrollbar">
+              {agentSteps.length === 0 && logs.length === 0 ? (
+                <div className="flex items-center gap-2 text-slate-600 italic">
+                  <ChevronRight className="w-3 h-3" /> 等待 AI 指令执行任务...
+                </div>
+              ) : (
+                <>
+                  {agentSteps.map((step, idx) => (
+                    <div key={idx} className="border-l-2 border-emerald-500/50 pl-3 py-1 bg-white/5 rounded-r-lg">
+                      <div className="text-emerald-400 font-bold flex items-center gap-1.5 mb-1">
+                        <Eye className="w-3 h-3" /> Step {idx + 1}: THINKING
+                      </div>
+                      <p className="text-white/80 leading-relaxed">{step.thought}</p>
+                      <div className="mt-2 text-blue-400 flex items-center gap-1.5 bg-blue-400/10 px-2 py-1 rounded">
+                        <Play className="w-3 h-3" /> ACTION: <span className="font-bold">{step.action.tool}({JSON.stringify(step.action.params)})</span>
+                      </div>
+                    </div>
+                  ))}
+                  {logs.map(log => (
+                    <div key={log.id} className="flex gap-2">
+                      <span className={`font-bold ${log.status === 'success' ? 'text-emerald-400' : log.status === 'error' ? 'text-rose-400' : 'text-blue-400'}`}>
+                        [{log.status}]
+                      </span>
+                      <span className="text-slate-300 leading-snug">{log.message}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Command Entry Area */}
+          <div className="p-4 bg-white border-t border-slate-200">
+            <div className="relative group">
+              <textarea
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder="在此输入您的宏观指令... &#10;如：'根据表A的姓名在表B中查找生日并补充，缺失的行标记红色'"
+                className="w-full h-32 p-4 pt-4 rounded-2xl border-2 border-slate-100 focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/5 outline-none text-slate-700 resize-none text-sm transition-all bg-slate-50 group-hover:bg-white"
+              />
+              <div className="absolute top-4 right-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors">
+                <Search className="w-5 h-5" />
               </div>
-            )}
+            </div>
 
-            <textarea
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder="描述您的跨文件需求... &#10;例如：'对比表A和表B，找出金额不一致的行，存为新文件差异表'"
-              className="w-full h-24 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none text-slate-700 resize-none bg-white text-sm shadow-sm"
-            />
-            
             <button
               onClick={handleRun}
               disabled={isProcessing || !command || filesData.length === 0}
-              className={`mt-3 w-full py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all text-sm ${
-                isProcessing || !command || filesData.length === 0
-                  ? 'bg-slate-300 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-md hover:shadow-emerald-900/20'
-              }`}
+              className={`mt-4 w-full py-3.5 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all shadow-lg active:scale-[0.98] ${isProcessing || !command || filesData.length === 0
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed border-none'
+                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200/50'
+                }`}
             >
-              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              执行智能处理
+              {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
+              开始 AI 推理与自动化处理
             </button>
           </div>
+        </aside>
 
-          {/* Logs */}
-          <div className="h-32 bg-slate-900 overflow-y-auto p-3 text-xs font-mono">
-            {logs.length === 0 ? (
-              <span className="text-slate-600">等待指令...</span>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} className="mb-1.5 flex gap-2">
-                  <span className={`uppercase font-bold ${
-                    log.status === 'success' ? 'text-green-400' : 
-                    log.status === 'error' ? 'text-red-400' : 'text-yellow-400'
-                  }`}>[{log.status}]</span>
-                  <span className="text-slate-300">{log.message}</span>
+        {/* Right Data Preview Area */}
+        <main className="flex-1 bg-slate-100 relative flex flex-col p-6 overflow-hidden">
+          {activeFile ? (
+            <div className="flex-1 flex flex-col bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-white overflow-hidden">
+              {/* Data Header: Title and Sheet Tabs */}
+              <div className="px-6 py-5 bg-white border-b border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 flex items-center justify-center rounded-xl text-emerald-700">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-800">{activeFile.fileName}</h2>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">数据实时预览器 / {activeFile.currentSheetName}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => exportToExcel(activeSheetData || [], activeFile.fileName)} className="text-xs flex items-center gap-2 text-slate-600 hover:text-emerald-700 font-bold px-4 py-2 rounded-xl border border-slate-100 hover:bg-emerald-50 hover:border-emerald-200 transition-all">
+                      <FileDown className="w-4 h-4" /> 导出本表
+                    </button>
+                  </div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
 
-        {/* Right Panel: Data Preview */}
-        <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
-          {activeFile && activeSheetData ? (
-            <div className="flex-1 flex flex-col m-4 bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
-               <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-white">
-                 <div className="flex items-center gap-2">
-                   <h3 className="font-bold text-slate-700">{activeFile.fileName}</h3>
-                   <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{activeFile.currentSheetName}</span>
-                 </div>
-                 <button 
-                   onClick={() => exportToExcel(activeSheetData, activeFile.fileName)}
-                   className="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 font-medium px-3 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-200 hover:bg-emerald-50 transition-all"
-                 >
-                   <FileDown className="w-3.5 h-3.5" /> 导出文件
-                 </button>
-               </div>
+                {/* Sheet Tabs */}
+                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl w-fit border border-slate-100">
+                  {Object.keys(activeFile.sheets).map(sheetName => (
+                    <button
+                      key={sheetName}
+                      onClick={() => {
+                        const updated = [...filesData];
+                        const f = updated.find(x => x.id === activeFileId);
+                        if (f) f.currentSheetName = sheetName;
+                        setFilesData(updated);
+                      }}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeFile.currentSheetName === sheetName
+                        ? 'bg-white text-emerald-700 shadow-sm border border-slate-200'
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'
+                        }`}
+                    >
+                      {sheetName}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-               <div className="flex-1 overflow-auto w-full">
-                 <table className="w-full text-left text-sm border-collapse">
-                   <thead>
-                     <tr>
-                       <th className="w-12 p-2 bg-slate-50 border-b border-r border-slate-200 text-center text-slate-400 text-xs font-mono sticky top-0 z-10">#</th>
-                       {activeSheetData.length > 0 && Object.keys(activeSheetData[0]).map((header) => (
-                         <th key={header} className="p-2 border-b border-r border-slate-100 bg-slate-50 sticky top-0 font-semibold text-slate-600 whitespace-nowrap min-w-[100px] z-10">
-                           {header}
-                         </th>
-                       ))}
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {activeSheetData.slice(0, 200).map((row, rIdx) => (
-                       <tr key={rIdx} className="hover:bg-blue-50/30 border-b border-slate-50 last:border-0 group">
-                         <td className="p-2 bg-slate-50 border-r border-slate-100 text-center text-slate-400 text-xs font-mono group-hover:bg-blue-50/30">{rIdx + 1}</td>
-                         {Object.values(row).map((cell: any, cIdx) => (
-                           <td key={cIdx} className="p-2 border-r border-slate-50 text-slate-600 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis">
-                             {String(cell)}
-                           </td>
-                         ))}
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-                 {activeSheetData.length === 0 && (
-                   <div className="p-10 text-center text-slate-400">
-                     此表无数据
-                   </div>
-                 )}
-                 {activeSheetData.length > 200 && (
-                   <div className="p-2 text-center text-xs text-slate-400 bg-slate-50 border-t border-slate-100">
-                     预览前 200 行 (共 {activeSheetData.length} 行)
-                   </div>
-                 )}
-               </div>
+              {/* Table Content */}
+              <div className="flex-1 overflow-auto bg-white custom-scrollbar">
+                <table className="w-full text-left text-sm border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-20 bg-white">
+                    <tr>
+                      <th className="w-12 p-3 bg-slate-50/80 border-b border-r border-slate-100 text-center text-slate-400 text-[10px] font-mono backdrop-blur-md">#</th>
+                      {activeSheetData && activeSheetData.length > 0 && Object.keys(activeSheetData[0]).map((header) => (
+                        <th key={header} className="p-3 border-b border-r border-slate-50 bg-slate-50/80 backdrop-blur-md font-bold text-slate-500 whitespace-nowrap min-w-[120px]">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeSheetData && activeSheetData.slice(0, 500).map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-emerald-50/30 transition-colors group">
+                        <td className="p-3 bg-slate-50/30 border-r border-slate-50 text-center text-slate-400 text-[10px] font-mono group-hover:bg-emerald-50/50">{rIdx + 1}</td>
+                        {Object.entries(row).map(([key, cell], cIdx) => {
+                          const address = XLSX.utils.encode_cell({ r: rIdx + 1, c: cIdx });
+                          const comment = activeSheetMeta?.comments[address];
+                          return (
+                            <td key={cIdx} className="p-3 border-r border-slate-50 text-slate-600 whitespace-nowrap max-w-sm overflow-hidden text-ellipsis border-b border-slate-50 relative">
+                              {String(cell)}
+                              {comment && (
+                                <div className="absolute top-0 right-0 p-1 cursor-help group/comment">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-sm shadow-blue-500/50" />
+                                  <div className="hidden group-hover/comment:block absolute z-30 bottom-full right-0 mb-2 w-64 p-3 bg-slate-900 text-white text-[11px] rounded-xl shadow-2xl backdrop-blur-md border border-white/10 leading-relaxed font-medium">
+                                    <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-white/10 text-blue-400 font-bold uppercase tracking-wider">
+                                      <MessageSquare className="w-3 h-3" /> 单元格批注 ({address})
+                                    </div>
+                                    {comment}
+                                    <div className="absolute -bottom-1 right-2 w-2 h-2 bg-slate-900 rotate-45" />
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(!activeSheetData || activeSheetData.length === 0) && (
+                  <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-3">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
+                      <Eye className="w-8 h-8 opacity-20" />
+                    </div>
+                    <p className="font-bold text-slate-300 tracking-wide uppercase text-xs">此工作表没有可供预览的数据</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Table Footer Stats */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                    数据总行数: <span className="text-slate-800">{activeSheetData?.length || 0}</span>
+                  </div>
+                  {activeSheetMeta && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      批注总计: <span className="text-slate-800">{Object.keys(activeSheetMeta.comments).length}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 tracking-tighter uppercase italic">Preview limited to top 500 rows for performance</p>
+              </div>
             </div>
           ) : (
-             <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
-                <Layers className="w-16 h-16 mb-4 opacity-20" />
-                <p className="font-medium">选择左侧文件以预览数据</p>
-             </div>
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-300">
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-emerald-200 blur-3xl rounded-full opacity-20" />
+                <Layers className="w-24 h-24 relative opacity-10 animate-pulse" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-400 mb-2">等待数据载入</h3>
+              <p className="text-sm">请点击左侧存储库中的文件进行预览</p>
+            </div>
           )}
-        </div>
+        </main>
       </div>
+
+      {/* Global Processing Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl border border-white flex flex-col items-center max-w-sm w-full">
+            <div className="relative w-20 h-20 mb-6">
+              <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+              <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin" />
+              <Layers className="absolute inset-0 m-auto w-8 h-8 text-emerald-600 animate-bounce" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">AI 智能处理中</h3>
+            <p className="text-sm text-slate-500 text-center leading-relaxed">Agent 正在沙箱环境分析并转换您的 Excel 记录。请稍候，由于涉及 Python 解释器初始化，在大文件上可能需要数秒时间。</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

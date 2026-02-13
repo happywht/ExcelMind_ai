@@ -7,31 +7,83 @@ export const readExcelFile = async (file: File): Promise<ExcelData> => {
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        
-        const sheets: { [key: string]: any[] } = {};
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        const sheets: { [sheetName: string]: any[] } = {};
+        const metadata: { [sheetName: string]: any } = {};
         let firstSheetName = '';
 
         workbook.SheetNames.forEach((name, index) => {
           if (index === 0) firstSheetName = name;
           const worksheet = workbook.Sheets[name];
+
+          // Read main table data
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
           sheets[name] = jsonData;
+
+          // Extract metadata: comments and notes
+          const comments: { [cellAddress: string]: string } = {};
+          const notes: { [cellAddress: string]: string } = {};
+
+          // Iterate all cells in the sheet
+          for (const cellAddress in worksheet) {
+            if (cellAddress.startsWith('!')) continue; // Skip metadata fields
+
+            const cell = worksheet[cellAddress];
+
+            // Extract cell comments (c)
+            if (cell.c) {
+              cell.c.forEach((comment: any) => {
+                if (comment.a && comment.t) {
+                  const commentText = comment.t;
+                  const author = comment.a || '';
+                  comments[cellAddress] = author ? `[${author}]: ${commentText}` : commentText;
+                }
+              });
+            }
+
+            // Extract cell notes/annotations (n) - some versions use this
+            if (cell.n) {
+              notes[cellAddress] = cell.n;
+            }
+          }
+
+          // Calculate dimensions
+          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+
+          metadata[name] = {
+            comments,
+            notes,
+            rowCount: range.e.r + 1,
+            columnCount: range.e.c + 1
+          };
         });
 
         resolve({
           id: file.name + '-' + Date.now(),
           fileName: file.name,
           sheets,
-          currentSheetName: firstSheetName
+          currentSheetName: firstSheetName,
+          metadata
         });
       } catch (err) {
         reject(err);
       }
     };
     reader.onerror = (err) => reject(err);
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   });
+};
+
+export const exportMultipleSheetsToExcel = (sheets: { [sheetName: string]: any[] }, fileName: string) => {
+  const workbook = XLSX.utils.book_new();
+
+  Object.entries(sheets).forEach(([sheetName, data]) => {
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  });
+
+  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
 };
 
 export const exportToExcel = (data: any[], fileName: string) => {
@@ -116,7 +168,7 @@ export const executeTransformation = async (
       clearTimeout(timeoutId);
       worker.terminate();
       URL.revokeObjectURL(workerUrl); // Clean up
-      
+
       if (e.data.success) {
         resolve(e.data.data);
       } else {
