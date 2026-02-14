@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AIProcessResult, AgenticStep } from '../types';
+import { globalMasker } from './maskerService';
 
 // 配置智谱AI
 const client = new Anthropic({
@@ -228,6 +229,13 @@ export const runAgenticLoop = async (
   onStep: (step: AgenticStep) => void,
   executeTool?: (tool: string, params: any) => Promise<string>
 ): Promise<AIProcessResult> => {
+  // Reset masker for a fresh session
+  globalMasker.reset();
+
+  // Mask the user prompt and initial data
+  const maskedUserPrompt = globalMasker.mask(userPrompt);
+  const maskedInitialContext = globalMasker.maskContext(initialContext);
+
   const messages: any[] = [
     {
       role: "user",
@@ -265,10 +273,10 @@ export const runAgenticLoop = async (
 2. **验证优先**: 在 \`finish\` 之前，请通过 \`print()\` 验证数据行数、列名或合并是否成功。
 3. **容错重试**: 如果 Python 报错，系统会返回完整的 Traceback，请根据报错信息自我修正。
 
-用户任务: "${userPrompt}"
+用户任务: "${maskedUserPrompt}"
 
 初始上下文 (概览):
-${JSON.stringify(initialContext, null, 2)}
+${JSON.stringify(maskedInitialContext, null, 2)}
 `
     }
   ];
@@ -300,7 +308,7 @@ ${JSON.stringify(initialContext, null, 2)}
       }
 
       const step: AgenticStep = {
-        thought: stepData.thought,
+        thought: globalMasker.unmask(stepData.thought),
         action: stepData.action
       };
 
@@ -311,7 +319,7 @@ ${JSON.stringify(initialContext, null, 2)}
       messages.push({ role: "assistant", content: text });
 
       if (step.action.tool === 'finish') {
-        finalExplanation = step.thought;
+        finalExplanation = globalMasker.unmask(stepData.thought);
         break;
       }
 
@@ -326,7 +334,7 @@ ${JSON.stringify(initialContext, null, 2)}
           step.observation = observation;
           messages.push({
             role: "user",
-            content: `Observation from ${step.action.tool}:\n${observation}`
+            content: `Observation from ${step.action.tool}:\n${globalMasker.mask(observation)}`
           });
 
           // Continue loop to next turn

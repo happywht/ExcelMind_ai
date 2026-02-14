@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { AIProcessResult } from '../types';
+import { globalMasker } from './maskerService';
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -67,8 +68,12 @@ export const generateDataProcessingCode = async (
   try {
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
+    // Mask properties
+    const maskedUserPrompt = globalMasker.mask(userPrompt);
+    const maskedFilesPreview = globalMasker.maskContext(filesPreview);
+
     // Construct a rich observation context
-    const fileObservationStr = filesPreview.map(f =>
+    const fileObservationStr = maskedFilesPreview.map(f =>
       `--- FILE: "${f.fileName}" ---
        HEADERS: ${JSON.stringify(f.headers)}
        SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS): 
@@ -115,7 +120,7 @@ export const generateDataProcessingCode = async (
 
     const response = await ai.models.generateContent({
       model,
-      contents: userPrompt,
+      contents: maskedUserPrompt,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
@@ -126,7 +131,10 @@ export const generateDataProcessingCode = async (
     if (!text) throw new Error("No response from AI");
 
     const result = JSON.parse(text) as AIProcessResult;
-    return result;
+    return {
+      ...result,
+      explanation: globalMasker.unmask(result.explanation)
+    };
 
   } catch (error) {
     console.error("Code Gen Error:", error);
