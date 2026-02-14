@@ -43,7 +43,7 @@ export const generateExcelFormula = async (description: string): Promise<string>
 请生成最合适的Excel公式，不要包含markdown代码块或解释文字。`;
 
     const response = await client.messages.create({
-      model: "glm-4.6",
+      model: process.env.ZHIPU_MODEL || "glm-4.6",
       max_tokens: 1500, // 增加token限制以支持复杂公式
       messages: [{
         role: "user",
@@ -202,7 +202,7 @@ export const chatWithKnowledgeBase = async (
     });
 
     const response = await client.messages.create({
-      model: "glm-4.6",
+      model: process.env.ZHIPU_MODEL || "glm-4.6",
       max_tokens: 4096,
       messages: messages
     });
@@ -280,7 +280,7 @@ ${JSON.stringify(initialContext, null, 2)}
   for (let turn = 0; turn < 10; turn++) {
     try {
       const response = await client.messages.create({
-        model: "glm-4.6",
+        model: process.env.ZHIPU_MODEL || "glm-4.6",
         max_tokens: 4096,
         messages: messages
       });

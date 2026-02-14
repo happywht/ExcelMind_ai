@@ -6,7 +6,7 @@ const ai = new GoogleGenAI({ apiKey });
 
 export const generateExcelFormula = async (description: string): Promise<string> => {
   try {
-    const model = 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const response = await ai.models.generateContent({
       model,
       contents: `你是一个 Excel 公式生成专家。
@@ -26,8 +26,8 @@ export const chatWithKnowledgeBase = async (
   contextDocs: string
 ): Promise<string> => {
   try {
-    const model = 'gemini-2.5-flash';
-    
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
     let systemInstruction = "你是一个专业的财务和审计数据处理助手。请使用中文回答用户的问题。";
     if (contextDocs) {
       systemInstruction += `\n\n请参考以下知识库内容来回答问题：\n${contextDocs}`;
@@ -61,14 +61,14 @@ export const chatWithKnowledgeBase = async (
  * Now supports 'Observe-Think-Action' loop by receiving sample data.
  */
 export const generateDataProcessingCode = async (
-  userPrompt: string, 
+  userPrompt: string,
   filesPreview: { fileName: string; headers: string[]; sampleRows: any[] }[]
 ): Promise<AIProcessResult> => {
   try {
-    const model = 'gemini-2.5-flash';
-    
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
     // Construct a rich observation context
-    const fileObservationStr = filesPreview.map(f => 
+    const fileObservationStr = filesPreview.map(f =>
       `--- FILE: "${f.fileName}" ---
        HEADERS: ${JSON.stringify(f.headers)}
        SAMPLE DATA (Top 5 rows - OBSERVE THESE TO IDENTIFY COLUMNS): 
@@ -131,7 +131,8 @@ export const generateDataProcessingCode = async (
   } catch (error) {
     console.error("Code Gen Error:", error);
     return {
-      code: "",
+      steps: [],
+      finalCode: "",
       explanation: "理解指令失败，AI 无法分析样本数据，请检查文件格式或重试。"
     };
   }
