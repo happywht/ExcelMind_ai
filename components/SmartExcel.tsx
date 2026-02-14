@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Search, Eye, Terminal, Info, ChevronRight, MessageSquare, PanelLeft, PanelRight, X, ChevronLeft, Sparkles, Send, Bot, Zap } from 'lucide-react';
+import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Search, Eye, Terminal, Info, ChevronRight, MessageSquare, PanelLeft, PanelRight, X, ChevronLeft, Sparkles, Send, Bot, Zap, ShieldCheck } from 'lucide-react';
 import { readExcelFile, exportMultipleSheetsToExcel, exportToExcel } from '../services/excelService';
 import { runAgenticLoop } from '../services/zhipuService';
+import { auditExportService } from '../services/excelExportService';
+import { ClipboardList } from 'lucide-react';
 import { runPython } from '../services/pyodideService';
 import { ExcelData, ProcessingLog, AgenticStep } from '../types';
 import * as XLSX from 'xlsx';
@@ -28,6 +30,7 @@ export const SmartExcel: React.FC = () => {
   const [agentSteps, setAgentSteps] = useState<AgenticStep[]>([]);
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
+  const [isPrivacyEnabled, setIsPrivacyEnabled] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -60,7 +63,7 @@ export const SmartExcel: React.FC = () => {
     setIsProcessing(true);
     setRightPanelOpen(true); // Auto-open thinking hub
     setAgentSteps([]);
-    addLog('System', 'pending', '🚀 启动智能推理中枢 (Observe-Think-Act-Verify)...');
+    addLog('System', 'pending', `🚀 启动智能推理中枢 (Privacy Mode: ${isPrivacyEnabled ? 'ON' : 'OFF'})...`);
 
     try {
       // 1. Initial Context
@@ -163,7 +166,7 @@ export const SmartExcel: React.FC = () => {
         console.log('[Agent Thought]', step.thought);
       };
 
-      const result = await runAgenticLoop(command, initialContext, onStep, executeTool);
+      const result = await runAgenticLoop(command, initialContext, onStep, executeTool, isPrivacyEnabled);
 
       addLog('System', 'success', `任务完成: ${result.explanation}`);
       console.log('[System] Agentic Loop finished successfully.');
@@ -218,6 +221,50 @@ export const SmartExcel: React.FC = () => {
     setIsProcessing(false);
   };
 
+  const handleAuditStandardExport = async () => {
+    if (selectedFileIds.size === 0) return;
+    setIsProcessing(true);
+    addLog('System', 'pending', '正在生成审计标准底稿...');
+
+    try {
+      const zip = new JSZip();
+      let count = 0;
+
+      for (const file of filesData) {
+        if (selectedFileIds.has(file.id)) {
+          // Prepare multi-sheet data for this file
+          const sheetsData = Object.entries(file.sheets).map(([name, data]) => {
+            const headers = data.length > 0 ? Object.keys(data[0]) : [];
+            return { name, headers, data };
+          });
+
+          const auditBlob = await auditExportService.generateMultiSheetAuditReport(
+            file.fileName,
+            sheetsData
+          );
+
+          zip.file(file.fileName.endsWith('.xlsx') ? file.fileName : `${file.fileName}.xlsx`, auditBlob);
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        const content = await zip.generateAsync({ type: "blob" });
+        const url = window.URL.createObjectURL(content);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `audit_workpapers_${Date.now()}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+        addLog('System', 'success', '审计标准底稿导出成功！');
+      }
+    } catch (err: any) {
+      addLog('System', 'error', `导出失败: ${err.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const activeSheetData = activeFile ? activeFile.sheets[activeFile.currentSheetName] : null;
   const activeSheetMeta = activeFile?.metadata ? activeFile.metadata[activeFile.currentSheetName] : null;
 
@@ -257,6 +304,23 @@ export const SmartExcel: React.FC = () => {
               <PanelRight className="w-4 h-4" />
             </button>
           </div>
+
+          <div className="h-8 w-px bg-slate-200 mx-1 hidden lg:block" />
+
+          {/* Privacy Toggle */}
+          <div className="flex items-center gap-3 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-sm hover:border-emerald-200 transition-colors group">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none">Privacy Shield</span>
+              <span className={`text-[10px] font-bold ${isPrivacyEnabled ? 'text-emerald-600' : 'text-slate-400'} transition-colors`}>{isPrivacyEnabled ? '已开启脱敏' : '关闭中'}</span>
+            </div>
+            <button
+              onClick={() => setIsPrivacyEnabled(!isPrivacyEnabled)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ring-offset-2 focus:ring-2 focus:ring-emerald-500 ${isPrivacyEnabled ? 'bg-emerald-500' : 'bg-slate-200'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPrivacyEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+            <ShieldCheck className={`w-4 h-4 transition-all ${isPrivacyEnabled ? 'text-emerald-500 scale-110 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'text-slate-300'}`} />
+          </div>
         </div>
 
         <div className="flex gap-3">
@@ -268,15 +332,30 @@ export const SmartExcel: React.FC = () => {
             <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
             导入数据
           </button>
-          <button
-            disabled={selectedFileIds.size === 0}
-            onClick={handleBatchExport}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs transition-all shadow-lg ${selectedFileIds.size > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200 hover:scale-[1.02] active:scale-[0.98]' : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
-              }`}
-          >
-            <Archive className="w-4 h-4" />
-            批量导出 ({selectedFileIds.size})
-          </button>
+
+          <div className="h-8 w-px bg-slate-200 mx-1" />
+
+          <div className="flex items-center gap-2">
+            <button
+              disabled={selectedFileIds.size === 0}
+              onClick={handleBatchExport}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs transition-all shadow-lg ${selectedFileIds.size > 0 ? 'bg-slate-800 text-white hover:bg-slate-900 hover:scale-[1.02] active:scale-[0.98]' : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                }`}
+            >
+              <Archive className="w-4 h-4" />
+              快速打包({selectedFileIds.size})
+            </button>
+            <button
+              disabled={selectedFileIds.size === 0}
+              onClick={handleAuditStandardExport}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs transition-all shadow-lg ${selectedFileIds.size > 0 ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:shadow-emerald-200 hover:scale-[1.05] active:scale-[0.98] ring-2 ring-emerald-50' : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                }`}
+              title="生成带专业格式和公式链接的审计底稿"
+            >
+              <ClipboardList className="w-4 h-4" />
+              审计出口
+            </button>
+          </div>
         </div>
       </header>
 

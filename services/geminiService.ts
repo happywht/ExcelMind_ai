@@ -63,14 +63,15 @@ export const chatWithKnowledgeBase = async (
  */
 export const generateDataProcessingCode = async (
   userPrompt: string,
-  filesPreview: { fileName: string; headers: string[]; sampleRows: any[] }[]
+  filesPreview: { fileName: string; headers: string[]; sampleRows: any[] }[],
+  isPrivacyEnabled: boolean = false
 ): Promise<AIProcessResult> => {
   try {
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
     // Mask properties
-    const maskedUserPrompt = globalMasker.mask(userPrompt);
-    const maskedFilesPreview = globalMasker.maskContext(filesPreview);
+    const maskedUserPrompt = isPrivacyEnabled ? globalMasker.mask(userPrompt) : userPrompt;
+    const maskedFilesPreview = isPrivacyEnabled ? globalMasker.maskContext(filesPreview) : filesPreview;
 
     // Construct a rich observation context
     const fileObservationStr = maskedFilesPreview.map(f =>
@@ -133,7 +134,7 @@ export const generateDataProcessingCode = async (
     const result = JSON.parse(text) as AIProcessResult;
     return {
       ...result,
-      explanation: globalMasker.unmask(result.explanation)
+      explanation: isPrivacyEnabled ? globalMasker.unmask(result.explanation) : result.explanation
     };
 
   } catch (error) {

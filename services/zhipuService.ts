@@ -227,14 +227,15 @@ export const runAgenticLoop = async (
   userPrompt: string,
   initialContext: any,
   onStep: (step: AgenticStep) => void,
-  executeTool?: (tool: string, params: any) => Promise<string>
+  executeTool?: (tool: string, params: any) => Promise<string>,
+  isPrivacyEnabled: boolean = false
 ): Promise<AIProcessResult> => {
   // Reset masker for a fresh session
-  globalMasker.reset();
+  if (isPrivacyEnabled) globalMasker.reset();
 
   // Mask the user prompt and initial data
-  const maskedUserPrompt = globalMasker.mask(userPrompt);
-  const maskedInitialContext = globalMasker.maskContext(initialContext);
+  const maskedUserPrompt = isPrivacyEnabled ? globalMasker.mask(userPrompt) : userPrompt;
+  const maskedInitialContext = isPrivacyEnabled ? globalMasker.maskContext(initialContext) : initialContext;
 
   const messages: any[] = [
     {
@@ -270,8 +271,16 @@ export const runAgenticLoop = async (
 
 **核心规则**:
 1. **数据闭环**: 任务结果必须存回 \`files\`，例如 \`files['output.xlsx'] = final_df\`。
-2. **验证优先**: 在 \`finish\` 之前，请通过 \`print()\` 验证数据行数、列名或合并是否成功。
-3. **容错重试**: 如果 Python 报错，系统会返回完整的 Traceback，请根据报错信息自我修正。
+   - **多表支持**: 如果需要生成包含多个 Sheet 的文件，请使用字典格式：
+     \`\`\`python
+     files['merge.xlsx'] = {
+         '员工': df_empl,
+         '订单': df_order
+     }
+     \`\`\`
+2. **虚拟磁盘同步 (V4.2)**: 你可以直接使用 \`df.to_excel('/mnt/test.xlsx')\`，系统会自动将其同步回 UI 文件列表。
+3. **验证优先**: 在 \`finish\` 之前，请通过 \`print()\` 验证数据行数、列名或合并是否成功。
+4. **容错重试**: 如果 Python 报错，系统会返回完整的 Traceback，请根据报错信息自我修正。
 
 用户任务: "${maskedUserPrompt}"
 
@@ -308,7 +317,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       }
 
       const step: AgenticStep = {
-        thought: globalMasker.unmask(stepData.thought),
+        thought: isPrivacyEnabled ? globalMasker.unmask(stepData.thought) : stepData.thought,
         action: stepData.action
       };
 
@@ -319,7 +328,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       messages.push({ role: "assistant", content: text });
 
       if (step.action.tool === 'finish') {
-        finalExplanation = globalMasker.unmask(stepData.thought);
+        finalExplanation = isPrivacyEnabled ? globalMasker.unmask(stepData.thought) : stepData.thought;
         break;
       }
 
@@ -334,7 +343,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
           step.observation = observation;
           messages.push({
             role: "user",
-            content: `Observation from ${step.action.tool}:\n${globalMasker.mask(observation)}`
+            content: `Observation from ${step.action.tool}:\n${isPrivacyEnabled ? globalMasker.mask(observation) : observation}`
           });
 
           // Continue loop to next turn

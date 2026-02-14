@@ -168,9 +168,24 @@ export const runPython = async (
 
         // 4. Retrieve logs and modified data
         // We capture the output and results in a single structured object
+        // NOTE: We also scan /mnt/ for any NEWLY created files that might not be in the 'files' variable
         const finalResultJson = await instance.runPythonAsync(`
             stdout_val = sys.stdout.getvalue()
             
+            # Sync files from /mnt/ back to 'files' variable if they exist as physical files
+            import os
+            if os.path.exists('/mnt'):
+                for f in os.listdir('/mnt'):
+                    if f.endswith('.xlsx') or f.endswith('.xls'):
+                        try:
+                            # If it was modified/created, try to load it into 'files'
+                            # We only do this if it's not already 'better' represented in 'files' or if we want force sync
+                            # For simplicity, we trust the /mnt/ version as the final authority for physical exports
+                            sheet_data = pd.read_excel(f'/mnt/{f}', sheet_name=None)
+                            files[f] = {sname: df.to_dict(orient='records') for sname, df in sheet_data.items()}
+                        except Exception as e:
+                            print(f"Sync Warning: Failed to re-read {f} from /mnt: {e}")
+
             def clean_output(obj):
                 if isinstance(obj, pd.DataFrame):
                     return obj.to_dict(orient='records')

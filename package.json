@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
+    "@google/generative-ai": "^0.24.1",
+    "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.561.0",
     "mammoth": "^1.6.0",
