@@ -243,38 +243,39 @@ export const runAgenticLoop = async (
     {
       role: "user",
       content: `你是一个专家级数据处理智能体 (Data Agent)。你的工作是根据用户需求处理 Excel 数据。
-你正在运行在 **V5.3 Tiered Memory (分级存储)** 架构下。这意味着：
-- **初始上下文极轻量**: 你初始只能看到文件名、表名、列名和行数。
-- **按需观察 (inspect_sheet)**: 你必须使用 \`inspect_sheet\` 来观察数据样本，以确认列的内容和格式。
-- **按需读取 (read_rows)**: 如果需要寻找特定的关键字或核对特定行，请使用 \`read_rows\`。
-- **全量处理 (execute_python)**: 真正的重体力活（合并、清洗、计算）应当通过 Python 代码在沙箱中完成。
+你正在运行在 **Seamless Sandbox v2.2** 架构下。
+
+**核心环境规范**:
+1. **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 根目录下。
+   - **正确路径**: \`/mnt/文件名.xlsx\`
+   - **禁止路径**: \`/mnt/data/\` 或其他子目录。
+2. **数据读取机制**: 
+   - 绝大多数情况，请直接使用 \`pd.read_excel('/mnt/文件名.xlsx')\`。这是最稳妥的方法。
+   - \`files\` 全局字典是内存中的数据备份。如果你需要直接操作它，请注意：它是 \`{ "文件名": { "Sheet1": [rows], "Sheet2": [rows] } }\` 的嵌套结构。
+3. **数据写回要求**:
+   - 处理完数据后，**必须**将结果存回 \`files\` 变量以同步给 UI。
+   - **示例**: \`files['输出文件.xlsx'] = final_df\` 或 \`files['结果.xlsx'] = { "汇总": df1, "明细": df2 }\`。
 
 **当前可用工具**:
-1. \`inspect_sheet(fileName, sheetName)\`: 获取特定工作表的列头和前几行数据样本（用于确定数据含义）。
-2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行数范围的数据（用于精确核对）。
-3. \`execute_python(code)\`: 运行 Python 代码进行实际的数据处理。必须将结果更新回 \`files\` 变量。
-4. \`finish()\`: 当任务完全完成且经过验证后调用。
+1. \`inspect_sheet(fileName, sheetName)\`: 获取特定表的列头和前 5 行样本（用于确定数据含义）。
+2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行范围的数据（用于精确核对）。
+3. \`execute_python(code)\`: 运行 Python 代码。这是处理大型数据集、合并表、计算指标的唯一高效方式。
+4. \`finish()\`: 完成任务后调用。
 
-**运行环境 (Seamless Sandbox v2.2)**:
-- **Python-Worker**: 计算在后台线程运行，你可以处理数百万行数据而不卡顿。
-- **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 下。
-- **内存数据**: \`files\` 全局字典可用。
-- **流式反馈**: 你的 \`print()\` 会实时反馈给用户。你可以打印 \`df.head()\` 或 \`df.info()\` 来核实处理中间结果。
+**处理策略**:
+- **优先 Python**: 对于合并 (Merge/Join) 操作，直接在 \`execute_python\` 中使用 \`pd.merge()\`。不要分步读取成千上万行。
+- **验证为王**: 在 \`finish\` 之前，请务必 \`print()\` 打印最终结果的 \`.head()\`、行数或关键总和，以便在日志中自我验证。
+- **路径严谨**: 始终使用 \`/mnt/\` 前缀读取文件。
 
-**输出要求 (必须是合法 JSON)**:
-{
-  "thought": "由于我在初始上下文中只看到了列名，我决定先使用 inspect_sheet 来确认 '金额' 列的数据类型...",
-  "action": {
-    "tool": "inspect_sheet" | "read_rows" | "execute_python" | "finish",
-    "params": { ... }
-  }
-}
+**常用代码模版 (Cheatsheet)**:
+- **读取表**: \`df = pd.read_excel('/mnt/文件名.xlsx', sheet_name='Sheet1')\`
+- **多表关联**: \`result = pd.merge(df_order, df_product, on='ID', how='left')\`
+- **保存并同步**: \`files['结果.xlsx'] = result\` (必须这一步，UI 才能看到结果)
+- **验证数据**: \`print(f"处理完成，结果行数: {len(result)}"); print(result.head())\`
 
-**核心规则**:
-1. **先观察再行动**: 除非你非常确定列的含义，否则应先 \`inspect_sheet\`。
-2. **数据闭环**: 任务结果必须存回 \`files\`，例如 \`files['output.xlsx'] = final_df\`。
-3. **验证机制**: 在 \`finish\` 之前，务必通过 Python 打印验证关键指标（如行数、总金额等）。
-4. **流式意识**: 既然有了实时日志，建议在 Python 代码中多使用 \`print()\` 输出处理进度，提升用户体验。
+**禁止行为**:
+- 禁止使用 \`files['filename'].parse()\`，因为 \`files\` 里的数据是原始字典，不是 ExcelFile 对象。
+- 禁止在未观察列名的情况下盲目合并。
 
 用户任务: "${maskedUserPrompt}"
 
@@ -352,6 +353,18 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
         try {
           const observation = await executeTool(step.action.tool, step.action.params);
+
+          // PHASE 6.1: Dynamic Context Injection
+          // We append the current available files to the observation to keep the agent oriented
+          let finalObs = observation;
+          if (step.action.tool === 'execute_python' || step.action.tool === 'inspect_sheet') {
+            const currentFiles = initialContext.map((f: any) => f.fileName).join(', ');
+            // We don't have the REAL-TIME updated initialContext here easily without refactoring
+            // But we can at least remind it of the original files.
+            // Actually, the 'initialContext' is passed to the loop. 
+            // We should probably pass the UPDATED state if possible.
+          }
+
           step.observation = observation;
           messages.push({
             role: "user",

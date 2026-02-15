@@ -222,10 +222,33 @@ finally:
 
         // Prep response data
         const responseJson = await pyodide.runPythonAsync(`
-            # Sync files from /mnt/ back to 'files' variable ONLY IF they changed or on demand
-            # To keep it simple and fix the 'result' bug:
+            # Sync files from /mnt/ back to 'files' variable
             import json
+            import os
             
+            # Detect new or changed files in /mnt
+            if os.path.exists('/mnt'):
+                for f in os.listdir('/mnt'):
+                    fpath = os.path.join('/mnt', f)
+                    # Only sync if it's an excel/csv file and NOT already accurately in 'files'
+                    # Or just sync everything for consistency in this tier
+                    if f.endswith(('.xlsx', '.xls', '.csv')):
+                         try:
+                             # We use lazy sync: if 'inspect_sheet' is called later, it will use mocked_read_excel
+                             # which already points to the disk if /mnt/ is used.
+                             # But for the UI to show the file in the sidebar, we need it in the 'files' dict.
+                             if f not in files:
+                                 # For newly created files from Python, we need to read them into memory
+                                 # so they appear in the UI file list.
+                                 if f.endswith('.csv'):
+                                     files[f] = pd.read_csv(fpath).to_dict(orient='records')
+                                 else:
+                                     # Load all sheets for the UI
+                                     excel_file = pd.ExcelFile(fpath)
+                                     files[f] = {s: excel_file.parse(s).to_dict(orient='records') for s in excel_file.sheet_names}
+                         except Exception as e:
+                             print(f"Sync Warning: Failed to read back {f}: {e}")
+
             json.dumps({
                 "files": clean_output(files),
                 "result": clean_output(_last_output_capture) if '_last_output_capture' in locals() else "No result"
