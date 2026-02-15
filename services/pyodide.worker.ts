@@ -192,21 +192,31 @@ async function runPython(code: string, datasets: any, id: string) {
 
         // Run user code and capture result properly
         const cleanedCode = code.trim();
-        // Use a wrapper to ensure the last expression value is captured into a known global
+
+        // Inject the code into Python globals as a raw string to avoid character escaping hell
+        pyodide.globals.set('__user_code_raw', cleanedCode);
+
         const wrapper = `
 import sys
 from io import StringIO
 
 _last_output_capture = None
 try:
-    # We execute the code and capture the last result
-    _last_output_capture = eval(compile("""${cleanedCode.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}""", '<string>', 'eval'), globals())
-except SyntaxError:
-    # If it's not an expression, just execute it
-    exec(compile("""${cleanedCode.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}""", '<string>', 'exec'), globals())
-    _last_output_capture = "Execution completed (Statement)"
+    # Use globals()['__user_code_raw'] to get the exact code without string interpolation issues
+    _code = globals().get('__user_code_raw', '')
+    try:
+        # We execute the code and capture the last result
+        _last_output_capture = eval(compile(_code, '<string>', 'eval'), globals())
+    except SyntaxError:
+        # If it's not an expression, just execute it
+        exec(compile(_code, '<string>', 'exec'), globals())
+        _last_output_capture = "Execution completed (Statement)"
 except Exception as e:
     raise e
+finally:
+    # Cleanup the temporary code variable
+    if '__user_code_raw' in globals():
+        del globals()['__user_code_raw']
 `;
         await pyodide.runPythonAsync(wrapper);
 
