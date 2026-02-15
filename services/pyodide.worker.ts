@@ -43,22 +43,29 @@ async function initPyodide() {
             import io
 
             # Step 1: Install Essential Excel engines (BLOCKING)
+            # This is critical for pd.read_excel to work with user files
             print("[Worker] Installing essential Excel engines (openpyxl, xlrd)...")
             if not os.path.exists('/mnt'):
                 os.makedirs('/mnt')
             try:
-                pass 
+                # We use micropip for these as they might not be in the pre-built loadPackage list reliably
+                await micropip.install(['openpyxl', 'xlrd'])
+                print("[Worker] Excel engines installed successfully.")
             except Exception as e:
                 print(f"Error during essential load: {e}")
 
-            # Define Arsenal Loading logic
+            # Define Arsenal Loading logic (background)
             async def load_extra_arsenal():
                 try:
-                    # Optional Analytics (Audit Tier - loaded in background)
                     await micropip.install(['scipy', 'matplotlib'])
                     print("Sandbox Arsenal Background Tier Loaded: scipy, matplotlib")
                 except Exception as e:
                     print(f"Warning: Background Arsenal failed to load: {e}")
+
+            # Initialize global state explicitly
+            if 'files' not in globals():
+                globals()['files'] = {}
+            files = globals()['files']
 
             # Custom Stream for real-time logs
             class RealTimeStream(io.TextIOBase):
@@ -86,8 +93,7 @@ async function initPyodide() {
             # Backup original read_excel
             _original_read_excel = pd.read_excel
 
-            # Global files storage for virtual datasets
-            files = {}
+            files = globals().get('files', {})
 
             # Improved mock for pd.read_excel to support virtual data access
             def mocked_read_excel(path, *args, **kwargs):
@@ -118,26 +124,38 @@ async function initPyodide() {
             pd.read_excel = mocked_read_excel
 
             def clean_output(obj):
+                import math
+                if isinstance(obj, float):
+                    if math.isnan(obj) or math.isinf(obj):
+                        return None
+                    return obj
                 if isinstance(obj, pd.DataFrame):
-                    return obj.to_dict(orient='records')
+                    return clean_output(obj.to_dict(orient='records'))
                 if isinstance(obj, dict):
                     return {k: clean_output(v) for k, v in obj.items()}
-                if isinstance(obj, list):
+                if isinstance(obj, (list, tuple, set)):
                     return [clean_output(i) for i in obj]
+                # Default for basic types
                 try:
-                    json.dumps(obj)
+                    # Handle Pandas/Numpy specific types that JSON doesn't like
+                    if hasattr(obj, 'tolist'): return obj.tolist()
+                    if hasattr(obj, 'to_pydatetime'): return obj.to_pydatetime().isoformat()
+                    if hasattr(obj, 'isoformat'): return obj.isoformat()
                     return obj
-                except:
+                except Exception:
                     return str(obj)
         `);
 
         // Await essential engines before proceeding
         console.log('[Worker] Awaiting essential Excel engines...');
-        await pyodide.runPythonAsync('import micropip; await micropip.install(["openpyxl", "xlrd"])');
-        console.log('[Worker] Essential engines ready.');
-
-        // Trigger optional analytics in the background
-        pyodide.runPythonAsync('import asyncio; asyncio.ensure_future(load_extra_arsenal())');
+        await pyodide.runPythonAsync(`
+            import micropip
+            await micropip.install(["openpyxl", "xlrd"])
+            # Ensure load_extra_arsenal is available and defined correctly
+            import asyncio
+            asyncio.ensure_future(load_extra_arsenal())
+        `);
+        console.log('[Worker] Essential engines and background arsenal ready.');
 
         ctx.postMessage({ type: 'INIT_SUCCESS' });
     } catch (error: any) {
@@ -190,10 +208,13 @@ async function runPython(code: string, datasets: any, id: string) {
         }
 
         // Run user code and capture result properly
-        const cleanedCode = code.trim();
+        const cleanedCode = (code || '').trim();
 
-        // Inject the code into Python globals as a raw string to avoid character escaping hell
+        // Inject the code into Python globals as a raw string
         pyodide.globals.set('__user_code_raw', cleanedCode);
+
+        // CRITICAL: Ensure 'files' is anchored in the ACTUAL globals before execution
+        await pyodide.runPythonAsync(`globals().update({'files': files})`);
 
         const wrapper = `
 import sys
@@ -201,19 +222,16 @@ from io import StringIO
 
 _last_output_capture = None
 try:
-    # Use globals()['__user_code_raw'] to get the exact code without string interpolation issues
     _code = globals().get('__user_code_raw', '')
+    # Execute in the real global context
     try:
-        # We execute the code and capture the last result
         _last_output_capture = eval(compile(_code, '<string>', 'eval'), globals())
     except SyntaxError:
-        # If it's not an expression, just execute it
         exec(compile(_code, '<string>', 'exec'), globals())
         _last_output_capture = "Execution completed (Statement)"
 except Exception as e:
     raise e
 finally:
-    # Cleanup the temporary code variable
     if '__user_code_raw' in globals():
         del globals()['__user_code_raw']
 `;
@@ -319,9 +337,8 @@ ctx.onmessage = (e: MessageEvent) => {
                             shutil.rmtree('/mnt')
                         os.makedirs('/mnt')
                         files.clear()
-                        globals().clear()
-                        # Re-register core essentials if needed or just wipe most
-                        print("Sandbox Reset Completed.")
+                        # Safe cleanup: Don't use globals().clear() as it nukes pandas/np/etc.
+                        print("Sandbox Files and State Cleared.")
                     `);
                     // We might need to re-init some parts or just let it be clean
                     ctx.postMessage({ type: 'RESET_SUCCESS', id });

@@ -167,6 +167,86 @@ const generateFallbackFormula = (description: string): string => {
   return '=A1';
 };
 
+/**
+ * AI Auditor (Reflector Layer)
+ * Performs a second-pass audit on a proposed action to ensure safety and precision.
+ */
+async function verifyActionWithAI(
+  proposedStep: AgenticStep,
+  context: string,
+  history: any[]
+): Promise<{ approved: boolean; reason?: string }> {
+  // Uses the top-level 'client' constant
+  console.log("[Auditor] Auditing proposed action...");
+
+  const auditPrompt = `你是一个严谨的数据处理审计员 (Data Auditor)。
+你的任务是审查一个 AI 智能体提议的下一步操作 (Action)。
+
+**被审查的上下文**:
+${context}
+
+**被审查的步骤**:
+思维 (Thought): ${proposedStep.thought}
+动作 (Action): ${JSON.stringify(proposedStep.action)}
+
+**审计规则 (一票否决)**:
+1. **参数缺失**: 如果工具是 \`execute_python\` 但没有 \`code\`，或 \`inspect_sheet\` 没有 \`fileName\`，必须驳回。**注意：\`finish\` 工具不受此限**。
+2. **路径错误**: 代码中必须使用 \`/mnt/\` 开头的绝对路径。禁止使用相对路径。
+3. **逻辑偏差**: 代码逻辑是否与思维 (Thought) 中描述的目标一致。
+4. **保存缺失**: 如果任务要求产出结果，代码中必须包含保存动作 (如 \`files['out.xlsx'] = df\` 或 \`to_excel\`)。**注意：如果是单纯的查询/观察步骤，不需要保存，必须通过**。
+5. **结束校验**: 如果工具是 \`finish\`，检查思维或对话历史中是否提到已完成处理及保存。如果有，**必须通过**。不要因为 \`finish\` 动作本身不含代码而驳回。
+
+**环境提示**: 
+- \`files\` 是一个预定义的全局字典，用于同步内存数据，AI 可以直接引用它。
+
+**输出规范**:
+- 如果审批通过，请回复: "APPROVED"
+- 如果发现问题，请回复: "REJECT: [具体理由]"
+
+你的审计结果是？`;
+
+  // Protocol Guard: Anthropic-style APIs MUST start with a 'user' message and alternate role.
+  // We slice the history and trim it to ensure the requirement is met.
+  let validHistory = history.slice(-4);
+  while (validHistory.length > 0 && validHistory[0].role !== 'user') {
+    validHistory.shift();
+  }
+  // If the last message is 'user', we drop it because the auditPrompt (user) will follow.
+  if (validHistory.length > 0 && validHistory[validHistory.length - 1].role === 'user') {
+    validHistory.pop();
+  }
+
+  try {
+    const response: any = await client.messages.create({
+      model: process.env.ZHIPU_MODEL || "glm-4",
+      max_tokens: 4096,
+      messages: [
+        ...validHistory,
+        { role: "user", content: auditPrompt }
+      ],
+      temperature: 0.1,
+    });
+
+    const result = response.content[0]?.type === 'text' ? response.content[0].text : "";
+
+    // Normalize and Extract using Regex for robustness against markdown/formatting
+    // Search for APPROVED or REJECT: [reason] in a case-insensitive way
+    const isApproved = /^\s*(\**)*APPROVED(\**)*\s*$/i.test(result) || result.toUpperCase().includes("APPROVED");
+    const rejectMatch = result.match(/REJECT:\s*([\s\S]+)/i);
+
+    if (isApproved && !rejectMatch) {
+      return { approved: true };
+    } else {
+      const reason = rejectMatch ? rejectMatch[1].trim() : result.trim();
+      console.warn("[Auditor] Action REJECTED:", reason);
+      return { approved: false, reason: reason || "Unknown audit failure" };
+    }
+  } catch (e) {
+    console.error("[Auditor] Audit failed due to network/API error:", e);
+    return { approved: true };
+  }
+}
+
 export const chatWithKnowledgeBase = async (
   query: string,
   history: { role: string; text: string }[],
@@ -246,9 +326,10 @@ export const runAgenticLoop = async (
 你正在运行在 **Seamless Sandbox v2.2** 架构下。
 
 **输出规范 (极度重要)**:
-- 你必须**只输出一个合法的 JSON 对象**。
-- **禁止**在 JSON 之外包含任何开场白、解释性文字、谦辞（如 "收到", "我将帮您..."）或总结。
-- 你的回复必须以 \`{\` 开头，以 \`}\` 结尾。
+- 你必须回复任务的执行结果。
+- **推荐格式**: 以 JSON 格式输出，包含 \`thought\` (你的思考) 和 \`action\` (工具调用)。
+- **必须包含参数**: 工具调用必须带有参数。例如 \`execute_python\` 必须包含 \`code\`，\`inspect_sheet\` 必须包含 \`fileName\`。
+- **目标**: 每一轮回复必须推导出一个明确的下一步操作。禁止输出空的工具调用。
 
 **核心环境规范**:
 1. **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 根目录下。
@@ -281,6 +362,7 @@ export const runAgenticLoop = async (
 **禁止行为**:
 - 禁止使用 \`files['filename'].parse()\`，因为 \`files\` 里的数据是原始字典，不是 ExcelFile 对象。
 - 禁止在未观察列名的情况下盲目合并。
+- **严禁使用 \`globals().clear()\`**，这会破坏沙箱环境导致后续步骤崩溃。
 
 用户任务: "${maskedUserPrompt}"
 
@@ -293,6 +375,21 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
   const steps: AgenticStep[] = [];
   let finalExplanation = "";
   let finalCode = "";
+  let rejectionCount = 0; // Prevent infinite Auditor-Agent loops
+
+  // Dynamic Context: Track files created during this loop session
+  let currentFiles = Array.isArray(initialContext) ? [...initialContext] : [];
+  const updateFilesFromCode = (code: string) => {
+    // Improved Regex: Capture all assignments to files['...'] and to_excel('/mnt/...')
+    const fileMatches = code.matchAll(/(?:files\s*\[\s*['"]|to_excel\s*\(\s*['"]\/mnt\/)([^'"]+)/g);
+    for (const match of fileMatches) {
+      const name = match[1];
+      if (name && !currentFiles.some(f => f.fileName === name)) {
+        console.log("[Loop Context] Adding newly detected file:", name);
+        currentFiles.push({ fileName: name, sheets: ["Generated"] });
+      }
+    }
+  };
 
   for (let turn = 0; turn < 20; turn++) {
     if (signal?.aborted) {
@@ -300,7 +397,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
     }
     try {
       const response = await client.messages.create({
-        model: process.env.ZHIPU_MODEL || "glm-4.6",
+        model: process.env.ZHIPU_MODEL || "glm-4",
         max_tokens: 4096,
         messages: messages
       });
@@ -308,47 +405,127 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
       if (!text) throw new Error("AI 返回内容为空");
 
-      // Extract JSON (PHASE 6.2/6.x: Extremely robust extraction)
-      let stepData: any;
-      try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/g); // Changed to global to find all matches
-        const rawJson = jsonMatch ? jsonMatch[jsonMatch.length - 1] : text; // Take the last JSON-like block
-        stepData = JSON.parse(rawJson);
+      // --- PHASE 6.x: Unified Hybrid Multi-Block Parser (Fuzzy Mapping) ---
+      let stepData: any = { thought: "", action: null };
 
-        // Phase 6.x Structural Validation & Auto-Repair
-        if (!stepData.thought) {
-          stepData.thought = "Thinking about the next step...";
-        }
-        if (!stepData.action || !stepData.action.tool) {
-          console.warn("AI output missing action, attempting to inject default");
-          // If it mentions "finish" or "done" in thought, assume finish
-          if (stepData.thought.toLowerCase().includes('finish') || stepData.thought.toLowerCase().includes('完成')) {
-            stepData.action = { tool: 'finish', params: {} };
-          } else {
-            // Otherwise, assume it needs to observe more or error out
-            throw new Error("Missing 'action' in AI response");
+      // Helper for fuzzy mapping of tool calls
+      const fuzzyMapAction = (raw: any): any => {
+        if (!raw || typeof raw !== 'object') return null;
+
+        // 1. Standard patterns (tool/tool_name/name + params/arguments/input)
+        let tool = raw.tool || raw.tool_name || raw.name || raw.function?.name || raw.tool_use?.name;
+        let params = raw.params || raw.parameters || raw.arguments || raw.input || raw.function?.arguments;
+
+        // 2. Nested pattern: { "tool_name": { "param_key": "val" } }
+        if (!tool) {
+          const commonTools = ['execute_python', 'inspect_sheet', 'read_rows', 'finish'];
+          const foundKey = Object.keys(raw).find(k => commonTools.includes(k));
+          if (foundKey) {
+            tool = foundKey;
+            params = raw[foundKey];
           }
         }
-      } catch (e) {
-        console.warn("JSON parse/validation failed, attempting recovery");
-        try {
-          // Fallback: If AI just said "Finish" in plain text
-          if (text.toLowerCase().includes('finish') || text.toLowerCase().includes('完成')) {
-            stepData = { thought: text, action: { tool: 'finish', params: {} } };
-          } else {
-            // Deep search for { ... }
-            const lastPos = text.lastIndexOf('}');
-            const firstPos = text.indexOf('{');
-            if (firstPos !== -1 && lastPos !== -1 && lastPos > firstPos) {
-              stepData = JSON.parse(text.substring(firstPos, lastPos + 1));
-            } else {
-              throw new Error("No JSON structure detectable");
-            }
+
+        if (tool) {
+          // Recursive check: Sometimes parameters are nested again
+          if (params && typeof params === 'object' && !params.code && !params.fileName && !params.summary) {
+            const nested = fuzzyMapAction(params);
+            if (nested) return nested;
           }
-        } catch (deepError) {
-          console.error("Deep cleanup failed for turn", turn, ":", text);
-          throw new Error(`AI output invalid. Response: ${text.slice(0, 100)}...`);
+
+          return {
+            tool: tool,
+            params: typeof params === 'string' ? JSON.parse(params) : (params || {})
+          };
         }
+        return null;
+      };
+
+      // 1. Scan ALL content blocks for information
+      if (response.content && Array.isArray(response.content)) {
+        response.content.forEach((block: any) => {
+          if (block.type === 'text') {
+            stepData.thought += block.text + "\n";
+            // Check for embedded JSON in this text block as a resilient source
+            try {
+              const jsonMatch = block.text.match(/\{[\s\S]*\}/g);
+              if (jsonMatch) {
+                const embeddedJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
+
+                // Fuzzy Search for Action inside JSON
+                // Path A: Top level action object
+                if (embeddedJson.action) {
+                  const mapped = fuzzyMapAction(embeddedJson.action);
+                  if (mapped) stepData.action = mapped;
+                }
+                // Path B: Native tool_calls array inside JSON
+                if (!stepData.action && embeddedJson.tool_calls?.[0]) {
+                  const mapped = fuzzyMapAction(embeddedJson.tool_calls[0]);
+                  if (mapped) stepData.action = mapped;
+                }
+                // Path C: Flat structure (tool + params at top level)
+                if (!stepData.action) {
+                  const mapped = fuzzyMapAction(embeddedJson);
+                  if (mapped) stepData.action = mapped;
+                }
+
+                if (embeddedJson.thought) stepData.thought = embeddedJson.thought;
+              }
+            } catch (e) { /* Ignore parsing errors for partial text blocks */ }
+          }
+          if (block.type === 'tool_use') {
+            console.log("[Resilience] Detected Native SDK tool_use block");
+            stepData.action = fuzzyMapAction(block);
+          }
+        });
+      }
+
+      // 2. Secondary Fallback: Detect native top-level tool_calls (specific to some API wrappers)
+      if (!stepData.action && (response as any).tool_calls && (response as any).tool_calls.length > 0) {
+        console.log("[Resilience] Detected Top-Level Native Tool Calls");
+        stepData.action = fuzzyMapAction((response as any).tool_calls[0]);
+      }
+
+      // --- 3. Strict Argument Guardian ---
+      // Fix cases where AI sends a tool name but forgets the actual code/params
+      if (stepData.action && stepData.action.tool) {
+        const tool = stepData.action.tool;
+        const p = stepData.action.params || {};
+
+        if (tool === 'execute_python' && !p.code) {
+          console.warn("[Resilience] execute_python missing code, attempting extraction from thought");
+          // Try to extract code block from thought if present
+          const codeMatch = stepData.thought.match(/```python\n([\s\S]*?)```/);
+          if (codeMatch) {
+            stepData.action.params = { ...p, code: codeMatch[1].trim() };
+          } else {
+            console.error("[Resilience] Failed to find code for execute_python");
+          }
+        }
+
+        if (tool === 'inspect_sheet' && !p.fileName) {
+          console.warn("[Resilience] inspect_sheet missing fileName");
+          // AI often forgets fileName if it's the only file
+          if (initialContext && initialContext.length === 1) {
+            stepData.action.params = { ...p, fileName: initialContext[0].fileName };
+          }
+        }
+      }
+
+      // 3. Final Fallback: Search the entire text for finish keywords if still no action
+      if (!stepData.action || !stepData.action.tool) {
+        const fullText = (stepData.thought || text).toLowerCase();
+        if (fullText.includes('finish') || fullText.includes('完成')) {
+          stepData.action = { tool: 'finish', params: {} };
+        }
+      }
+
+      // --- 4. Structural Hardening & Final Validation ---
+      if (!stepData.thought || stepData.thought.trim() === "") stepData.thought = text || "Thinking...";
+      if (!stepData.action || !stepData.action.tool) {
+        console.error("[Resilience] Failed to extract action from response:", JSON.stringify(response));
+        // If we reach here, we provide a clearer error for the AI logic to potentially catch
+        throw new Error("Missing 'action' in AI reasoning. Please try re-phrasing your request.");
       }
 
       const step: AgenticStep = {
@@ -359,8 +536,36 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       onStep(step);
       steps.push(step);
 
-      // Save to history
-      messages.push({ role: "assistant", content: JSON.stringify(stepData) }); // Save cleaned JSON to history
+      // --- 5. Save Proposal to History BEFORE Audit (Context Preservation) ---
+      // This allows the AI to see its rejected attempt in the next turn
+      messages.push({ role: "assistant", content: JSON.stringify(stepData) });
+
+      // --- 6. Dual-Agent Verification (Reflector Layer) ---
+      console.log("[Reflector] Initiating AI Audit turn...");
+      // Optimization: Pass dynamic context to Auditor so it knows about newly created files
+      const auditorSlimContext = currentFiles.map((f: any) => ({ fileName: f.fileName, sheets: f.sheets }));
+
+      const audit = await verifyActionWithAI(step, JSON.stringify(auditorSlimContext), messages);
+
+      if (!audit.approved) {
+        rejectionCount++;
+        console.warn(`[Reflector] Audit REJECTED (${rejectionCount}/5). Reason: ${audit.reason}`);
+
+        if (rejectionCount >= 10) {
+          console.error("[Reflector] Maximum rejection threshold reached. Forcing loop exit.");
+          throw new Error(`AI Logic stuck in an unresolvable audit loop. Last Reason: ${audit.reason}`);
+        }
+
+        const feedbackMsg = `**[审计驳回]**: 你的上一步操作未通过审核。\n理由: ${audit.reason}\n请根据理由修正你的 Action。`;
+        messages.push({ role: "user", content: feedbackMsg });
+        // Don't execute the rejected tool, just loop back
+        continue;
+      }
+
+      // Reset rejection count on success
+      rejectionCount = 0;
+
+      // --- 7. Tool Execution (Approved) ---
 
       if (step.action.tool === 'finish') {
         finalExplanation = step.thought;
@@ -369,6 +574,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
       if (step.action.tool === 'execute_python') {
         finalCode = step.action.params?.code || "";
+        updateFilesFromCode(finalCode);
       }
 
       // Execute tool if executor is provided

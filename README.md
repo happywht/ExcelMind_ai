@@ -43,7 +43,7 @@ npm run dev
 - **前端框架**: React 19 + TypeScript
 - **构建工具**: Vite
 - **样式**: Tailwind CSS
-- **AI服务**: 智谱AI (GLM-4.6)
+- **AI服务**: 智谱AI (GLM-5)
 - **文档处理**: XLSX, PDF.js, Mammoth
 
 ## 🔧 项目结构
