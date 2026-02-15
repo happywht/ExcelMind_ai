@@ -909,9 +909,9 @@ export const SmartExcel: React.FC = () => {
                             <div className="flex items-center gap-2 font-black uppercase tracking-widest text-[9px]">
                               <Play className="w-3 h-3 fill-current" /> ACTION
                             </div>
-                            <code className="text-[10px] text-blue-200/60 font-black">{step.action.tool}</code>
+                            <code className="text-[10px] text-blue-200/60 font-black">{step.action?.tool || 'Unknown'}</code>
                           </div>
-                          {step.action.tool === 'execute_python' && (
+                          {step.action?.tool === 'execute_python' && (
                             <button
                               onClick={() => setShowCode(!showCode)}
                               className="text-[9px] font-black text-blue-400 opacity-60 hover:opacity-100 transition-all hover:underline uppercase"

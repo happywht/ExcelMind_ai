@@ -308,27 +308,46 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
       if (!text) throw new Error("AI 返回内容为空");
 
-      // Extract JSON (PHASE 6.2: Improved regex to skip conversational noise)
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      let stepData;
+      // Extract JSON (PHASE 6.2/6.x: Extremely robust extraction)
+      let stepData: any;
       try {
-        const rawJson = jsonMatch ? jsonMatch[0] : text;
+        const jsonMatch = text.match(/\{[\s\S]*\}/g); // Changed to global to find all matches
+        const rawJson = jsonMatch ? jsonMatch[jsonMatch.length - 1] : text; // Take the last JSON-like block
         stepData = JSON.parse(rawJson);
-      } catch (e) {
-        console.warn("JSON parse failed, attempting deep cleanup");
-        try {
-          // If the AI included text before/after, try to find the LAST valid JSON-like block
-          const lastBraceIndex = text.lastIndexOf('}');
-          const firstBraceIndex = text.indexOf('{');
-          if (firstBraceIndex !== -1 && lastBraceIndex !== -1) {
-            const extracted = text.substring(firstBraceIndex, lastBraceIndex + 1);
-            stepData = JSON.parse(extracted);
+
+        // Phase 6.x Structural Validation & Auto-Repair
+        if (!stepData.thought) {
+          stepData.thought = "Thinking about the next step...";
+        }
+        if (!stepData.action || !stepData.action.tool) {
+          console.warn("AI output missing action, attempting to inject default");
+          // If it mentions "finish" or "done" in thought, assume finish
+          if (stepData.thought.toLowerCase().includes('finish') || stepData.thought.toLowerCase().includes('完成')) {
+            stepData.action = { tool: 'finish', params: {} };
           } else {
-            throw new Error("No JSON structure found");
+            // Otherwise, assume it needs to observe more or error out
+            throw new Error("Missing 'action' in AI response");
+          }
+        }
+      } catch (e) {
+        console.warn("JSON parse/validation failed, attempting recovery");
+        try {
+          // Fallback: If AI just said "Finish" in plain text
+          if (text.toLowerCase().includes('finish') || text.toLowerCase().includes('完成')) {
+            stepData = { thought: text, action: { tool: 'finish', params: {} } };
+          } else {
+            // Deep search for { ... }
+            const lastPos = text.lastIndexOf('}');
+            const firstPos = text.indexOf('{');
+            if (firstPos !== -1 && lastPos !== -1 && lastPos > firstPos) {
+              stepData = JSON.parse(text.substring(firstPos, lastPos + 1));
+            } else {
+              throw new Error("No JSON structure detectable");
+            }
           }
         } catch (deepError) {
-          console.error("Deep cleanup failed:", text);
-          throw new Error("AI output is not valid JSON. Response was: " + text.slice(0, 100));
+          console.error("Deep cleanup failed for turn", turn, ":", text);
+          throw new Error(`AI output invalid. Response: ${text.slice(0, 100)}...`);
         }
       }
 
@@ -341,20 +360,20 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       steps.push(step);
 
       // Save to history
-      messages.push({ role: "assistant", content: text });
+      messages.push({ role: "assistant", content: JSON.stringify(stepData) }); // Save cleaned JSON to history
 
       if (step.action.tool === 'finish') {
-        finalExplanation = isPrivacyEnabled ? globalMasker.unmask(stepData.thought) : stepData.thought;
+        finalExplanation = step.thought;
         break;
       }
 
       if (step.action.tool === 'execute_python') {
-        finalCode = step.action.params.code;
+        finalCode = step.action.params?.code || "";
       }
 
       // Execute tool if executor is provided
       if (executeTool) {
-        // Human-in-the-loop: Request approval for heavy tools or if explicitly required
+        // Human-in-the-loop: Request approval
         if (onApprovalRequired && (step.action.tool === 'execute_python' || turn === 0)) {
           try {
             const { approved, feedback } = await onApprovalRequired(step);
@@ -372,21 +391,15 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
         try {
           const observation = await executeTool(step.action.tool, step.action.params);
 
-          // PHASE 6.1: Dynamic Context Injection
-          // We append the current available files to the observation to keep the agent oriented
-          let finalObs = observation;
-          if (step.action.tool === 'execute_python' || step.action.tool === 'inspect_sheet') {
-            const currentFiles = initialContext.map((f: any) => f.fileName).join(', ');
-            // We don't have the REAL-TIME updated initialContext here easily without refactoring
-            // But we can at least remind it of the original files.
-            // Actually, the 'initialContext' is passed to the loop. 
-            // We should probably pass the UPDATED state if possible.
-          }
+          // PHASE 6.x: Dynamic Context Injection
+          // Remind the AI of the current VFS state in EVERY turn
+          const vfsInventory = initialContext.map((f: any) => `- /mnt/${f.fileName}`).join('\n');
+          const contextInjection = `\n\n[Current Sandbox State]:\nFiles available in /mnt/:\n${vfsInventory}\n\n[Reminder]: 必须输出合法 JSON，禁止输出 JSON 之外的任何文字。`;
 
           step.observation = observation;
           messages.push({
             role: "user",
-            content: `Observation from ${step.action.tool}:\n${isPrivacyEnabled ? globalMasker.mask(observation) : observation}`
+            content: `Observation from ${step.action.tool}:\n${isPrivacyEnabled ? globalMasker.mask(observation) : observation}${contextInjection}`
           });
 
           // Continue loop to next turn
