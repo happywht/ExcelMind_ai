@@ -41,6 +41,9 @@ export interface AgenticStep {
     params: any;
   };
   observation?: string;
+  logs?: string; // Real-time stdout logs
+  status?: 'pending' | 'approving' | 'executing' | 'completed' | 'rejected';
+  isPlanning?: boolean;
 }
 
 export interface AIProcessResult {

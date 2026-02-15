@@ -228,7 +228,9 @@ export const runAgenticLoop = async (
   initialContext: any,
   onStep: (step: AgenticStep) => void,
   executeTool?: (tool: string, params: any) => Promise<string>,
-  isPrivacyEnabled: boolean = false
+  isPrivacyEnabled: boolean = false,
+  onApprovalRequired?: (step: AgenticStep) => Promise<{ approved: boolean; feedback?: string }>,
+  signal?: AbortSignal
 ): Promise<AIProcessResult> => {
   // Reset masker for a fresh session
   if (isPrivacyEnabled) globalMasker.reset();
@@ -241,28 +243,27 @@ export const runAgenticLoop = async (
     {
       role: "user",
       content: `你是一个专家级数据处理智能体 (Data Agent)。你的工作是根据用户需求处理 Excel 数据。
-你需要通过 [Observe - Think - Action - Verify] 的循环来完成任务。
+你正在运行在 **V5.3 Tiered Memory (分级存储)** 架构下。这意味着：
+- **初始上下文极轻量**: 你初始只能看到文件名、表名、列名和行数。
+- **按需观察 (inspect_sheet)**: 你必须使用 \`inspect_sheet\` 来观察数据样本，以确认列的内容和格式。
+- **按需读取 (read_rows)**: 如果需要寻找特定的关键字或核对特定行，请使用 \`read_rows\`。
+- **全量处理 (execute_python)**: 真正的重体力活（合并、清洗、计算）应当通过 Python 代码在沙箱中完成。
 
 **当前可用工具**:
-1. \`inspect_sheet(fileName, sheetName)\`: 获取特定工作表的列头和数据样本。
-2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行数范围的数据。
+1. \`inspect_sheet(fileName, sheetName)\`: 获取特定工作表的列头和前几行数据样本（用于确定数据含义）。
+2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行数范围的数据（用于精确核对）。
 3. \`execute_python(code)\`: 运行 Python 代码进行实际的数据处理。必须将结果更新回 \`files\` 变量。
 4. \`finish()\`: 当任务完全完成且经过验证后调用。
 
-**运行环境 (Seamless Sandbox v2.1)**:
-- **Python**: 3.x (Pyodide), 包含 \`pandas\`, \`openpyxl\`。
+**运行环境 (Seamless Sandbox v2.2)**:
+- **Python-Worker**: 计算在后台线程运行，你可以处理数百万行数据而不卡顿。
 - **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 下。
-  - **无缝操作**: 你可以像在本地一样使用 \`pd.read_excel('/mnt/filename.xlsx', sheet_name='...')\`。
-- **内存数据**: \`files\` 全局字典依然可用（推荐用于快速访问）。
-  - 单表: \`files['a.xlsx']\` -> List[Dict]
-  - 多表: \`files['a.xlsx']['Sheet1']\` -> List[Dict]
-- **辅助函数**: \`get_df(filename, sheet=None)\` 预置，可将 \`files\` 数据转为 DataFrame。
-- **反馈控制**: \`execute_python\` 会捕获 \`print()\` 输出及最后一行表达式的结果。你可以通过打印 \`df.info()\` 来核实。
-- **格式说明**: 代码支持标准缩进，请放心编写多行代码。
+- **内存数据**: \`files\` 全局字典可用。
+- **流式反馈**: 你的 \`print()\` 会实时反馈给用户。你可以打印 \`df.head()\` 或 \`df.info()\` 来核实处理中间结果。
 
 **输出要求 (必须是合法 JSON)**:
 {
-  "thought": "基于上一步 Observation 的详细分析，以及为何选择下一步行动。",
+  "thought": "由于我在初始上下文中只看到了列名，我决定先使用 inspect_sheet 来确认 '金额' 列的数据类型...",
   "action": {
     "tool": "inspect_sheet" | "read_rows" | "execute_python" | "finish",
     "params": { ... }
@@ -270,21 +271,14 @@ export const runAgenticLoop = async (
 }
 
 **核心规则**:
-1. **数据闭环**: 任务结果必须存回 \`files\`，例如 \`files['output.xlsx'] = final_df\`。
-   - **多表支持**: 如果需要生成包含多个 Sheet 的文件，请使用字典格式：
-     \`\`\`python
-     files['merge.xlsx'] = {
-         '员工': df_empl,
-         '订单': df_order
-     }
-     \`\`\`
-2. **虚拟磁盘同步 (V4.2)**: 你可以直接使用 \`df.to_excel('/mnt/test.xlsx')\`，系统会自动将其同步回 UI 文件列表。
-3. **验证优先**: 在 \`finish\` 之前，请通过 \`print()\` 验证数据行数、列名或合并是否成功。
-4. **容错重试**: 如果 Python 报错，系统会返回完整的 Traceback，请根据报错信息自我修正。
+1. **先观察再行动**: 除非你非常确定列的含义，否则应先 \`inspect_sheet\`。
+2. **数据闭环**: 任务结果必须存回 \`files\`，例如 \`files['output.xlsx'] = final_df\`。
+3. **验证机制**: 在 \`finish\` 之前，务必通过 Python 打印验证关键指标（如行数、总金额等）。
+4. **流式意识**: 既然有了实时日志，建议在 Python 代码中多使用 \`print()\` 输出处理进度，提升用户体验。
 
 用户任务: "${maskedUserPrompt}"
 
-初始上下文 (概览):
+初始元数据 (Metadata Only):
 ${JSON.stringify(maskedInitialContext, null, 2)}
 `
     }
@@ -294,7 +288,10 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
   let finalExplanation = "";
   let finalCode = "";
 
-  for (let turn = 0; turn < 10; turn++) {
+  for (let turn = 0; turn < 20; turn++) {
+    if (signal?.aborted) {
+      throw new Error("Loop aborted by user");
+    }
     try {
       const response = await client.messages.create({
         model: process.env.ZHIPU_MODEL || "glm-4.6",
@@ -338,6 +335,21 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
       // Execute tool if executor is provided
       if (executeTool) {
+        // Human-in-the-loop: Request approval for heavy tools or if explicitly required
+        if (onApprovalRequired && (step.action.tool === 'execute_python' || turn === 0)) {
+          try {
+            const { approved, feedback } = await onApprovalRequired(step);
+            if (!approved) {
+              const obs = `User rejected the plan.${feedback ? ` Feedback: ${feedback}` : ''} Please propose an alternative or 'finish' if the task cannot be completed.`;
+              step.observation = obs;
+              messages.push({ role: "user", content: obs });
+              continue;
+            }
+          } catch (e: any) {
+            console.error("Approval flow failed:", e);
+          }
+        }
+
         try {
           const observation = await executeTool(step.action.tool, step.action.params);
           step.observation = observation;

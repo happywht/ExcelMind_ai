@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Search, Eye, Terminal, Info, ChevronRight, MessageSquare, PanelLeft, PanelRight, X, ChevronLeft, Sparkles, Send, Bot, Zap, ShieldCheck } from 'lucide-react';
+import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code, Plus, Archive, CheckSquare, Square, Search, Eye, Terminal, Info, ChevronRight, MessageSquare, PanelLeft, PanelRight, X, ChevronLeft, Sparkles, Send, Bot, Zap, ShieldCheck, Check, RotateCcw, ShieldQuestion, Ban } from 'lucide-react';
 import { readExcelFile, exportMultipleSheetsToExcel, exportToExcel } from '../services/excelService';
 import { runAgenticLoop } from '../services/zhipuService';
 import { auditExportService } from '../services/excelExportService';
@@ -31,6 +31,21 @@ export const SmartExcel: React.FC = () => {
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
   const [isPrivacyEnabled, setIsPrivacyEnabled] = useState(false);
+  const [pendingStepApproval, setPendingStepApproval] = useState<{
+    step: AgenticStep;
+    resolve: (approved: boolean, feedback?: string) => void;
+  } | null>(null);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isSandboxDirty = useRef(true); // Track if worker needs data sync
+
+  const stopAgent = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      addLog('System', 'error', '用户手动终止了 AI 任务');
+      setIsProcessing(false);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +63,7 @@ export const SmartExcel: React.FC = () => {
         }
       }
       setFilesData(prev => [...prev, ...newFiles]);
+      isSandboxDirty.current = true;
       if (!activeFileId && newFiles.length > 0) {
         setActiveFileId(newFiles[0].id);
       }
@@ -63,14 +79,24 @@ export const SmartExcel: React.FC = () => {
     setIsProcessing(true);
     setRightPanelOpen(true); // Auto-open thinking hub
     setAgentSteps([]);
+    abortControllerRef.current = new AbortController();
     addLog('System', 'pending', `🚀 启动智能推理中枢 (Privacy Mode: ${isPrivacyEnabled ? 'ON' : 'OFF'})...`);
 
     try {
       // 1. Initial Context
       const initialContext = filesData.map(f => ({
         fileName: f.fileName,
-        sheets: Object.keys(f.sheets),
-        summary: f.metadata ? Object.entries(f.metadata).map(([s, meta]) => `${s}: ${meta.rowCount}行, ${meta.columnCount}列`) : []
+        sheets: Object.keys(f.sheets).map(sheetName => {
+          const rows = f.sheets[sheetName] || [];
+          const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+          const meta = f.metadata?.[sheetName];
+          return {
+            sheetName,
+            headers,
+            rowCount: meta?.rowCount || rows.length,
+            columnCount: meta?.columnCount || headers.length
+          };
+        })
       }));
 
       // 2. Define Tool Executor
@@ -85,14 +111,40 @@ export const SmartExcel: React.FC = () => {
             const file = currentFiles.find(f => f.fileName === fileName);
             if (!file) throw new Error(`找不到文件: ${fileName}`);
             const data = file.sheets[sheetName] || [];
-            return `Headers: ${Object.keys(data[0] || {}).join(', ')}\nSample: ${JSON.stringify(data.slice(0, 3))}`;
+            // Return headers and a larger sample (5 rows) for better context
+            return `Headers: ${Object.keys(data[0] || {}).join(', ')}\nSample (Top 5 rows): ${JSON.stringify(data.slice(0, 5))}`;
+          }
+          case 'read_rows': {
+            const { fileName, sheetName, start, end } = params;
+            const file = currentFiles.find(f => f.fileName === fileName);
+            if (!file) throw new Error(`找不到文件: ${fileName}`);
+            const data = file.sheets[sheetName] || [];
+            // Slice rows (start index included, end index included)
+            const slice = data.slice(start || 0, (end !== undefined ? end : 10) + 1);
+            return `Rows ${start || 0} to ${end || 10}:\n${JSON.stringify(slice, null, 2)}`;
           }
           case 'execute_python': {
             addLog('Sandbox', 'pending', '正在沙箱中执行 Python 代码...');
             console.log('[Sandbox] Running Python code:', params.code);
 
-            const currentDataMap = Object.fromEntries(currentFiles.map(f => [f.fileName, f.sheets]));
-            const { data: newData, logs, result } = await runPython(params.code, currentDataMap);
+            const currentDataMap = isSandboxDirty.current
+              ? Object.fromEntries(currentFiles.map(f => [f.fileName, f.sheets]))
+              : {};
+
+            const { data: newData, logs, result } = await runPython(params.code, currentDataMap, (streamedLog) => {
+              setAgentSteps(prev => {
+                const next = [...prev];
+                if (next.length > 0) {
+                  const last = { ...next[next.length - 1] };
+                  last.logs = (last.logs || "") + streamedLog;
+                  next[next.length - 1] = last;
+                }
+                return next;
+              });
+            });
+
+            // Reset dirty flag after successful sync
+            if (isSandboxDirty.current) isSandboxDirty.current = false;
 
             setFilesData(prev => {
               const updated = [...prev];
@@ -166,7 +218,44 @@ export const SmartExcel: React.FC = () => {
         console.log('[Agent Thought]', step.thought);
       };
 
-      const result = await runAgenticLoop(command, initialContext, onStep, executeTool, isPrivacyEnabled);
+      const result = await runAgenticLoop(
+        command,
+        initialContext,
+        onStep,
+        executeTool,
+        isPrivacyEnabled,
+        async (step) => {
+          return new Promise((resolve) => {
+            // Mark step as awaiting approval
+            setAgentSteps(prev => {
+              const next = [...prev];
+              if (next.length > 0) {
+                next[next.length - 1] = { ...next[next.length - 1], status: 'approving' };
+              }
+              return next;
+            });
+
+            setPendingStepApproval({
+              step,
+              resolve: (approved: boolean, feedback?: string) => {
+                setPendingStepApproval(null);
+                setAgentSteps(prev => {
+                  const next = [...prev];
+                  if (next.length > 0) {
+                    next[next.length - 1] = {
+                      ...next[next.length - 1],
+                      status: approved ? 'executing' : 'rejected'
+                    };
+                  }
+                  return next;
+                });
+                resolve({ approved, feedback });
+              }
+            });
+          });
+        },
+        abortControllerRef.current?.signal
+      );
 
       addLog('System', 'success', `任务完成: ${result.explanation}`);
       console.log('[System] Agentic Loop finished successfully.');
@@ -182,6 +271,7 @@ export const SmartExcel: React.FC = () => {
   const removeFile = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFilesData(prev => prev.filter(f => f.id !== id));
+    isSandboxDirty.current = true;
     setSelectedFileIds(prev => {
       const next = new Set(prev);
       next.delete(id);
@@ -640,6 +730,32 @@ export const SmartExcel: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Scoped Processing Overlay (V5.4.1 Fix) */}
+          {isProcessing && (
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[45] flex flex-col items-center justify-center animate-in fade-in duration-300 rounded-[2.5rem] m-4 md:m-6">
+              <div className="bg-white/90 backdrop-blur-md p-8 rounded-[2.5rem] shadow-2xl border border-white/50 flex flex-col items-center max-w-sm w-full relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 to-transparent opacity-50" />
+                <div className="relative w-16 h-16 mb-6">
+                  <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+                  <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin duration-1000" />
+                  <div className="absolute inset-0 m-auto w-8 h-8 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200 animate-bounce">
+                    <Sparkles className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-black text-slate-800 mb-1 uppercase tracking-tight text-center">AI 智能处理中</h3>
+                <p className="text-[10px] text-slate-500 text-center leading-relaxed font-bold uppercase tracking-widest px-4 mb-6">
+                  Agent 正在沙箱环境进行深度分析...
+                </p>
+                <button
+                  onClick={stopAgent}
+                  className="w-full flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-black py-2.5 rounded-xl text-[9px] uppercase tracking-widest transition-all active:scale-95 border border-rose-200/50"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> 立即终止任务 / STOP AGENT
+                </button>
+              </div>
+            </div>
+          )}
         </main>
 
         {/* Right Panel: Thinking Hub */}
@@ -717,6 +833,64 @@ export const SmartExcel: React.FC = () => {
                               {JSON.stringify(step.action.params, null, 2)}
                             </div>
                           )}
+
+                          {/* Streamed Console Logs */}
+                          {step.logs && (
+                            <div className="mt-4 p-3 bg-black/60 rounded-xl border border-white/5 font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap shadow-inner animate-in fade-in duration-300">
+                              <div className="flex items-center gap-2 mb-2 text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-1">
+                                <Terminal className="w-3 h-3" /> 沙箱实时输出 / SANDBOX STDOUT
+                              </div>
+                              <div className="leading-relaxed">
+                                {step.logs}
+                                {isProcessing && idx === agentSteps.length - 1 && (
+                                  <span className="inline-block w-1 h-3 bg-emerald-500 ml-1 animate-pulse" />
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Approval Card (V5.4 HITL) */}
+                          {step.status === 'approving' && pendingStepApproval && (
+                            <div className="mt-4 p-5 bg-gradient-to-br from-indigo-500/10 to-blue-600/10 rounded-2xl border border-indigo-500/30 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden group/approval">
+                              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover/approval:opacity-20 transition-opacity">
+                                <ShieldQuestion className="w-12 h-12 text-indigo-400" />
+                              </div>
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="flex h-2 w-2 relative">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                                </span>
+                                <span className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em]">需人工干预 / Approval Required</span>
+                              </div>
+                              <p className="text-[11px] text-indigo-100/80 mb-5 leading-relaxed font-medium">
+                                AI 计划执行上述操作。请核对逻辑是否准确，确认后开始正式计算。
+                              </p>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => pendingStepApproval.resolve(true)}
+                                  className="flex-1 bg-indigo-500 hover:bg-indigo-400 text-white font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 border-t border-white/20"
+                                >
+                                  <Check className="w-3.5 h-3.5" /> 核对无误 / APPROVE
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const fb = prompt("请输入改进建议 (Feedback):");
+                                    if (fb !== null) pendingStepApproval.resolve(false, fb);
+                                  }}
+                                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-rose-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 active:scale-95 flex items-center gap-2"
+                                >
+                                  <Ban className="w-3.5 h-3.5" /> 调整 / REJECT
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Status Badge */}
+                          {step.status === 'rejected' && (
+                            <div className="mt-4 p-3 bg-rose-500/10 rounded-xl border border-rose-500/20 text-rose-400 text-[10px] font-bold flex items-center gap-2">
+                              <Ban className="w-3.5 h-3.5" /> 计划已被人工驳回，正在等待 AI 重新规划方案...
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -750,26 +924,6 @@ export const SmartExcel: React.FC = () => {
           </div>
         </aside>
       </div>
-      {/* Global Processing Overlay */}
-      {isProcessing && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-white flex flex-col items-center max-w-sm w-full relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent opacity-50" />
-            <div className="relative w-24 h-24 mb-8">
-              <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
-              <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin duration-1000" />
-              <div className="absolute inset-0 m-auto w-10 h-10 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 animate-bounce">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2 uppercase tracking-tight text-center">AI 智能处理中</h3>
-            <p className="text-[11px] text-slate-400 text-center leading-relaxed font-bold uppercase tracking-widest px-4">
-              Agent 正在沙箱环境进行深度分析...<br />
-              <span className="text-[9px] text-slate-300 mt-2 block font-normal text-center w-full uppercase">DEEP REASONING & TRANSFORMATION IN PROGRESS</span>
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
