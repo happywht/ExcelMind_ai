@@ -31,6 +31,8 @@ export const SmartExcel: React.FC = () => {
   const [showCode, setShowCode] = useState(false);
   const [lastGeneratedCode, setLastGeneratedCode] = useState('');
   const [isPrivacyEnabled, setIsPrivacyEnabled] = useState(false);
+  const [isAutoMode, setIsAutoMode] = useState(false);
+  const [isLogsCollapsed, setIsLogsCollapsed] = useState(true);
   const [pendingStepApproval, setPendingStepApproval] = useState<{
     step: AgenticStep;
     resolve: (approved: boolean, feedback?: string) => void;
@@ -38,6 +40,55 @@ export const SmartExcel: React.FC = () => {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const isSandboxDirty = useRef(true); // Track if worker needs data sync
+
+  // Multi-tab persistence: Sync UI filesData with Sandbox on mount
+  useEffect(() => {
+    const syncFilesFromSandbox = async () => {
+      try {
+        const { listFiles } = await import('../services/pyodideService');
+        const sandboxFiles = await listFiles();
+        if (Object.keys(sandboxFiles).length > 0) {
+          addLog('System', 'success', `已自动恢复沙箱中的 ${Object.keys(sandboxFiles).length} 个存量文件`);
+          setFilesData(prev => {
+            const updated = [...prev];
+            Object.entries(sandboxFiles).forEach(([fn, sheets]) => {
+              if (!updated.some(f => f.fileName === fn)) {
+                updated.push({
+                  id: fn + '-' + Date.now(),
+                  fileName: fn,
+                  sheets: sheets,
+                  metadata: {}, // Metadata will be recalculated on demand or on first read
+                  currentSheetName: Object.keys(sheets)[0]
+                });
+              }
+            });
+            return updated;
+          });
+          isSandboxDirty.current = false;
+        }
+      } catch (err) {
+        console.warn('[Sync] Failed to list sandbox files:', err);
+      }
+    };
+    syncFilesFromSandbox();
+  }, []);
+
+  const handleResetSandbox = async () => {
+    if (!confirm("确定要清空沙箱及其所有临时文件吗？此操作不可撤销。")) return;
+    try {
+      const { resetSandbox } = await import('../services/pyodideService');
+      await resetSandbox();
+      setFilesData([]);
+      setSelectedFileIds(new Set());
+      setActiveFileId(null);
+      setAgentSteps([]);
+      setLogs([]);
+      addLog('System', 'success', '沙箱环境已完全重置');
+      isSandboxDirty.current = true;
+    } catch (err: any) {
+      addLog('System', 'error', `重置失败: ${err.message}`);
+    }
+  };
 
   const stopAgent = () => {
     if (abortControllerRef.current) {
@@ -225,6 +276,12 @@ export const SmartExcel: React.FC = () => {
         executeTool,
         isPrivacyEnabled,
         async (step) => {
+          // AUTO MODE: Automatically approve if enabled
+          if (isAutoMode) {
+            console.log('[Auto Mode] Auto-approving step:', step.thought);
+            return { approved: true };
+          }
+
           return new Promise((resolve) => {
             // Mark step as awaiting approval
             setAgentSteps(prev => {
@@ -764,23 +821,57 @@ export const SmartExcel: React.FC = () => {
             }`}
         >
           <div className="flex-1 flex flex-col min-w-[480px] bg-slate-900 overflow-hidden h-full min-h-0">
-            <div className="px-6 py-5 bg-slate-800/80 backdrop-blur-md flex justify-between items-center border-b border-white/5 z-10 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="bg-emerald-500/10 p-2 rounded-lg text-emerald-400">
-                  <Terminal className="w-4 h-4" />
+            <div className="px-6 py-5 bg-slate-800/80 backdrop-blur-md border-b border-white/5 z-10 flex-shrink-0">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-500/10 p-2 rounded-lg text-emerald-400">
+                    <Terminal className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] leading-none block">思维枢纽 / Reasoning Hub</span>
+                    <span className="text-[9px] text-emerald-400 font-bold tracking-widest mt-1 block">AGENT OTAV LOGS v3.5</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] leading-none block">思维枢纽 / Reasoning Hub</span>
-                  <span className="text-[9px] text-emerald-400 font-bold tracking-widest mt-1 block">AGENT OTAV LOGS v3</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleResetSandbox}
+                    className="p-1.5 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-colors"
+                    title="重置并清空沙箱"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setRightPanelOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => setShowCode(!showCode)} className="text-[10px] font-black text-slate-400 hover:text-emerald-400 transition-colors uppercase tracking-widest border border-slate-700/50 px-3 py-1.5 rounded-lg hover:border-emerald-500/30">
-                  {showCode ? 'HIDE CODE' : 'SHOW CODE'}
-                </button>
-                <button onClick={() => setRightPanelOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {/* Auto Mode Toggle */}
+                  <div className="flex items-center gap-2.5 bg-slate-950/50 px-3 py-1.5 rounded-xl border border-white/5 group hover:border-emerald-500/30 transition-all">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black text-white/30 uppercase tracking-tighter leading-none">Autonomous</span>
+                      <span className={`text-[9px] font-bold ${isAutoMode ? 'text-emerald-400' : 'text-slate-500'} transition-colors`}>{isAutoMode ? '自动模式 ON' : '手动模式'}</span>
+                    </div>
+                    <button
+                      onClick={() => setIsAutoMode(!isAutoMode)}
+                      className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isAutoMode ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                    >
+                      <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isAutoMode ? 'translate-x-3' : 'translate-x-0'}`} />
+                    </button>
+                    <Zap className={`w-3 h-3 transition-all ${isAutoMode ? 'text-emerald-400 animate-pulse' : 'text-slate-600'}`} />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowCode(!showCode)}
+                    className={`text-[9px] font-black transition-all border px-3 py-1.5 rounded-lg uppercase tracking-widest ${showCode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'text-slate-400 border-slate-700/50 hover:border-emerald-500/30'}`}
+                  >
+                    {showCode ? 'HIDE PARAMS' : 'SHOW PARAMS'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -796,7 +887,7 @@ export const SmartExcel: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <>
+                <React.Fragment>
                   {agentSteps.map((step, idx) => (
                     <div key={idx} className="group/step animate-in fade-in slide-in-from-bottom-4 duration-500">
                       <div className="flex items-center gap-3 mb-3">
@@ -814,20 +905,20 @@ export const SmartExcel: React.FC = () => {
                         <p className="text-white/90 leading-[1.8] text-[12px] font-sans font-medium">{step.thought}</p>
 
                         <div className="mt-4 p-4 bg-slate-950/80 rounded-2xl border border-blue-500/20 shadow-inner group/action transition-all hover:border-blue-500/40">
-                          <div className="text-blue-400 flex items-center gap-2 mb-2 font-black uppercase tracking-widest text-[9px]">
-                            <Play className="w-3 h-3 fill-current" /> ACTION REQUIRED
+                          <div className="text-blue-400 flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 font-black uppercase tracking-widest text-[9px]">
+                              <Play className="w-3 h-3 fill-current" /> ACTION
+                            </div>
+                            <code className="text-[10px] text-blue-200/60 font-black">{step.action.tool}</code>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <code className="text-[11px] text-blue-200 font-black bg-blue-400/10 px-2 py-1 rounded inline-block">{step.action.tool}</code>
-                            {step.action.tool === 'execute_python' && (
-                              <button
-                                onClick={() => setShowCode(!showCode)}
-                                className="text-[9px] font-black text-blue-400 opacity-60 hover:opacity-100 transition-all hover:underline uppercase"
-                              >
-                                {showCode ? 'Hide Code' : 'View Code'}
-                              </button>
-                            )}
-                          </div>
+                          {step.action.tool === 'execute_python' && (
+                            <button
+                              onClick={() => setShowCode(!showCode)}
+                              className="text-[9px] font-black text-blue-400 opacity-60 hover:opacity-100 transition-all hover:underline uppercase"
+                            >
+                              {showCode ? 'Hide Code' : 'View Code'}
+                            </button>
+                          )}
                           {showCode && (
                             <div className="mt-2.5 text-[10px] text-slate-500 bg-black/30 p-2.5 rounded-xl border border-white/5 font-mono overflow-x-auto whitespace-pre">
                               {JSON.stringify(step.action.params, null, 2)}
@@ -895,35 +986,55 @@ export const SmartExcel: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  <div className="space-y-3 pt-4 border-t border-white/5 mt-8">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-4">Stream logs & System Output</span>
-                    {logs.map(log => (
-                      <div key={log.id} className="flex gap-3 items-start animate-in fade-in slide-in-from-left-2 duration-300">
-                        <div className={`mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full ${log.status === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                          log.status === 'error' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
-                            'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'
-                          }`} />
-                        <div className="flex flex-col gap-1 min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-black uppercase text-[9px] tracking-widest ${log.status === 'success' ? 'text-emerald-400' :
-                              log.status === 'error' ? 'text-rose-400' :
-                                'text-blue-400'
-                              }`}>
-                              [{log.status}]
-                            </span>
-                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider">{log.fileName}</span>
-                          </div>
-                          <span className="text-white/70 leading-relaxed text-[11px] font-medium break-words bg-white/5 p-2 rounded-lg border border-white/[0.03]">{log.message}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                </React.Fragment>
               )}
+
+              {/* Enhanced Collapsible Logs Section */}
+              <div className="mt-8 pt-4 border-t border-white/5 space-y-4">
+                <button
+                  onClick={() => setIsLogsCollapsed(!isLogsCollapsed)}
+                  className="w-full flex items-center justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${isProcessing ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                    SYSTEM LOGS & STREAM OUTPUT ({logs.length})
+                  </div>
+                  {isLogsCollapsed ? <ChevronLeft className="w-3 h-3 rotate-180" /> : <ChevronLeft className="w-3 h-3 -rotate-90" />}
+                </button>
+
+                {!isLogsCollapsed && (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {logs.length === 0 ? (
+                      <p className="text-[10px] text-slate-700 italic text-center py-4">No system logs recorded.</p>
+                    ) : (
+                      logs.map(log => (
+                        <div key={log.id} className="flex gap-3 items-start group/log">
+                          <div className={`mt-1 flex-shrink-0 w-1 rounded-full self-stretch border-l-2 ${log.status === 'success' ? 'border-emerald-500/40' :
+                            log.status === 'error' ? 'border-rose-500/40' :
+                              'border-blue-500/40'
+                            }`} />
+                          <div className="flex flex-col gap-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-black uppercase text-[8px] tracking-tight ${log.status === 'success' ? 'text-emerald-500' :
+                                log.status === 'error' ? 'text-rose-500' :
+                                  'text-blue-500'
+                                }`}>
+                                {log.status}
+                              </span>
+                              <span className="text-[9px] font-black text-slate-600 uppercase tracking-wider opacity-40">{log.fileName}</span>
+                            </div>
+                            <span className="text-white/40 leading-relaxed text-[10px] font-medium break-words px-1">{log.message}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };

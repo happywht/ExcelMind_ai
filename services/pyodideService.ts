@@ -71,6 +71,22 @@ export const loadPyodide = async (): Promise<void> => {
                         case 'LOG':
                             if (content) logger.info('[Worker Log]', content);
                             break;
+                        case 'LIST_FILES_RESPONSE': {
+                            const pending = pendingRequests.get(id);
+                            if (pending) {
+                                pending.resolve(e.data.files);
+                                pendingRequests.delete(id);
+                            }
+                            break;
+                        }
+                        case 'RESET_SUCCESS': {
+                            const pending = pendingRequests.get(id);
+                            if (pending) {
+                                pending.resolve(true);
+                                pendingRequests.delete(id);
+                            }
+                            break;
+                        }
                         case 'ERROR':
                             isLoading = false;
                             reject(new Error(error || 'Worker Init Error'));
@@ -117,13 +133,6 @@ export const runPython = async (
         const requestId = Math.random().toString(36).substring(7);
         pendingRequests.set(requestId, { resolve, reject, onLog, accumulatedLogs: "" });
 
-        worker!.postMessage({
-            type: 'RUN_REQUEST',
-            code,
-            datasets,
-            id: requestId
-        });
-
         // Set a safety timeout for the request (e.g., 60s)
         setTimeout(() => {
             if (pendingRequests.has(requestId)) {
@@ -131,5 +140,54 @@ export const runPython = async (
                 pendingRequests.delete(requestId);
             }
         }, 60000);
+
+        worker!.postMessage({
+            type: 'RUN_REQUEST',
+            code,
+            datasets,
+            id: requestId
+        });
+    });
+};
+
+/**
+ * Utility to sync UI state with worker files
+ */
+export const listFiles = async (): Promise<{ [fileName: string]: any }> => {
+    await loadPyodide();
+    if (!worker) throw new Error('Worker not available');
+
+    return new Promise((resolve, reject) => {
+        const requestId = Math.random().toString(36).substring(7);
+        pendingRequests.set(requestId, { resolve, reject, accumulatedLogs: "" });
+        worker!.postMessage({ type: 'LIST_FILES', id: requestId });
+
+        setTimeout(() => {
+            if (pendingRequests.has(requestId)) {
+                pendingRequests.get(requestId)!.reject(new Error('List files timed out'));
+                pendingRequests.delete(requestId);
+            }
+        }, 5000);
+    });
+};
+
+/**
+ * Force wipe the sandbox environment
+ */
+export const resetSandbox = async (): Promise<boolean> => {
+    await loadPyodide();
+    if (!worker) throw new Error('Worker not available');
+
+    return new Promise((resolve, reject) => {
+        const requestId = Math.random().toString(36).substring(7);
+        pendingRequests.set(requestId, { resolve, reject, accumulatedLogs: "" });
+        worker!.postMessage({ type: 'RESET_REQUEST', id: requestId });
+
+        setTimeout(() => {
+            if (pendingRequests.has(requestId)) {
+                pendingRequests.get(requestId)!.reject(new Error('Reset sandbox timed out'));
+                pendingRequests.delete(requestId);
+            }
+        }, 5000);
     });
 };

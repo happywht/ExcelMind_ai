@@ -262,5 +262,51 @@ ctx.onmessage = (e: MessageEvent) => {
         case 'RUN_REQUEST':
             runPython(code, datasets, id);
             break;
+        case 'LIST_FILES':
+            (async () => {
+                if (!pyodide) return;
+                try {
+                    const filesMetadata = await pyodide.runPythonAsync(`
+                        import os
+                        import json
+                        res = {}
+                        for f in os.listdir('/mnt'):
+                            try:
+                                # Simple metadata sync
+                                res[f] = clean_output(files.get(f, {}))
+                            except:
+                                res[f] = {}
+                        json.dumps(res)
+                    `);
+                    ctx.postMessage({ type: 'LIST_FILES_RESPONSE', files: JSON.parse(filesMetadata), id });
+                } catch (err) {
+                    console.error('[Worker] List Files Failed:', err);
+                }
+            })();
+            break;
+        case 'RESET_REQUEST':
+            (async () => {
+                if (!pyodide) return;
+                try {
+                    await pyodide.runPythonAsync(`
+                        import os
+                        import shutil
+                        if os.path.exists('/mnt'):
+                            shutil.rmtree('/mnt')
+                        os.makedirs('/mnt')
+                        files.clear()
+                        globals().clear()
+                        # Re-register core essentials if needed or just wipe most
+                        print("Sandbox Reset Completed.")
+                    `);
+                    // We might need to re-init some parts or just let it be clean
+                    ctx.postMessage({ type: 'RESET_SUCCESS', id });
+                    // Optional: Re-init environment setup if globals().clear() was too aggressive
+                    // For now, we clear 'files' and '/mnt' specifically.
+                } catch (err) {
+                    console.error('[Worker] Reset Failed:', err);
+                }
+            })();
+            break;
     }
 };
