@@ -44,10 +44,9 @@ async function initPyodide() {
 
             # Step 1: Install Essential Excel engines (BLOCKING)
             print("[Worker] Installing essential Excel engines (openpyxl, xlrd)...")
+            if not os.path.exists('/mnt'):
+                os.makedirs('/mnt')
             try:
-                # We do this synchronously (awaited) to prevent ModuleNotFoundError
-                # Note: runPythonAsync will wait for this top-level await if we wrap it correctly
-                # or we just call install here.
                 pass 
             except Exception as e:
                 print(f"Error during essential load: {e}")
@@ -293,6 +292,8 @@ ctx.onmessage = (e: MessageEvent) => {
                         import os
                         import json
                         res = {}
+                        if not os.path.exists('/mnt'):
+                            os.makedirs('/mnt')
                         for f in os.listdir('/mnt'):
                             try:
                                 # Simple metadata sync

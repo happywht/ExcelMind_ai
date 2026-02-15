@@ -245,6 +245,11 @@ export const runAgenticLoop = async (
       content: `你是一个专家级数据处理智能体 (Data Agent)。你的工作是根据用户需求处理 Excel 数据。
 你正在运行在 **Seamless Sandbox v2.2** 架构下。
 
+**输出规范 (极度重要)**:
+- 你必须**只输出一个合法的 JSON 对象**。
+- **禁止**在 JSON 之外包含任何开场白、解释性文字、谦辞（如 "收到", "我将帮您..."）或总结。
+- 你的回复必须以 \`{\` 开头，以 \`}\` 结尾。
+
 **核心环境规范**:
 1. **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 根目录下。
    - **正确路径**: \`/mnt/文件名.xlsx\`
@@ -303,15 +308,28 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
       const text = response.content[0]?.type === 'text' ? response.content[0].text : "";
       if (!text) throw new Error("AI 返回内容为空");
 
-      // Extract JSON
+      // Extract JSON (PHASE 6.2: Improved regex to skip conversational noise)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       let stepData;
       try {
-        stepData = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+        const rawJson = jsonMatch ? jsonMatch[0] : text;
+        stepData = JSON.parse(rawJson);
       } catch (e) {
-        console.warn("Retrying JSON parse with cleaned text");
-        const cleaned = text.replace(/```json|```/g, '').trim();
-        stepData = JSON.parse(cleaned);
+        console.warn("JSON parse failed, attempting deep cleanup");
+        try {
+          // If the AI included text before/after, try to find the LAST valid JSON-like block
+          const lastBraceIndex = text.lastIndexOf('}');
+          const firstBraceIndex = text.indexOf('{');
+          if (firstBraceIndex !== -1 && lastBraceIndex !== -1) {
+            const extracted = text.substring(firstBraceIndex, lastBraceIndex + 1);
+            stepData = JSON.parse(extracted);
+          } else {
+            throw new Error("No JSON structure found");
+          }
+        } catch (deepError) {
+          console.error("Deep cleanup failed:", text);
+          throw new Error("AI output is not valid JSON. Response was: " + text.slice(0, 100));
+        }
       }
 
       const step: AgenticStep = {
