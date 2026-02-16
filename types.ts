@@ -46,8 +46,33 @@ export interface AgenticStep {
   isPlanning?: boolean;
 }
 
+export interface TraceStep {
+  turn: number;
+  thought: string;
+  action: any;
+  observation?: string;
+  audit?: {
+    approved: boolean;
+    reason?: string;
+  };
+  error?: string;
+  timestamp: string;
+}
+
+export interface TraceSession {
+  id: string;
+  userPrompt: string;
+  initialContext: any;
+  startTime: string;
+  endTime?: string;
+  steps: TraceStep[];
+  finalResult?: any;
+  error?: string;
+}
+
 export interface AIProcessResult {
   steps: AgenticStep[];
   explanation: string;
   finalCode?: string;
+  trace?: TraceSession;
 }

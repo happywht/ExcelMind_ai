@@ -3,6 +3,7 @@ import { globalMasker } from '../maskerService';
 import { client } from './client';
 import { extractActionFromResponse } from './parser';
 import { verifyActionWithAI } from './auditor';
+import { TraceLogger } from './logger';
 
 /**
  * Enhanced Agentic Loop (Observe-Think-Act-Verify)
@@ -20,6 +21,9 @@ export const runAgenticLoop = async (
     onApprovalRequired?: (step: AgenticStep) => Promise<{ approved: boolean; feedback?: string }>,
     signal?: AbortSignal
 ): Promise<AIProcessResult> => {
+    // Initialize Logger
+    const logger = new TraceLogger(userPrompt, initialContext);
+
     // Reset masker for a fresh session
     if (isPrivacyEnabled) globalMasker.reset();
 
@@ -101,7 +105,9 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
     for (let turn = 0; turn < 20; turn++) {
         if (signal?.aborted) {
-            throw new Error("Loop aborted by user");
+            const err = "Loop aborted by user";
+            logger.logError(turn, err);
+            throw new Error(err);
         }
         try {
             const response = await client.messages.create({
@@ -119,8 +125,13 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
             // --- Validation Layer ---
             if (!stepData.action || !stepData.action.tool) {
                 console.error("[Resilience] Failed to extract action from response:", JSON.stringify(response));
-                throw new Error("Missing 'action' in AI reasoning. Please try re-phrasing your request.");
+                const err = "Missing 'action' in AI reasoning. Please try re-phrasing your request.";
+                logger.logError(turn, err);
+                throw new Error(err);
             }
+
+            // Log Step Start
+            logger.logStep(turn, stepData.thought, stepData.action);
 
             const step: AgenticStep = {
                 thought: isPrivacyEnabled ? globalMasker.unmask(stepData.thought) : stepData.thought,
@@ -141,13 +152,18 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
             // Use the newly implemented auditor module
             const audit = await verifyActionWithAI(step, JSON.stringify(auditorSlimContext), messages);
 
+            // Log Audit Result
+            logger.logAudit(turn, audit.approved, audit.reason);
+
             if (!audit.approved) {
                 rejectionCount++;
                 console.warn(`[Reflector] Audit REJECTED (${rejectionCount}/5). Reason: ${audit.reason}`);
 
                 if (rejectionCount >= 10) {
                     console.error("[Reflector] Maximum rejection threshold reached. Forcing loop exit.");
-                    throw new Error(`AI Logic stuck in an unresolvable audit loop. Last Reason: ${audit.reason}`);
+                    const err = `AI Logic stuck in an unresolvable audit loop. Last Reason: ${audit.reason}`;
+                    logger.logError(turn, err);
+                    throw new Error(err);
                 }
 
                 const feedbackMsg = `**[审计驳回]**: 你的上一步操作未通过审核。\n理由: ${audit.reason}\n请根据理由修正你的 Action。`;
@@ -179,6 +195,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
                         if (!approved) {
                             const obs = `User rejected the plan.${feedback ? ` Feedback: ${feedback}` : ''} Please propose an alternative or 'finish' if the task cannot be completed.`;
                             step.observation = obs;
+                            logger.logObservation(turn, obs);
                             messages.push({ role: "user", content: obs });
                             continue;
                         }
@@ -189,6 +206,9 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
                 try {
                     const observation = await executeTool(step.action.tool, step.action.params);
+
+                    // Log Observation
+                    logger.logObservation(turn, observation);
 
                     // Dynamic Context Injection
                     const vfsInventory = initialContext.map((f: any) => `- /mnt/${f.fileName}`).join('\n');
@@ -202,9 +222,11 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
                     continue;
                 } catch (toolError: any) {
+                    const err = `Error executing ${step.action.tool}: ${toolError.message}`;
+                    logger.logError(turn, err);
                     messages.push({
                         role: "user",
-                        content: `Error executing ${step.action.tool}: ${toolError.message}. Please try a different approach.`
+                        content: `${err}. Please try a different approach.`
                     });
                     continue;
                 }
@@ -214,10 +236,13 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
             break;
         } catch (error: any) {
             console.error("Agentic Loop error at turn", turn, error);
-            if (turn === 19) throw error; // Changed from 9 to 19 (loop goes to 20)
+            logger.logError(turn, error.message);
+            if (turn === 19) throw error;
             messages.push({ role: "user", content: `System Error: ${error.message}. Please rethink or continue.` });
         }
     }
 
-    return { steps, explanation: finalExplanation, finalCode };
+    const result = { steps, explanation: finalExplanation, finalCode, trace: logger.getTrace() };
+    logger.finish(result);
+    return result;
 };

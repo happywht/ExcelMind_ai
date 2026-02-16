@@ -5,7 +5,7 @@ import { runAgenticLoop } from '../services/zhipuService';
 import { auditExportService } from '../services/excelExportService';
 import { ClipboardList } from 'lucide-react';
 import { runPython } from '../services/pyodideService';
-import { ExcelData, ProcessingLog, AgenticStep } from '../types';
+import { ExcelData, ProcessingLog, AgenticStep, TraceSession } from '../types';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
@@ -37,6 +37,7 @@ export const SmartExcel: React.FC = () => {
     step: AgenticStep;
     resolve: (approved: boolean, feedback?: string) => void;
   } | null>(null);
+  const [lastTrace, setLastTrace] = useState<TraceSession | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const isSandboxDirty = useRef(true); // Track if worker needs data sync
@@ -123,6 +124,19 @@ export const SmartExcel: React.FC = () => {
 
   const addLog = (fileName: string, status: 'pending' | 'success' | 'error', message: string) => {
     setLogs(prev => [{ id: Date.now().toString() + Math.random(), fileName, status, message }, ...prev]);
+  };
+
+  const downloadTrace = () => {
+    if (!lastTrace) return;
+    const blob = new Blob([JSON.stringify(lastTrace, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `excelmind_trace_${lastTrace.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleRun = async () => {
@@ -314,6 +328,7 @@ export const SmartExcel: React.FC = () => {
         abortControllerRef.current?.signal
       );
 
+      setLastTrace(result.trace || null);
       addLog('System', 'success', `任务完成: ${result.explanation}`);
       console.log('[System] Agentic Loop finished successfully.');
 

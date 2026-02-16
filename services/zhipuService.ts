@@ -33,7 +33,8 @@ export const generateDataProcessingCode = async (
   return {
     steps: result.steps,
     explanation: result.explanation,
-    finalCode: result.finalCode
+    finalCode: result.finalCode,
+    trace: result.trace
   };
 };
 
