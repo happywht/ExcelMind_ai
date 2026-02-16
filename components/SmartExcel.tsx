@@ -6,13 +6,30 @@ import { auditExportService } from '../services/excelExportService';
 import { ClipboardList } from 'lucide-react';
 import { runPython } from '../services/pyodideService';
 import { ExcelData, ProcessingLog, AgenticStep, TraceSession } from '../types';
+import { usePyodide } from '../hooks/usePyodide';
+import { useTraceLogger } from '../hooks/useTraceLogger';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
 export const SmartExcel: React.FC = () => {
-  const [filesData, setFilesData] = useState<ExcelData[]>([]);
+  // Use Pyodide Hook
+  const {
+    filesData,
+    setFilesData,
+    filesDataRef,
+    isSandboxDirty,
+    executeCodeInSandbox,
+    resetFiles,
+    addFiles,
+    removeFile: removeFileFromSandbox,
+    selectedFileIds,
+    setSelectedFileIds
+  } = usePyodide();
+
+  // Use Trace Logger Hook
+  const { lastTrace, setLastTrace, downloadTrace } = useTraceLogger();
+
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
-  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const [command, setCommand] = useState('');
 
   // UI Panels states
@@ -20,11 +37,6 @@ export const SmartExcel: React.FC = () => {
   const [rightPanelOpen, setRightPanelOpen] = useState(false); // Default closed, opens on run
 
   const [isCommandBarCollapsed, setIsCommandBarCollapsed] = useState(false);
-  // Ref to keep track of the latest data during the async loop to avoid stale closures
-  const filesDataRef = useRef<ExcelData[]>(filesData);
-  useEffect(() => {
-    filesDataRef.current = filesData;
-  }, [filesData]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<ProcessingLog[]>([]);
   const [agentSteps, setAgentSteps] = useState<AgenticStep[]>([]);
@@ -37,12 +49,12 @@ export const SmartExcel: React.FC = () => {
     step: AgenticStep;
     resolve: (approved: boolean, feedback?: string) => void;
   } | null>(null);
-  const [lastTrace, setLastTrace] = useState<TraceSession | null>(null);
-
   const abortControllerRef = useRef<AbortController | null>(null);
-  const isSandboxDirty = useRef(true); // Track if worker needs data sync
 
   // Multi-tab persistence: Sync UI filesData with Sandbox on mount
+  // Sync UI filesData with Sandbox on mount is now handled by usePyodide's internal state init if needed,
+  // but for now, we rely on the specific sync logic.
+  // Actually, let's keep the sync logic here but use the hook's setters.
   useEffect(() => {
     const syncFilesFromSandbox = async () => {
       try {
@@ -50,42 +62,35 @@ export const SmartExcel: React.FC = () => {
         const sandboxFiles = await listFiles();
         if (Object.keys(sandboxFiles).length > 0) {
           addLog('System', 'success', `已自动恢复沙箱中的 ${Object.keys(sandboxFiles).length} 个存量文件`);
-          setFilesData(prev => {
-            const updated = [...prev];
-            Object.entries(sandboxFiles).forEach(([fn, sheets]) => {
-              if (!updated.some(f => f.fileName === fn)) {
-                updated.push({
-                  id: fn + '-' + Date.now(),
-                  fileName: fn,
-                  sheets: sheets,
-                  metadata: {}, // Metadata will be recalculated on demand or on first read
-                  currentSheetName: Object.keys(sheets)[0]
-                });
-              }
+          const restoredFiles: ExcelData[] = [];
+          Object.entries(sandboxFiles).forEach(([fn, sheets]) => {
+            // Basic restoration
+            restoredFiles.push({
+              id: fn + '-' + Date.now(),
+              fileName: fn,
+              sheets: sheets,
+              metadata: {},
+              currentSheetName: Object.keys(sheets)[0]
             });
-            return updated;
           });
-          isSandboxDirty.current = false;
+          // Use hook's addFiles to update state and ref
+          addFiles(restoredFiles);
         }
       } catch (err) {
         console.warn('[Sync] Failed to list sandbox files:', err);
       }
     };
     syncFilesFromSandbox();
-  }, []);
+  }, [addFiles]);
 
   const handleResetSandbox = async () => {
     if (!confirm("确定要清空沙箱及其所有临时文件吗？此操作不可撤销。")) return;
     try {
-      const { resetSandbox } = await import('../services/pyodideService');
-      await resetSandbox();
-      setFilesData([]);
-      setSelectedFileIds(new Set());
+      await resetFiles();
       setActiveFileId(null);
       setAgentSteps([]);
       setLogs([]);
       addLog('System', 'success', '沙箱环境已完全重置');
-      isSandboxDirty.current = true;
     } catch (err: any) {
       addLog('System', 'error', `重置失败: ${err.message}`);
     }
@@ -126,18 +131,6 @@ export const SmartExcel: React.FC = () => {
     setLogs(prev => [{ id: Date.now().toString() + Math.random(), fileName, status, message }, ...prev]);
   };
 
-  const downloadTrace = () => {
-    if (!lastTrace) return;
-    const blob = new Blob([JSON.stringify(lastTrace, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `excelmind_trace_${lastTrace.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   const handleRun = async () => {
     if (filesData.length === 0 || !command.trim()) return;

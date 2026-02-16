@@ -3,6 +3,7 @@
  * Provides semantics-preserving masking to protect sensitive entities (Names, Organizations)
  * while keeping numbers, dates, and summaries intact for AI reasoning.
  */
+import { MASKER_CONFIG } from '../config/maskerConfig';
 
 export interface MaskingMap {
     [original: string]: string;
@@ -25,17 +26,12 @@ export class DataMasker {
 
         return text.replace(entityRegex, (match) => {
             // Extended skip keywords for accounting and common UI labels
-            const skipKeywords = [
-                '张表', '公式', '科目', '金额', '日期', '摘要', '合计', '序号', '名称', '类型', '工作',
-                '文件', '利润', '收入', '支出', '核对', '匹配', '查找', '导出', '导入', '点击', '按钮',
-                '公司', '工作表', '工作簿', '单元格', '列头', '表头', '样本', '数据'
-            ];
+            const skipKeywords = MASKER_CONFIG.SKIP_KEYWORDS;
 
             if (skipKeywords.some(k => match === k || (match.length <= 2 && k.includes(match)))) return match;
 
             // Avoid masking if it's purely descriptive (heuristic: check for common suffixes)
-            const commonDescSuffixes = ['表', '项', '类', '额', '率', '数', '位'];
-            if (commonDescSuffixes.some(s => match.endsWith(s))) return match;
+            if (MASKER_CONFIG.DESC_SUFFIXES.some(s => match.endsWith(s))) return match;
 
             if (!this.map[match]) {
                 const token = `ENTITY_${this.entityCounter.toString().padStart(3, '0')}`;
@@ -56,7 +52,7 @@ export class DataMasker {
 
         const walk = (obj: any, parentKey?: string) => {
             // Respect '摘要' (summary) and '备注' (note) columns - do not mask
-            const skipColumns = ['摘要', '备注', '说明', 'abstract', 'summary', 'note', 'comment'];
+            const skipColumns = MASKER_CONFIG.PRESERVE_COLUMNS;
             if (parentKey && skipColumns.some(sc => parentKey.toLowerCase().includes(sc))) {
                 return obj;
             }

@@ -1,77 +1,38 @@
 import * as XLSX from 'xlsx';
 import { ExcelData } from '../types';
 
+// Use a dedicated worker for parsing Excel files to avoid blocking the UI thread
+// Optimization: Reuse worker instance? For now, we spawn one per file to ensure isolation and easy cleanup.
+// In a production app with heavy load, a worker pool would be better.
+import ExcelWorker from './workers/excel.worker?worker';
+
 export const readExcelFile = async (file: File): Promise<ExcelData> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array' });
+    const worker = new ExcelWorker();
+    const id = file.name + '-' + Date.now();
 
-        const sheets: { [sheetName: string]: any[] } = {};
-        const metadata: { [sheetName: string]: any } = {};
-        let firstSheetName = '';
-
-        workbook.SheetNames.forEach((name, index) => {
-          if (index === 0) firstSheetName = name;
-          const worksheet = workbook.Sheets[name];
-
-          // Read main table data
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-          sheets[name] = jsonData;
-
-          // Extract metadata: comments and notes
-          const comments: { [cellAddress: string]: string } = {};
-          const notes: { [cellAddress: string]: string } = {};
-
-          // Iterate all cells in the sheet
-          for (const cellAddress in worksheet) {
-            if (cellAddress.startsWith('!')) continue; // Skip metadata fields
-
-            const cell = worksheet[cellAddress];
-
-            // Extract cell comments (c)
-            if (cell.c) {
-              cell.c.forEach((comment: any) => {
-                if (comment.a && comment.t) {
-                  const commentText = comment.t;
-                  const author = comment.a || '';
-                  comments[cellAddress] = author ? `[${author}]: ${commentText}` : commentText;
-                }
-              });
-            }
-
-            // Extract cell notes/annotations (n) - some versions use this
-            if (cell.n) {
-              notes[cellAddress] = cell.n;
-            }
-          }
-
-          // Calculate dimensions
-          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-
-          metadata[name] = {
-            comments,
-            notes,
-            rowCount: range.e.r + 1,
-            columnCount: range.e.c + 1
-          };
-        });
-
+    worker.onmessage = (e) => {
+      const { type, sheets, metadata, firstSheetName, error } = e.data;
+      if (type === 'SUCCESS') {
         resolve({
-          id: file.name + '-' + Date.now(),
+          id,
           fileName: file.name,
           sheets,
           currentSheetName: firstSheetName,
           metadata
         });
-      } catch (err) {
-        reject(err);
+      } else {
+        reject(new Error(error || 'Excel parsing failed in worker'));
       }
+      worker.terminate();
     };
-    reader.onerror = (err) => reject(err);
-    reader.readAsArrayBuffer(file);
+
+    worker.onerror = (err) => {
+      reject(err);
+      worker.terminate();
+    };
+
+    worker.postMessage({ file, id });
   });
 };
 
