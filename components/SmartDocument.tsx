@@ -11,6 +11,7 @@ interface DocumentFile {
     type: 'docx' | 'pdf';
     text: string;
     tables: any[][][]; // 3D array: tables -> rows -> cells
+    structure?: any[]; // For Headings
     meta: any;
     status: 'processing' | 'ready' | 'error';
     errorMessage?: string;
@@ -76,6 +77,7 @@ export const SmartDocument: React.FC = () => {
                         status: 'ready',
                         text: result.text,
                         tables: result.tables || [],
+                        structure: result.structure || [],
                         meta: result.meta
                     } : d));
 
@@ -125,7 +127,8 @@ export const SmartDocument: React.FC = () => {
                 type: doc.type,
                 status: doc.status,
                 textPreview: (doc.text || "").substring(0, 1000) + "...",
-                tableCount: (doc.tables || []).length
+                tableCount: (doc.tables || []).length,
+                structure: doc.structure || []
             }));
 
             // 2. Define Tool Executor
@@ -136,7 +139,6 @@ export const SmartDocument: React.FC = () => {
                 switch (tool) {
                     case 'execute_python': {
                         addLog('Sandbox', 'pending', '正在沙箱中执行 Python 代码...');
-                        // No need to pass initial datasets as files are in /mnt/
                         const { data: newData, logs, result } = await runPython(params.code, {}, (streamedLog) => {
                             setAgentSteps(prev => {
                                 const next = [...prev];
@@ -149,7 +151,6 @@ export const SmartDocument: React.FC = () => {
                             });
                         });
 
-                        // Return detailed feedback
                         let observation = "Execution successful.";
                         if (logs) observation += `\nLogs:\n${logs}`;
                         if (result !== null && result !== undefined) {
@@ -157,6 +158,45 @@ export const SmartDocument: React.FC = () => {
                             observation += `\nResult of last expression:\n${resultStr}`;
                         }
                         return observation;
+                    }
+                    case 'read_document_page': {
+                        const { fileName, page_number } = params;
+                        const code = `
+import pdfplumber
+with pdfplumber.open('/mnt/${fileName}') as pdf:
+    # pdfplumber is 0-indexed in code usually, but we accept 1-based page_number?
+    # Let's assume 1-based from Agent
+    page = pdf.pages[${page_number} - 1]
+    res = page.extract_text()
+res
+`;
+                        const { result } = await runPython(code, {});
+                        return String(result || "No text on this page.");
+                    }
+                    case 'search_document': {
+                        const { fileName, keyword } = params;
+                        const code = `
+import re
+target = '/mnt/${fileName}'
+# Simple search in the already extracted text if available in globals or re-read
+with open(target, 'rb') as f:
+    # This might be slow for large PDFs if we re-read. 
+    # For now, let's use a smarter search if we have the full text in JS and pass it?
+    # Actually, let's just do a simple search for this demo.
+    pass
+
+# For now, let's use the text in memory if possible or re-extract
+import pdfplumber
+results = []
+with pdfplumber.open(target) as pdf:
+    for i, page in enumerate(pdf.pages):
+        text = page.extract_text() or ""
+        if "${keyword}".lower() in text.lower():
+            results.append(f"Page {i+1}: ... {text[:200]} ...")
+"\\n".join(results[:10]) # Limit to 10 findings
+`;
+                        const { result } = await runPython(code, {});
+                        return String(result || "No matches found.");
                     }
                     case 'finish':
                         return "Task Completed.";
@@ -243,38 +283,68 @@ export const SmartDocument: React.FC = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                    {documents.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-48 text-center text-slate-400 text-xs border-2 border-dashed border-slate-100 rounded-xl m-2">
-                            <Upload className="w-8 h-8 mb-2 text-slate-200" />
-                            <p>暂无文档</p>
-                            <p className="mt-1 opacity-70">点击上方按钮上传</p>
+                    <div className="mb-6">
+                        <div className="px-2 mb-2 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            <span>文档列表</span>
+                            <span className="bg-slate-100 px-1.5 py-0.5 rounded-full">{documents.length}</span>
                         </div>
-                    )}
-                    {documents.map(doc => (
-                        <div
-                            key={doc.id}
-                            onClick={() => setActiveDocId(doc.id)}
-                            className={`p-3 rounded-xl border cursor-pointer transition-all duration-200 group ${activeDocId === doc.id
-                                ? 'bg-blue-50/50 border-blue-200 shadow-sm'
-                                : 'bg-white border-slate-100 hover:border-blue-200/60 hover:bg-slate-50'
-                                }`}
-                        >
-                            <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <File className={`w-8 h-8 flex-shrink-0 p-1.5 rounded-lg ${doc.type === 'pdf' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`} />
-                                    <div className="min-w-0">
-                                        <span className="font-semibold text-sm text-slate-700 truncate block">{doc.name}</span>
-                                        <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{doc.type}</span>
+                        {documents.length === 0 && (
+                            <div className="flex flex-col items-center justify-center h-48 text-center text-slate-400 text-xs border-2 border-dashed border-slate-100 rounded-xl m-2">
+                                <Upload className="w-8 h-8 mb-2 text-slate-200" />
+                                <p>暂无文档</p>
+                                <p className="mt-1 opacity-70">点击上方按钮上传</p>
+                            </div>
+                        )}
+                        {documents.map(doc => (
+                            <div
+                                key={doc.id}
+                                onClick={() => setActiveDocId(doc.id)}
+                                className={`p-3 rounded-xl border cursor-pointer transition-all duration-200 group ${activeDocId === doc.id
+                                    ? 'bg-blue-50/50 border-blue-200 shadow-sm'
+                                    : 'bg-white border-slate-100 hover:border-blue-200/60 hover:bg-slate-50'
+                                    }`}
+                            >
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <File className={`w-8 h-8 flex-shrink-0 p-1.5 rounded-lg ${doc.type === 'pdf' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`} />
+                                        <div className="min-w-0">
+                                            <span className="font-semibold text-sm text-slate-700 truncate block">{doc.name}</span>
+                                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{doc.type}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-1">
+                                        {doc.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-blue-500" />}
+                                        {doc.status === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
+                                        {doc.status === 'ready' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />}
                                     </div>
                                 </div>
-                                <div className="mt-1">
-                                    {doc.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-blue-500" />}
-                                    {doc.status === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
-                                    {doc.status === 'ready' && <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />}
-                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Document Map Section (Dynamic) */}
+                    {activeDoc && activeDoc.status === 'ready' && activeDoc.structure && activeDoc.structure.length > 0 && (
+                        <div className="mt-8 border-t border-slate-100 pt-6 animate-in slide-in-from-bottom-2 duration-300">
+                            <div className="px-2 mb-3 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                <ChevronRight className="w-3 h-3 text-blue-500" />
+                                <span>文档大纲 (Map)</span>
+                            </div>
+                            <div className="space-y-1">
+                                {activeDoc.structure.map((item, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-slate-50 cursor-pointer flex items-start gap-2 ${item.level === 1 ? 'font-bold text-slate-700' :
+                                                item.level === 2 ? 'pl-6 text-slate-600' :
+                                                    'pl-9 text-slate-500'
+                                            }`}
+                                    >
+                                        <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400/50 flex-shrink-0" />
+                                        <span className="truncate">{item.text}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    ))}
+                    )}
                 </div>
             </div>
 

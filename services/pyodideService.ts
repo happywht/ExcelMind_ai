@@ -226,7 +226,7 @@ export const writeFileToSandbox = async (fileName: string, data: ArrayBuffer): P
  * Extract text and metadata from a document in the sandbox
  * @param fileName Name of the file (must exist in sandbox)
  */
-export const extractText = async (fileName: string): Promise<{ text: string, tables: any[][][], meta: any }> => {
+export const extractText = async (fileName: string): Promise<{ text: string, tables: any[][][], structure: any[], meta: any }> => {
     await loadPyodide();
     if (!worker) throw new Error('Worker not available');
 

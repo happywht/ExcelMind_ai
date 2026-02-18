@@ -94,32 +94,36 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 - **目标**: 通过 Python 脚本读取、提取、分析文档内容，最终回答用户问题或生成报告。
 
 **核心环境规范**:
-11. **文件挂载**: 所有文档已挂载在 \`/mnt/\` 目录下（如 \`/mnt/report.docx\`）。
-12. **工具库**:
-    - **Word**: 使用 \`python-docx\` (import docx) 读取 .docx 文件。
-    - **PDF**: 使用 \`pypdf\` (import pypdf) 或 \`pdfplumber\` (如果可用) 读取 .pdf 文件。
-    - **NLP/Regex**: 使用 standard python libs 进行文本分析。
+1. **文件挂载**: 所有文档已挂载在 \`/mnt/\` 目录下（如 \`/mnt/report.docx\`）。
+2. **工具库**:
+   - **Word**: 使用 \`python-docx\` (import docx)。支持读取段落、样式。
+   - **PDF**: 使用 \`pdfplumber\` (首选) 或 \`pypdf\`。\`pdfplumber\` 具有极高的文字与表格提取精度。
+   - **NLP/Regex**: 使用 standard python libs 进行文本分析。
 
 **当前可用工具**:
-1. \`execute_python(code)\`: 运行 Python 代码。这是你分析文档的唯一手段。
-2. \`finish()\`: 完成任务。
+1. \`execute_python(code)\`: 运行 Python 代码进行深度分析。
+2. \`read_document_page(fileName, page_number)\`: 读取 PDF 的特定页内容。
+3. \`search_document(fileName, keyword)\`: 在文档中搜索关键字并返回上下文。
+4. \`finish()\`: 完成任务。
 
 **常用代码模版**:
-- **读取 Word**:
+- **高精度读取 PDF (pdfplumber)**:
+  \`\`\`python
+  import pdfplumber
+  with pdfplumber.open('/mnt/report.pdf') as pdf:
+      page = pdf.pages[0]
+      text = page.extract_text()
+      tables = page.extract_tables()
+      print(f"Page 1 Text: {text[:200]}")
+      print(f"Detected Tables: {len(tables)}")
+  \`\`\`
+- **识别 Word 结构**:
   \`\`\`python
   import docx
   doc = docx.Document('/mnt/contract.docx')
-  full_text = '\\n'.join([p.text for p in doc.paragraphs])
-  print(full_text[:500]) # 预览前500字
-  \`\`\`
-- **读取 PDF**:
-  \`\`\`python
-  from pypdf import PdfReader
-  reader = PdfReader('/mnt/scan.pdf')
-  text = ""
-  for page in reader.pages:
-      text += page.extract_text() + "\\n"
-  print(text[:500])
+  for p in doc.paragraphs:
+      if 'Heading' in p.style.name:
+          print(f"Structure: {p.style.name} -> {p.text}")
   \`\`\`
 
 用户任务: "${maskedUserPrompt}"

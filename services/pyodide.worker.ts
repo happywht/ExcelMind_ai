@@ -59,8 +59,8 @@ async function initPyodide() {
             # Define Arsenal Loading logic (background)
             async def load_extra_arsenal():
                 try:
-                    await micropip.install(['scipy', 'matplotlib', 'python-docx', 'pypdf'])
-                    print("Sandbox Arsenal Background Tier Loaded: scipy, matplotlib, python-docx, pypdf")
+                    await micropip.install(['scipy', 'matplotlib', 'python-docx', 'pypdf', 'pdfplumber'])
+                    print("Sandbox Arsenal Background Tier Loaded: scipy, matplotlib, python-docx, pypdf, pdfplumber")
                 except Exception as e:
                     print(f"Warning: Background Arsenal failed to load: {e}")
 
@@ -370,7 +370,7 @@ import traceback
 fname = "${fileName}"
 fpath = f'/mnt/{fname}'
 
-result = {"text": "", "tables": [], "meta": {}}
+result = {"text": "", "tables": [], "meta": {}, "structure": []}
 _extract_res = ""
 
 try:
@@ -381,7 +381,26 @@ try:
     if fname.endswith('.docx'):
         import docx
         doc = docx.Document(fpath)
-        result["text"] = '\\n'.join([p.text for p in doc.paragraphs])
+        
+        # Combined text extraction with structure
+        lines = []
+        for p in doc.paragraphs:
+            text = p.text.strip()
+            if not text: continue
+            
+            lines.append(text)
+            
+            # Identify Headings
+            style_name = p.style.name.lower()
+            if 'heading' in style_name:
+                level = 1
+                if '1' in style_name: level = 1
+                elif '2' in style_name: level = 2
+                elif '3' in style_name: level = 3
+                result["structure"].append({"type": "heading", "level": level, "text": text})
+        
+        result["text"] = '\\n'.join(lines)
+        
         # Extract tables
         for table in doc.tables:
             tbl_data = []
@@ -390,12 +409,27 @@ try:
             result["tables"].append(tbl_data)
             
     elif fname.endswith('.pdf'):
-        from pypdf import PdfReader
-        reader = PdfReader(fpath)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\\n"
-        result["text"] = result["text"] + text
+        try:
+            import pdfplumber
+            with pdfplumber.open(fpath) as pdf:
+                full_text = []
+                for page in pdf.pages:
+                    full_text.append(page.extract_text() or "")
+                    # Extract tables from each page if any
+                    tables = page.extract_tables()
+                    for table in tables:
+                        if table: result["tables"].append(table)
+                result["text"] = '\\n'.join(full_text)
+                result["meta"]["engine"] = "pdfplumber"
+        except ImportError:
+            # Fallback to pypdf
+            from pypdf import PdfReader
+            reader = PdfReader(fpath)
+            text = ""
+            for page in reader.pages:
+                text += page.extract_text() + "\\n"
+            result["text"] = text
+            result["meta"]["engine"] = "pypdf"
         
     _extract_res = json.dumps({"success": True, "data": result})
 except Exception as e:
