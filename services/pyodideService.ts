@@ -191,3 +191,63 @@ export const resetSandbox = async (): Promise<boolean> => {
         }, 5000);
     });
 };
+
+/**
+ * Write a binary file directly to the sandbox /mnt/ directory
+ * @param fileName Name of the file (e.g., "contract.docx")
+ * @param data Binary content
+ */
+export const writeFileToSandbox = async (fileName: string, data: ArrayBuffer): Promise<boolean> => {
+    await loadPyodide();
+    if (!worker) throw new Error('Worker not available');
+
+    return new Promise((resolve, reject) => {
+        const requestId = Math.random().toString(36).substring(7);
+        pendingRequests.set(requestId, { resolve, reject, accumulatedLogs: "" });
+
+        // Use Transferable objects for performance with large files
+        worker!.postMessage({
+            type: 'WRITE_BINARY_FILE',
+            fileName,
+            data,
+            id: requestId
+        }, [data]);
+
+        setTimeout(() => {
+            if (pendingRequests.has(requestId)) {
+                pendingRequests.get(requestId)!.reject(new Error('Write binary file timed out'));
+                pendingRequests.delete(requestId);
+            }
+        }, 10000);
+    });
+};
+
+/**
+ * Extract text and metadata from a document in the sandbox
+ * @param fileName Name of the file (must exist in sandbox)
+ */
+export const extractText = async (fileName: string): Promise<{ text: string, tables: any[][][], meta: any }> => {
+    await loadPyodide();
+    if (!worker) throw new Error('Worker not available');
+
+    const wrapper = await new Promise<any>((resolve, reject) => {
+        const requestId = Math.random().toString(36).substring(7);
+        pendingRequests.set(requestId, { resolve, reject, accumulatedLogs: "" });
+
+        worker!.postMessage({
+            type: 'EXTRACT_TEXT_REQUEST',
+            fileName,
+            id: requestId
+        });
+
+        // Extraction can take time for large PDFs
+        setTimeout(() => {
+            if (pendingRequests.has(requestId)) {
+                pendingRequests.get(requestId)!.reject(new Error('Text extraction timed out'));
+                pendingRequests.delete(requestId);
+            }
+        }, 30000);
+    });
+
+    return wrapper.data;
+};

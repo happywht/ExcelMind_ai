@@ -10,6 +10,8 @@ type WorkerMessage =
     | { type: 'RESPONSE', success: boolean, data?: any, logs?: string, result?: any, id: string, error?: string }
     | { type: 'LOG', content: string }
     | { type: 'INIT_SUCCESS' }
+    | { type: 'EXTRACT_TEXT_REQUEST', fileName: string, id: string }
+    | { type: 'WRITE_BINARY_FILE', fileName: string, data: ArrayBuffer, id: string }
     | { type: 'ERROR', error: string };
 
 // Self reference
@@ -57,8 +59,8 @@ async function initPyodide() {
             # Define Arsenal Loading logic (background)
             async def load_extra_arsenal():
                 try:
-                    await micropip.install(['scipy', 'matplotlib'])
-                    print("Sandbox Arsenal Background Tier Loaded: scipy, matplotlib")
+                    await micropip.install(['scipy', 'matplotlib', 'python-docx', 'pypdf'])
+                    print("Sandbox Arsenal Background Tier Loaded: scipy, matplotlib, python-docx, pypdf")
                 except Exception as e:
                     print(f"Warning: Background Arsenal failed to load: {e}")
 
@@ -346,6 +348,91 @@ ctx.onmessage = (e: MessageEvent) => {
                     // For now, we clear 'files' and '/mnt' specifically.
                 } catch (err) {
                     console.error('[Worker] Reset Failed:', err);
+                }
+            })();
+            break;
+        case 'EXTRACT_TEXT_REQUEST':
+            (async () => {
+                if (!pyodide) return;
+                const { fileName, id } = e.data;
+                try {
+                    // Ensure the file exists in /mnt/
+                    // It should have been synced via RUN_REQUEST or manually before this call?
+                    // Actually, for Smart Document, we might need to sync it first if it was just uploaded.
+                    // But usually we sync via a separate call or part of the flow.
+                    // Let's assume the file is securely in /mnt/ or 'files' global.
+
+                    const resultJson = await pyodide.runPythonAsync(`
+import json
+import os
+import traceback
+
+fname = "${fileName}"
+fpath = f'/mnt/{fname}'
+
+result = {"text": "", "tables": [], "meta": {}}
+_extract_res = ""
+
+try:
+    # Verify file existence
+    if not os.path.exists(fpath):
+        raise FileNotFoundError(f"File {fname} not found in sandbox /mnt/")
+        
+    if fname.endswith('.docx'):
+        import docx
+        doc = docx.Document(fpath)
+        result["text"] = '\\n'.join([p.text for p in doc.paragraphs])
+        # Extract tables
+        for table in doc.tables:
+            tbl_data = []
+            for row in table.rows:
+                tbl_data.append([cell.text for cell in row.cells])
+            result["tables"].append(tbl_data)
+            
+    elif fname.endswith('.pdf'):
+        from pypdf import PdfReader
+        reader = PdfReader(fpath)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\\n"
+        result["text"] = result["text"] + text
+        
+    _extract_res = json.dumps({"success": True, "data": result})
+except Exception as e:
+    _extract_res = json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()})
+
+_extract_res
+                    `);
+
+                    const res = JSON.parse(resultJson);
+                    if (res.success) {
+                        ctx.postMessage({ type: 'RESPONSE', success: true, data: res.data, id });
+                    } else {
+                        ctx.postMessage({ type: 'RESPONSE', success: false, error: res.error, id });
+                    }
+                } catch (err: any) {
+                    ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
+                }
+            })();
+            break;
+
+        case 'WRITE_BINARY_FILE':
+            (async () => {
+                if (!pyodide) return;
+                const { fileName, data, id } = e.data;
+                try {
+                    // Ensure /mnt exists
+                    pyodide.FS.mkdir('/mnt');
+                } catch (e) { /* ignore if exists */ }
+
+                try {
+                    const view = new Uint8Array(data);
+                    pyodide.FS.writeFile(`/mnt/${fileName}`, view);
+                    console.log(`[Worker] Wrote binary file ${fileName} to /mnt/`);
+                    ctx.postMessage({ type: 'RESPONSE', success: true, id });
+                } catch (err: any) {
+                    console.error('[Worker] Write Binary Failed:', err);
+                    ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
                 }
             })();
             break;

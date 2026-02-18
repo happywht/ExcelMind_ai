@@ -5,7 +5,8 @@ import {
   MessageSquareText,
   Bot,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 import { AppView } from '../types';
 
@@ -20,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isExpand
   const menuItems = [
     { id: AppView.DASHBOARD, label: '仪表盘', icon: LayoutDashboard },
     { id: AppView.SMART_OPS, label: '智能处理', icon: FileSpreadsheet },
+    { id: AppView.SMART_DOC, label: '智能文档', icon: FileText },
     { id: AppView.FORMULA, label: '公式生成器', icon: FunctionSquare },
     { id: AppView.KNOWLEDGE_CHAT, label: '审计助手', icon: MessageSquareText },
   ];
@@ -55,8 +57,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isExpand
               key={item.id}
               onClick={() => setView(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group relative ${isActive
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40'
-                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40'
+                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
                 } ${isExpanded ? '' : 'justify-center px-0'}`}
               title={!isExpanded ? item.label : undefined}
             >

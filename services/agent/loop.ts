@@ -19,7 +19,8 @@ export const runAgenticLoop = async (
     executeTool?: (tool: string, params: any) => Promise<string>,
     isPrivacyEnabled: boolean = false,
     onApprovalRequired?: (step: AgenticStep) => Promise<{ approved: boolean; feedback?: string }>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    agentMode: 'excel' | 'document' = 'excel'
 ): Promise<AIProcessResult> => {
     // Initialize Logger
     const logger = new TraceLogger(userPrompt, initialContext);
@@ -31,8 +32,8 @@ export const runAgenticLoop = async (
     const maskedUserPrompt = isPrivacyEnabled ? globalMasker.mask(userPrompt) : userPrompt;
     const maskedInitialContext = isPrivacyEnabled ? globalMasker.maskContext(initialContext) : initialContext;
 
-    const messages: any[] = [
-        {
+    const systemPrompts = {
+        excel: {
             role: "user",
             content: `你是一个专家级数据处理智能体 (Data Agent)。你的工作是根据用户需求处理 Excel 数据。
 你正在运行在 **Seamless Sandbox v2.2** 架构下。
@@ -81,7 +82,56 @@ export const runAgenticLoop = async (
 初始元数据 (Metadata Only):
 ${JSON.stringify(maskedInitialContext, null, 2)}
 `
+        },
+        document: {
+            role: "user",
+            content: `你是一个专家级文档智能分析师 (Document Intelligence Agent)。你的工作是利用 Python 工具深入分析非结构化文档（Word/PDF）。
+你正在运行在 **Seamless Sandbox v2.2** 架构下。
+
+**输出规范**:
+- 你必须回复任务的执行结果。
+- **推荐格式**: JSON \`thought\` + \`action\`。
+- **目标**: 通过 Python 脚本读取、提取、分析文档内容，最终回答用户问题或生成报告。
+
+**核心环境规范**:
+11. **文件挂载**: 所有文档已挂载在 \`/mnt/\` 目录下（如 \`/mnt/report.docx\`）。
+12. **工具库**:
+    - **Word**: 使用 \`python-docx\` (import docx) 读取 .docx 文件。
+    - **PDF**: 使用 \`pypdf\` (import pypdf) 或 \`pdfplumber\` (如果可用) 读取 .pdf 文件。
+    - **NLP/Regex**: 使用 standard python libs 进行文本分析。
+
+**当前可用工具**:
+1. \`execute_python(code)\`: 运行 Python 代码。这是你分析文档的唯一手段。
+2. \`finish()\`: 完成任务。
+
+**常用代码模版**:
+- **读取 Word**:
+  \`\`\`python
+  import docx
+  doc = docx.Document('/mnt/contract.docx')
+  full_text = '\\n'.join([p.text for p in doc.paragraphs])
+  print(full_text[:500]) # 预览前500字
+  \`\`\`
+- **读取 PDF**:
+  \`\`\`python
+  from pypdf import PdfReader
+  reader = PdfReader('/mnt/scan.pdf')
+  text = ""
+  for page in reader.pages:
+      text += page.extract_text() + "\\n"
+  print(text[:500])
+  \`\`\`
+
+用户任务: "${maskedUserPrompt}"
+
+初始元数据 (Metadata):
+${JSON.stringify(maskedInitialContext, null, 2)}
+`
         }
+    };
+
+    const messages: any[] = [
+        agentMode === 'excel' ? systemPrompts.excel : systemPrompts.document
     ];
 
     const steps: AgenticStep[] = [];

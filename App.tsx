@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { FormulaGen } from './components/FormulaGen';
 import { SmartExcel } from './components/SmartExcel';
 import { KnowledgeChat } from './components/KnowledgeChat';
+import { SmartDocument } from './components/SmartDocument';
 import { AppView } from './types';
 import { Activity, Zap, ShieldCheck } from 'lucide-react';
 
@@ -59,6 +60,8 @@ const App: React.FC = () => {
         return <FormulaGen />;
       case AppView.KNOWLEDGE_CHAT:
         return <KnowledgeChat />;
+      case AppView.SMART_DOC:
+        return <SmartDocument />;
       default:
         return <Dashboard setView={setCurrentView} />;
     }

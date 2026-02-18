@@ -3,6 +3,7 @@ export enum AppView {
   SMART_OPS = 'SMART_OPS',
   FORMULA = 'FORMULA',
   KNOWLEDGE_CHAT = 'KNOWLEDGE_CHAT',
+  SMART_DOC = 'SMART_DOC',
 }
 
 export interface ChatMessage {
