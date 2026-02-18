@@ -48,7 +48,8 @@ export const runAgenticLoop = async (
 1. **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 根目录下。
    - **正确路径**: \`/mnt/文件名.xlsx\`
    - **禁止路径**: \`/mnt/data/\` 或其他子目录。
-2. **数据读取机制**: 
+2. **高级协同**: 你可以访问 \`shared_context['docs']\` 来获取之前文档分析的结果。如果需要跨文档分析，请优先检查此变量。
+3. **数据读取机制**: 
    - 绝大多数情况，请直接使用 \`pd.read_excel('/mnt/文件名.xlsx')\`。这是最稳妥的方法。
    - \`files\` 全局字典是内存中的数据备份。如果你需要直接操作它，请注意：它是 \`{ "文件名": { "Sheet1": [rows], "Sheet2": [rows] } }\` 的嵌套结构。
 3. **数据写回要求**:
@@ -95,7 +96,8 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
 **核心环境规范**:
 1. **文件挂载**: 所有文档已挂载在 \`/mnt/\` 目录下（如 \`/mnt/report.docx\`）。
-2. **工具库**:
+2. **协同存储**: 所有提取的关键信息（尤其是表格）会自动存入 \`shared_context['docs'][文件名]\`。如果用户要求后续进行数据分析，请告知用户数据已就绪，可切换到 Smart Excel 模块进行处理。
+3. **工具库**:
    - **Word**: 使用 \`python-docx\` (import docx)。支持读取段落、样式。
    - **PDF**: 使用 \`pdfplumber\` (首选) 或 \`pypdf\`。\`pdfplumber\` 具有极高的文字与表格提取精度。
    - **NLP/Regex**: 使用 standard python libs 进行文本分析。

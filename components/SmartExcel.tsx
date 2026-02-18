@@ -64,6 +64,10 @@ export const SmartExcel: React.FC = () => {
           addLog('System', 'success', `已自动恢复沙箱中的 ${Object.keys(sandboxFiles).length} 个存量文件`);
           const restoredFiles: ExcelData[] = [];
           Object.entries(sandboxFiles).forEach(([fn, sheets]) => {
+            // Only restore if it looks like an Excel file (or has actual sheets data)
+            const isExcel = fn.endsWith('.xlsx') || fn.endsWith('.xls') || fn.endsWith('.csv');
+            if (!isExcel && Object.keys(sheets).length === 0) return;
+
             // Basic restoration
             restoredFiles.push({
               id: fn + '-' + Date.now(),

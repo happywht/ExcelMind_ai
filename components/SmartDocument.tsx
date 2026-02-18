@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Terminal, RotateCcw, ChevronRight, Zap, Bot, ShieldQuestion, Check, Ban, ChevronLeft, MessageSquare, Send, Sparkles } from 'lucide-react';
-import { writeFileToSandbox, extractText, runPython } from '../services/pyodideService';
+import { writeFileToSandbox, extractText, runPython, clearContext } from '../services/pyodideService';
 import { runAgenticLoop } from '../services/agent/loop';
 import { useTraceLogger } from '../hooks/useTraceLogger';
 import { AgenticStep, ProcessingLog } from '../types';
@@ -38,6 +38,20 @@ export const SmartDocument: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const { setLastTrace } = useTraceLogger();
+
+    const handleClearContext = async () => {
+        if (confirm('确定要清空所有上下文记忆吗？\n这将移除所有变量，但保留系统环境。\n(Synergy: 此操作也会影响 Excel 模块的共享数据)')) {
+            try {
+                setIsProcessing(true);
+                await clearContext();
+                addLog('System', 'success', '上下文记忆已清空 (Context Cleared)');
+            } catch (e: any) {
+                addLog('System', 'error', `清空失败: ${e.message}`);
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
@@ -263,23 +277,33 @@ with pdfplumber.open(target) as pdf:
                         <div className="bg-blue-100 p-1.5 rounded-md">
                             <FileText className="w-4 h-4 text-blue-600" />
                         </div>
-                        智能文档
+                        智能文档 (Synergy)
                     </h2>
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm active:scale-95"
-                        title="上传文档"
-                    >
-                        <Upload className="w-4 h-4" />
-                    </button>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        accept=".docx,.pdf"
-                        multiple
-                    />
+
+                    <div className="flex gap-1">
+                        <button
+                            onClick={handleClearContext}
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="清空上下文记忆 (Clear Memory)"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors shadow-sm active:scale-95"
+                            title="上传文档"
+                        >
+                            <Upload className="w-4 h-4" />
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            accept=".docx,.pdf"
+                            multiple
+                        />
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
@@ -334,8 +358,8 @@ with pdfplumber.open(target) as pdf:
                                     <div
                                         key={idx}
                                         className={`px-3 py-1.5 rounded-lg text-xs transition-colors hover:bg-slate-50 cursor-pointer flex items-start gap-2 ${item.level === 1 ? 'font-bold text-slate-700' :
-                                                item.level === 2 ? 'pl-6 text-slate-600' :
-                                                    'pl-9 text-slate-500'
+                                            item.level === 2 ? 'pl-6 text-slate-600' :
+                                                'pl-9 text-slate-500'
                                             }`}
                                     >
                                         <span className="mt-1.5 w-1 h-1 rounded-full bg-blue-400/50 flex-shrink-0" />

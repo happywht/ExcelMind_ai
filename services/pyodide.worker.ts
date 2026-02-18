@@ -12,6 +12,7 @@ type WorkerMessage =
     | { type: 'INIT_SUCCESS' }
     | { type: 'EXTRACT_TEXT_REQUEST', fileName: string, id: string }
     | { type: 'WRITE_BINARY_FILE', fileName: string, data: ArrayBuffer, id: string }
+    | { type: 'CLEAR_CONTEXT', id: string }
     | { type: 'ERROR', error: string };
 
 // Self reference
@@ -44,30 +45,14 @@ async function initPyodide() {
             import sys
             import io
 
-            # Step 1: Install Essential Excel engines (BLOCKING)
-            # This is critical for pd.read_excel to work with user files
-            print("[Worker] Installing essential Excel engines (openpyxl, xlrd)...")
-            if not os.path.exists('/mnt'):
-                os.makedirs('/mnt')
-            try:
-                # We use micropip for these as they might not be in the pre-built loadPackage list reliably
-                await micropip.install(['openpyxl', 'xlrd'])
-                print("[Worker] Excel engines installed successfully.")
-            except Exception as e:
-                print(f"Error during essential load: {e}")
-
-            # Define Arsenal Loading logic (background)
-            async def load_extra_arsenal():
-                try:
-                    await micropip.install(['scipy', 'matplotlib', 'python-docx', 'pypdf', 'pdfplumber'])
-                    print("Sandbox Arsenal Background Tier Loaded: scipy, matplotlib, python-docx, pypdf, pdfplumber")
-                except Exception as e:
-                    print(f"Warning: Background Arsenal failed to load: {e}")
-
             # Initialize global state explicitly
             if 'files' not in globals():
                 globals()['files'] = {}
             files = globals()['files']
+
+            if 'shared_context' not in globals():
+                globals()['shared_context'] = {'docs': {}, 'dfs': {}}
+            shared_context = globals()['shared_context']
 
             # Custom Stream for real-time logs
             class RealTimeStream(io.TextIOBase):
@@ -92,70 +77,20 @@ async function initPyodide() {
             sys.stdout = RealTimeStream('stdout')
             sys.stderr = RealTimeStream('stderr')
 
-            # Backup original read_excel
-            _original_read_excel = pd.read_excel
-
-            files = globals().get('files', {})
-
-            # Improved mock for pd.read_excel to support virtual data access
-            def mocked_read_excel(path, *args, **kwargs):
-                if isinstance(path, str) and path.startswith('/mnt/'):
-                    fname = path.replace('/mnt/', '')
-                    if 'files' in globals() and fname in files:
-                        data = files[fname]
-                        sheet_name = kwargs.get('sheet_name', 0)
-                        
-                        if sheet_name is None:
-                            if isinstance(data, dict):
-                                return {sname: pd.DataFrame(sdata) for sname, sdata in data.items()}
-                            else:
-                                return {'Result': pd.DataFrame(data)}
-
-                        if isinstance(data, dict):
-                            if isinstance(sheet_name, int):
-                                try:
-                                    sheet_name = list(data.keys())[sheet_name]
-                                except IndexError:
-                                    return pd.DataFrame()
-                            return pd.DataFrame(data.get(sheet_name, []))
-                        else:
-                            return pd.DataFrame(data)
-                            
-                return _original_read_excel(path, *args, **kwargs)
-            
-            pd.read_excel = mocked_read_excel
-
-            def clean_output(obj):
-                import math
-                if isinstance(obj, float):
-                    if math.isnan(obj) or math.isinf(obj):
-                        return None
-                    return obj
-                if isinstance(obj, pd.DataFrame):
-                    return clean_output(obj.to_dict(orient='records'))
-                if isinstance(obj, dict):
-                    return {k: clean_output(v) for k, v in obj.items()}
-                if isinstance(obj, (list, tuple, set)):
-                    return [clean_output(i) for i in obj]
-                # Default for basic types
-                try:
-                    # Handle Pandas/Numpy specific types that JSON doesn't like
-                    if hasattr(obj, 'tolist'): return obj.tolist()
-                    if hasattr(obj, 'to_pydatetime'): return obj.to_pydatetime().isoformat()
-                    if hasattr(obj, 'isoformat'): return obj.isoformat()
-                    return obj
-                except Exception:
-                    return str(obj)
+            # Mock read_excel will be defined below
         `);
 
-        // Await essential engines before proceeding
-        console.log('[Worker] Awaiting essential Excel engines...');
+        // Await essential engines AND document tools (ALL BLOCKING FOR STABILITY per user request)
+        console.log('[Worker] Installing Sandbox Arsenal (Excel + Docs)...');
         await pyodide.runPythonAsync(`
             import micropip
-            await micropip.install(["openpyxl", "xlrd"])
-            # Ensure load_extra_arsenal is available and defined correctly
-            import asyncio
-            asyncio.ensure_future(load_extra_arsenal())
+            # Install ALL dependencies at once to ensure readiness
+            await micropip.install([
+                'openpyxl', 'xlrd', 
+                'scipy', 'matplotlib', 
+                'python-docx', 'pypdf', 'pdfplumber'
+            ])
+            print("Sandbox Arsenal Fully Loaded: Excel + Doc Intelligence")
         `);
         console.log('[Worker] Essential engines and background arsenal ready.');
 
@@ -377,6 +312,11 @@ try:
     # Verify file existence
     if not os.path.exists(fpath):
         raise FileNotFoundError(f"File {fname} not found in sandbox /mnt/")
+    
+    # helper to save to shared_context
+    def save_to_context(data):
+        if 'shared_context' in globals():
+            globals()['shared_context']['docs'][fname] = data
         
     if fname.endswith('.docx'):
         import docx
@@ -431,6 +371,7 @@ try:
             result["text"] = text
             result["meta"]["engine"] = "pypdf"
         
+    save_to_context(result)
     _extract_res = json.dumps({"success": True, "data": result})
 except Exception as e:
     _extract_res = json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()})
@@ -466,6 +407,32 @@ _extract_res
                     ctx.postMessage({ type: 'RESPONSE', success: true, id });
                 } catch (err: any) {
                     console.error('[Worker] Write Binary Failed:', err);
+                    ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
+                }
+            })();
+            break;
+
+        case 'CLEAR_CONTEXT':
+            (async () => {
+                if (!pyodide) return;
+                const { id } = e.data;
+                try {
+                    await pyodide.runPythonAsync(`
+import pandas as pd
+# Keep system modules and essential globals
+keep_list = ['micropip', 'pandas', 'numpy', 'json', 'os', 'sys', 'io', 'files', 'shared_context', 'load_extra_arsenal', 'ctx_post_message', 'mocked_read_excel', 'clean_output', 'RealTimeStream', '_original_read_excel', 'open', 'exit', 'quit', 'get_ipython']
+
+# Reset shared_context but keep the structure
+globals()['shared_context'] = {'docs': {}, 'dfs': {}}
+
+# Clear user variables
+for var in list(globals().keys()):
+    if var not in keep_list and not var.startswith('_') and var not in __builtins__:
+        del globals()[var]
+                    `);
+                    console.log('[Worker] Context Cleared.');
+                    ctx.postMessage({ type: 'RESPONSE', success: true, id });
+                } catch (err: any) {
                     ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
                 }
             })();

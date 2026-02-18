@@ -230,24 +230,39 @@ export const extractText = async (fileName: string): Promise<{ text: string, tab
     await loadPyodide();
     if (!worker) throw new Error('Worker not available');
 
-    const wrapper = await new Promise<any>((resolve, reject) => {
-        const requestId = Math.random().toString(36).substring(7);
-        pendingRequests.set(requestId, { resolve, reject, accumulatedLogs: "" });
-
-        worker!.postMessage({
-            type: 'EXTRACT_TEXT_REQUEST',
-            fileName,
-            id: requestId
-        });
-
-        // Extraction can take time for large PDFs
-        setTimeout(() => {
-            if (pendingRequests.has(requestId)) {
-                pendingRequests.get(requestId)!.reject(new Error('Text extraction timed out'));
-                pendingRequests.delete(requestId);
+    return new Promise((resolve, reject) => {
+        const id = Math.random().toString(36).substring(7);
+        const handleMsg = (e: MessageEvent) => {
+            const { type, success, data, error, id: resId } = e.data;
+            if (type === 'RESPONSE' && resId === id) {
+                worker?.removeEventListener('message', handleMsg);
+                if (success) resolve(data);
+                else reject(new Error(error));
             }
-        }, 30000);
+        };
+        worker.addEventListener('message', handleMsg);
+        worker.postMessage({ type: 'EXTRACT_TEXT_REQUEST', fileName, id });
     });
+};
 
-    return wrapper.data;
+/**
+ * Clear the Python context (User variables) but keep system state
+ */
+export const clearContext = async (): Promise<void> => {
+    await loadPyodide();
+    if (!worker) throw new Error('Worker not available');
+
+    return new Promise((resolve, reject) => {
+        const id = Math.random().toString(36).substring(7);
+        const handleMsg = (e: MessageEvent) => {
+            const { type, success, error, id: resId } = e.data;
+            if (type === 'RESPONSE' && resId === id) {
+                worker?.removeEventListener('message', handleMsg);
+                if (success) resolve();
+                else reject(new Error(error));
+            }
+        };
+        worker.addEventListener('message', handleMsg);
+        worker.postMessage({ type: 'CLEAR_CONTEXT', id });
+    });
 };

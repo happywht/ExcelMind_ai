@@ -95,7 +95,13 @@ export const usePyodide = () => {
     // Helper to manually add files (e.g. from Upload)
     const addFiles = useCallback((newFiles: ExcelData[]) => {
         setFilesData(prev => {
-            const updated = [...prev, ...newFiles];
+            const existingNames = new Set(prev.map(f => f.fileName));
+            // Only add files that don't already exist by name
+            const trulyNew = newFiles.filter(f => !existingNames.has(f.fileName));
+
+            if (trulyNew.length === 0) return prev;
+
+            const updated = [...prev, ...trulyNew];
             filesDataRef.current = updated;
             return updated;
         });
