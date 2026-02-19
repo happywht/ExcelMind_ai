@@ -88,7 +88,7 @@ async function initPyodide() {
             await micropip.install([
                 'openpyxl', 'xlrd', 
                 'scipy', 'matplotlib', 
-                'python-docx', 'pypdf', 'pdfplumber'
+                'python-docx', 'pypdf'
             ])
             print("Sandbox Arsenal Fully Loaded: Excel + Doc Intelligence")
         `);

@@ -3,6 +3,7 @@ import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Termina
 import { writeFileToSandbox, extractText, runPython, clearContext } from '../services/pyodideService';
 import { runAgenticLoop } from '../services/agent/loop';
 import { useTraceLogger } from '../hooks/useTraceLogger';
+import { traceToMarkdown } from '../services/agent/traceUtils';
 import { AgenticStep, ProcessingLog } from '../types';
 
 interface DocumentFile {
@@ -37,7 +38,7 @@ export const SmartDocument: React.FC = () => {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    const { setLastTrace } = useTraceLogger();
+    const { setLastTrace, downloadMarkdownTrace } = useTraceLogger();
 
     const handleClearContext = async () => {
         if (confirm('确定要清空所有上下文记忆吗？\n这将移除所有变量，但保留系统环境。\n(Synergy: 此操作也会影响 Excel 模块的共享数据)')) {
@@ -259,6 +260,19 @@ with pdfplumber.open(target) as pdf:
 
             setLastTrace(result.trace || null);
             addLog('System', 'success', `任务完成: ${result.explanation}`);
+
+            // --- Phase 8.5: Auto-save Trace Log to Sandbox ---
+            if (result.trace) {
+                try {
+                    const traceMd = traceToMarkdown(result.trace);
+                    const logFileName = `logs/trace_${Date.now()}.md`;
+                    const encoder = new TextEncoder();
+                    await writeFileToSandbox(logFileName, encoder.encode(traceMd).buffer);
+                    addLog('System', 'success', `思维链日志已自动备份: ${logFileName}`);
+                } catch (logErr: any) {
+                    console.error("Failed to auto-save log:", logErr);
+                }
+            }
 
         } catch (e: any) {
             console.error("Agentic Loop Error:", e);
@@ -521,6 +535,21 @@ with pdfplumber.open(target) as pdf:
                                     <ChevronRight className="w-5 h-5" />
                                 </button>
                             </div>
+                        </div>
+                        {/* Download Trace Log Button */}
+                        <div className="px-5 pb-3 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    if (downloadMarkdownTrace) {
+                                        downloadMarkdownTrace();
+                                    } else {
+                                        alert('当前无执行记录');
+                                    }
+                                }}
+                                className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20"
+                            >
+                                <Zap className="w-3 h-3" /> 下载执行日志 (Markdown)
+                            </button>
                         </div>
                     </div>
 
