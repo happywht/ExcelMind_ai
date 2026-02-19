@@ -112,10 +112,12 @@ export interface OrchestratorAction {
 /** A step in the Orchestrator's reasoning chain */
 export interface OrchestratorStep {
   thought: string;
+  /** Phase 10.3: The "Manager Voice" - direct message to the user */
+  speak?: string;
   action: OrchestratorAction;
   observation?: string;
   status: 'thinking' | 'delegating' | 'observing' | 'finished' | 'error' | 'parallel';
-  /** Which sub-agent handled this step */
+  /** Which sub-agent handled this step (Phase 10.3: can be an array if multiple dispatch) */
   agentType?: 'excel' | 'document' | 'search' | 'orchestrator' | 'parallel';
   timestamp: number;
   /** Phase 10.2: For parallel steps, the group of sub-tasks fired concurrently */

@@ -109,13 +109,19 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
                   {task.status === 'done' && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
                   {task.status === 'error' && <AlertCircle className="w-2.5 h-2.5 text-red-400 shrink-0" />}
                   <span className={`text-[10px] ${task.status === 'done' ? 'text-emerald-300' :
-                      task.status === 'error' ? 'text-red-300' : 'text-yellow-300'
+                    task.status === 'error' ? 'text-red-300' : 'text-yellow-300'
                     }`}>{task.label}</span>
                 </div>
               ))}
             </div>
           )}
 
+          {step.speak && (
+            <div className="text-slate-300 border-t border-white/5 pt-2 italic">
+              <span className="text-slate-500 font-semibold italic">Speak: </span>
+              <span>{step.speak}</span>
+            </div>
+          )}
           {step.observation && (
             <div className="text-slate-500 border-t border-white/5 pt-2">
               <span className="text-slate-400 font-semibold">Observation: </span>
@@ -234,23 +240,37 @@ export const KnowledgeChat: React.FC = () => {
           (step) => {
             orchestratorSteps.push({ ...step });
             setLiveSteps([...orchestratorSteps]);
-            // Update the streaming message
-            setMessages(prev => prev.map(m =>
-              m.timestamp === streamingMsgId
-                ? { ...m, orchestrationSteps: [...orchestratorSteps] }
-                : m
-            ));
+
+            // Phase 10.3: If the step has a 'speak' field, append it to the message text
+            // This ensures the "Liberal Arts" voice is heard in the main chat
+            setMessages(prev => prev.map(m => {
+              if (m.timestamp === streamingMsgId) {
+                let newText = m.text;
+                if (step.speak) {
+                  newText = newText ? `${newText}\n\n${step.speak}` : step.speak;
+                }
+                return { ...m, text: newText, orchestrationSteps: [...orchestratorSteps] };
+              }
+              return m;
+            }));
           },
           executeWorker,
           abortControllerRef.current.signal
         );
 
-        // Finalize message with all steps
-        setMessages(prev => prev.map(m =>
-          m.timestamp === streamingMsgId
-            ? { ...m, text: finalText, isStreaming: false, orchestrationSteps: [...orchestratorSteps] }
-            : m
-        ));
+        // Finalize message - if finalText is different from what we've accumulated via 'speak', use it
+        setMessages(prev => prev.map(m => {
+          if (m.timestamp === streamingMsgId) {
+            // If the final result is basically the same as the last speak, don't double it
+            const currentText = m.text.trim();
+            const finalizedText = (finalText && finalText !== currentText)
+              ? (currentText ? `${currentText}\n\n${finalText}` : finalText)
+              : currentText;
+
+            return { ...m, text: finalizedText, isStreaming: false, orchestrationSteps: [...orchestratorSteps] };
+          }
+          return m;
+        }));
       } else {
         // ── Simple RAG mode (no files or orchestrator off) ──
         const combinedKnowledgeText = knowledgeFiles.map(file =>
