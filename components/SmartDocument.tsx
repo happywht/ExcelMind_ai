@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Terminal, RotateCcw, ChevronRight, Zap, Bot, ShieldQuestion, Check, Ban, ChevronLeft, MessageSquare, Send, Sparkles } from 'lucide-react';
-import { writeFileToSandbox, extractText, runPython, clearContext } from '../services/pyodideService';
+import { writeFileToSandbox, extractText, runPython, clearContext, loadDocWorker } from '../services/pyodideService';
 import { runAgenticLoop } from '../services/agent/loop';
 import { useTraceLogger } from '../hooks/useTraceLogger';
 import { traceToMarkdown } from '../services/agent/traceUtils';
@@ -39,6 +39,11 @@ export const SmartDocument: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const { setLastTrace, downloadMarkdownTrace } = useTraceLogger();
+
+    // Hyper-Threading: Pre-warm the Doc Worker for faster extraction
+    useEffect(() => {
+        loadDocWorker().catch(e => console.error("DocWorker Pre-load failed:", e));
+    }, []);
 
     const handleClearContext = async () => {
         if (confirm('确定要清空所有上下文记忆吗？\n这将移除所有变量，但保留系统环境。\n(Synergy: 此操作也会影响 Excel 模块的共享数据)')) {

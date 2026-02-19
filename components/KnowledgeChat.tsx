@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Book, Paperclip, Bot, User, Trash2, FileText,
   Cpu, Search, BarChart3, Loader2, ChevronDown, ChevronRight,
-  Sparkles, AlertCircle, CheckCircle2, BrainCircuit, Database
+  Sparkles, AlertCircle, CheckCircle2, BrainCircuit, Database, Zap, RefreshCw
 } from 'lucide-react';
 import { ChatMessage, OrchestratorStep, ExcelData } from '../types';
 import { chatWithKnowledgeBase } from '../services/zhipuService';
@@ -39,6 +39,7 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
     document: <FileText className="w-3.5 h-3.5 text-blue-400" />,
     search: <Search className="w-3.5 h-3.5 text-purple-400" />,
     orchestrator: <BrainCircuit className="w-3.5 h-3.5 text-amber-400" />,
+    parallel: <Zap className="w-3.5 h-3.5 text-yellow-400" />,
   };
 
   const statusColors: Record<string, string> = {
@@ -47,6 +48,7 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
     observing: 'border-emerald-500/30 bg-emerald-500/5',
     finished: 'border-emerald-600/40 bg-emerald-600/8',
     error: 'border-red-500/30 bg-red-500/5',
+    parallel: 'border-yellow-500/40 bg-yellow-500/5',
   };
 
   const statusIcons: Record<string, React.ReactNode> = {
@@ -55,11 +57,14 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
     observing: <Database className="w-3 h-3 text-emerald-400" />,
     finished: <CheckCircle2 className="w-3 h-3 text-emerald-400" />,
     error: <AlertCircle className="w-3 h-3 text-red-400" />,
+    parallel: <Zap className="w-3 h-3 text-yellow-400 animate-pulse" />,
   };
 
   const toolLabels: Record<string, string> = {
     analyze_excel: '分析 Excel',
     read_document: '读取文档',
+    parallel_dispatch: '⚡ 并行调度',
+    sync_context: '🔄 同步上下文',
     search_context: '搜索上下文',
     generate_report: '生成报告',
     finish: '完成',
@@ -93,6 +98,24 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
               <span className="text-slate-400"> — {step.action.params.instruction}</span>
             )}
           </div>
+
+          {/* Phase 10.2: Parallel group lane display */}
+          {step.parallelGroup && step.parallelGroup.length > 0 && (
+            <div className="border border-yellow-500/20 rounded p-2 space-y-1">
+              <div className="text-yellow-400 font-semibold text-[10px] mb-1">⚡ 并行执行队列</div>
+              {step.parallelGroup.map((task, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  {task.status === 'running' && <Loader2 className="w-2.5 h-2.5 text-yellow-400 animate-spin shrink-0" />}
+                  {task.status === 'done' && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
+                  {task.status === 'error' && <AlertCircle className="w-2.5 h-2.5 text-red-400 shrink-0" />}
+                  <span className={`text-[10px] ${task.status === 'done' ? 'text-emerald-300' :
+                      task.status === 'error' ? 'text-red-300' : 'text-yellow-300'
+                    }`}>{task.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {step.observation && (
             <div className="text-slate-500 border-t border-white/5 pt-2">
               <span className="text-slate-400 font-semibold">Observation: </span>
@@ -104,6 +127,7 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
     </div>
   );
 };
+
 
 // ---------------------------------------------------------------
 // Main Component
@@ -351,8 +375,8 @@ export const KnowledgeChat: React.FC = () => {
               onClick={() => setUseOrchestrator(!useOrchestrator)}
               title={useOrchestrator ? '当前：指挥家模式 (点击切换为简单模式)' : '当前：简单模式 (点击切换为指挥家模式)'}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${useOrchestrator
-                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-                  : 'bg-slate-800 border-slate-700 text-slate-400'
+                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                : 'bg-slate-800 border-slate-700 text-slate-400'
                 }`}
             >
               <Sparkles className="w-3 h-3" />
@@ -387,8 +411,8 @@ export const KnowledgeChat: React.FC = () => {
                 {/* Message bubble */}
                 {(msg.text || msg.isStreaming) && (
                   <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${msg.role === 'user'
-                      ? 'bg-slate-700 text-slate-100 rounded-tr-none'
-                      : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-tl-none'
+                    ? 'bg-slate-700 text-slate-100 rounded-tr-none'
+                    : 'bg-slate-800 border border-slate-700/50 text-slate-200 rounded-tl-none'
                     }`}>
                     {msg.isStreaming && !msg.text ? (
                       <div className="flex gap-1.5 items-center text-slate-400">

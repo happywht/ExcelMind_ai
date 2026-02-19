@@ -75,16 +75,26 @@ export interface AIProcessResult {
 }
 
 // ============================================================
-// SIAP: Standardized Inter-Agent Protocol (Phase 9.0) 🚀
+// SIAP: Standardized Inter-Agent Protocol (Phase 10.2) 🎻🧠
 // ============================================================
 
 /** Tools the Orchestrator can dispatch to Worker Agents */
 export type OrchestratorTool =
-  | 'analyze_excel'   // Invoke Smart Excel agent
-  | 'read_document'   // Invoke Smart Document agent
-  | 'search_context'  // Search shared_context for already-loaded data
-  | 'generate_report' // Summarize and present results to the user
-  | 'finish';         // End conversation turn
+  | 'analyze_excel'      // Invoke Smart Excel (Analysis Worker)
+  | 'read_document'      // Invoke Smart Document (Doc Worker)
+  | 'parallel_dispatch'  // Phase 10.2: Fire multiple sub-tasks concurrently
+  | 'search_context'     // Search shared_context for already-loaded data
+  | 'sync_context'       // Phase 10.2: Snapshot & merge shared_context from both workers
+  | 'generate_report'    // Summarize and present results to the user
+  | 'finish';            // End conversation turn
+
+/** A single concurrent task within a parallel_dispatch */
+export interface ParallelSubTask {
+  /** Target worker: 'doc' routes to Doc Worker; 'excel' to Analysis Worker */
+  core: 'doc' | 'excel';
+  tool: 'analyze_excel' | 'read_document';
+  params: OrchestratorAction['params'];
+}
 
 /** A single tool call dispatched from the Orchestrator */
 export interface OrchestratorAction {
@@ -92,8 +102,9 @@ export interface OrchestratorAction {
   params: {
     instruction?: string;     // Natural language instruction for the worker
     fileName?: string;        // Target file name
-    query?: string;           // For search_context
+    query?: string;           // For search_context / sync_context
     summary?: string;         // For generate_report / finish
+    tasks?: ParallelSubTask[]; // Phase 10.2: For parallel_dispatch
     [key: string]: any;
   };
 }
@@ -103,10 +114,12 @@ export interface OrchestratorStep {
   thought: string;
   action: OrchestratorAction;
   observation?: string;
-  status: 'thinking' | 'delegating' | 'observing' | 'finished' | 'error';
+  status: 'thinking' | 'delegating' | 'observing' | 'finished' | 'error' | 'parallel';
   /** Which sub-agent handled this step */
-  agentType?: 'excel' | 'document' | 'search' | 'orchestrator';
+  agentType?: 'excel' | 'document' | 'search' | 'orchestrator' | 'parallel';
   timestamp: number;
+  /** Phase 10.2: For parallel steps, the group of sub-tasks fired concurrently */
+  parallelGroup?: { core: string; tool: string; label: string; status: 'running' | 'done' | 'error' }[];
 }
 
 /** Full chat message, now extended to carry orchestration metadata */

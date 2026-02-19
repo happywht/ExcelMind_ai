@@ -287,108 +287,13 @@ ctx.onmessage = (e: MessageEvent) => {
             })();
             break;
         case 'EXTRACT_TEXT_REQUEST':
-            (async () => {
-                if (!pyodide) return;
-                const { fileName, id } = e.data;
-                try {
-                    // Ensure the file exists in /mnt/
-                    // It should have been synced via RUN_REQUEST or manually before this call?
-                    // Actually, for Smart Document, we might need to sync it first if it was just uploaded.
-                    // But usually we sync via a separate call or part of the flow.
-                    // Let's assume the file is securely in /mnt/ or 'files' global.
-
-                    const resultJson = await pyodide.runPythonAsync(`
-import json
-import os
-import traceback
-
-fname = "${fileName}"
-fpath = f'/mnt/{fname}'
-
-result = {"text": "", "tables": [], "meta": {}, "structure": []}
-_extract_res = ""
-
-try:
-    # Verify file existence
-    if not os.path.exists(fpath):
-        raise FileNotFoundError(f"File {fname} not found in sandbox /mnt/")
-    
-    # helper to save to shared_context
-    def save_to_context(data):
-        if 'shared_context' in globals():
-            globals()['shared_context']['docs'][fname] = data
-        
-    if fname.endswith('.docx'):
-        import docx
-        doc = docx.Document(fpath)
-        
-        # Combined text extraction with structure
-        lines = []
-        for p in doc.paragraphs:
-            text = p.text.strip()
-            if not text: continue
-            
-            lines.append(text)
-            
-            # Identify Headings
-            style_name = p.style.name.lower()
-            if 'heading' in style_name:
-                level = 1
-                if '1' in style_name: level = 1
-                elif '2' in style_name: level = 2
-                elif '3' in style_name: level = 3
-                result["structure"].append({"type": "heading", "level": level, "text": text})
-        
-        result["text"] = '\\n'.join(lines)
-        
-        # Extract tables
-        for table in doc.tables:
-            tbl_data = []
-            for row in table.rows:
-                tbl_data.append([cell.text for cell in row.cells])
-            result["tables"].append(tbl_data)
-            
-    elif fname.endswith('.pdf'):
-        try:
-            import pdfplumber
-            with pdfplumber.open(fpath) as pdf:
-                full_text = []
-                for page in pdf.pages:
-                    full_text.append(page.extract_text() or "")
-                    # Extract tables from each page if any
-                    tables = page.extract_tables()
-                    for table in tables:
-                        if table: result["tables"].append(table)
-                result["text"] = '\\n'.join(full_text)
-                result["meta"]["engine"] = "pdfplumber"
-        except ImportError:
-            # Fallback to pypdf
-            from pypdf import PdfReader
-            reader = PdfReader(fpath)
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text() + "\\n"
-            result["text"] = text
-            result["meta"]["engine"] = "pypdf"
-        
-    save_to_context(result)
-    _extract_res = json.dumps({"success": True, "data": result})
-except Exception as e:
-    _extract_res = json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()})
-
-_extract_res
-                    `);
-
-                    const res = JSON.parse(resultJson);
-                    if (res.success) {
-                        ctx.postMessage({ type: 'RESPONSE', success: true, data: res.data, id });
-                    } else {
-                        ctx.postMessage({ type: 'RESPONSE', success: false, error: res.error, id });
-                    }
-                } catch (err: any) {
-                    ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
-                }
-            })();
+            // Logic moved to doc.worker.ts (Phase 10.1)
+            ctx.postMessage({
+                type: 'RESPONSE',
+                success: false,
+                error: "Logic moved to specialized Doc Worker.",
+                id: e.data.id
+            });
             break;
 
         case 'WRITE_BINARY_FILE':
