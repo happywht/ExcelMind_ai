@@ -6,11 +6,7 @@ export enum AppView {
   SMART_DOC = 'SMART_DOC',
 }
 
-export interface ChatMessage {
-  role: 'user' | 'model';
-  text: string;
-  timestamp: number;
-}
+// ChatMessage is defined in the SIAP section below (Phase 9.0)
 
 export interface SheetMetadata {
   comments: { [cellAddress: string]: string };
@@ -76,4 +72,49 @@ export interface AIProcessResult {
   explanation: string;
   finalCode?: string;
   trace?: TraceSession;
+}
+
+// ============================================================
+// SIAP: Standardized Inter-Agent Protocol (Phase 9.0) 🚀
+// ============================================================
+
+/** Tools the Orchestrator can dispatch to Worker Agents */
+export type OrchestratorTool =
+  | 'analyze_excel'   // Invoke Smart Excel agent
+  | 'read_document'   // Invoke Smart Document agent
+  | 'search_context'  // Search shared_context for already-loaded data
+  | 'generate_report' // Summarize and present results to the user
+  | 'finish';         // End conversation turn
+
+/** A single tool call dispatched from the Orchestrator */
+export interface OrchestratorAction {
+  tool: OrchestratorTool;
+  params: {
+    instruction?: string;     // Natural language instruction for the worker
+    fileName?: string;        // Target file name
+    query?: string;           // For search_context
+    summary?: string;         // For generate_report / finish
+    [key: string]: any;
+  };
+}
+
+/** A step in the Orchestrator's reasoning chain */
+export interface OrchestratorStep {
+  thought: string;
+  action: OrchestratorAction;
+  observation?: string;
+  status: 'thinking' | 'delegating' | 'observing' | 'finished' | 'error';
+  /** Which sub-agent handled this step */
+  agentType?: 'excel' | 'document' | 'search' | 'orchestrator';
+  timestamp: number;
+}
+
+/** Full chat message, now extended to carry orchestration metadata */
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+  /** Orchestration thought steps rendered as "Thought Bubbles" */
+  orchestrationSteps?: OrchestratorStep[];
+  isStreaming?: boolean;
 }
