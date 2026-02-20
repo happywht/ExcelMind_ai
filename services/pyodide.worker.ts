@@ -64,6 +64,26 @@ async function initPyodide() {
                         ctx_post_message(json.dumps({'type': 'STDOUT', 'content': s, 'stream': self.type_name}))
                     return len(s)
 
+            # --- Data Reshaper for JS compatibility ---
+            def clean_output(obj):
+                import pandas as pd
+                import numpy as np
+                import json
+                if isinstance(obj, (pd.DataFrame, pd.Series)):
+                    return obj.to_dict(orient='records')
+                if isinstance(obj, (np.integer, np.floating)):
+                    return float(obj)
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                if isinstance(obj, dict):
+                    return {k: clean_output(v) for k, v in obj.items()}
+                if isinstance(obj, list):
+                    return [clean_output(v) for v in obj]
+                return obj
+
+            # Register helper in globals for user access
+            globals()['clean_output'] = clean_output
+
             # Register the JS postMessage function in Python scope
             from js import self as js_self
             from pyodide.ffi import to_js
@@ -76,8 +96,6 @@ async function initPyodide() {
 
             sys.stdout = RealTimeStream('stdout')
             sys.stderr = RealTimeStream('stderr')
-
-            # Mock read_excel will be defined below
         `);
 
         // Await essential engines AND document tools (ALL BLOCKING FOR STABILITY per user request)
@@ -162,6 +180,13 @@ try:
     _code = globals().get('__user_code_raw', '')
     # Execute in the real global context
     try:
+        # Pre-inject common libraries to avoid NameError: 'json' is not defined
+        import json
+        import pandas as pd
+        import numpy as np
+        import os
+        globals().update({'json': json, 'pd': pd, 'np': np, 'os': os})
+        
         _last_output_capture = eval(compile(_code, '<string>', 'eval'), globals())
     except SyntaxError:
         exec(compile(_code, '<string>', 'exec'), globals())

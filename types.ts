@@ -138,3 +138,13 @@ export interface ChatMessage {
   orchestrationSteps?: OrchestratorStep[];
   isStreaming?: boolean;
 }
+
+/** RPC Style communication state */
+export interface PendingRequest {
+  resolve: (val: any) => void;
+  reject: (err: any) => void;
+  onLog?: (content: string) => void;
+  accumulatedLogs: string;
+}
+
+export type WorkerMessage = any;
