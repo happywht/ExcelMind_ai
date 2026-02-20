@@ -85,6 +85,8 @@ export type OrchestratorTool =
   | 'parallel_dispatch'  // Phase 10.2: Fire multiple sub-tasks concurrently
   | 'search_context'     // Search shared_context for already-loaded data
   | 'sync_context'       // Phase 10.2: Snapshot & merge shared_context from both workers
+  | 'write_memo'         // Phase 11.1: Append a note to orchestrator memo
+  | 'read_memo'          // Phase 11.1: Read summarized memo for cross-step reasoning
   | 'generate_report'    // Summarize and present results to the user
   | 'finish';            // End conversation turn
 
@@ -105,6 +107,8 @@ export interface OrchestratorAction {
     query?: string;           // For search_context / sync_context
     summary?: string;         // For generate_report / finish
     tasks?: ParallelSubTask[]; // Phase 10.2: For parallel_dispatch
+    title?: string;           // Phase 11.1: For write_memo note title
+    content?: string;         // Phase 11.1: For write_memo note content
     [key: string]: any;
   };
 }
