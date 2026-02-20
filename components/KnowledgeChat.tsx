@@ -63,18 +63,18 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
   };
 
   const toolLabels: Record<string, string> = {
-    analyze_excel: '鍒嗘瀽 Excel',
-    read_document: '璇诲彇鏂囨。',
-    parallel_dispatch: '鈿?骞惰璋冨害',
-    sync_context: '馃攧 鍚屾涓婁笅鏂?,
-    search_context: '鎼滅储涓婁笅鏂?,
-    write_memo: '馃摑 鍐欏蹇樺綍',
-    read_memo: '馃摀 璇诲蹇樺綍',
-    generate_report: '鐢熸垚鎶ュ憡',
-    finish: '瀹屾垚',
+    analyze_excel: '分析 Excel',
+    read_document: '读取文档',
+    parallel_dispatch: '⚙️ 并行调度',
+    sync_context: '🔄 同步上下文',
+    search_context: '搜索上下文',
+    write_memo: '📝 写备忘录',
+    read_memo: '📖 读备忘录',
+    generate_report: '生成报告',
+    finish: '完成',
   };
 
-  // Phase 11.2: Zen Mode 鈥?show minimal capsule only
+  // Phase 11.2: Zen Mode — show minimal capsule only
   if (zenMode) {
     return (
       <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] border w-fit ${statusColors[step.status] || statusColors.thinking
@@ -84,7 +84,7 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
           {toolLabels[step.action.tool] || step.action.tool}
         </span>
         {step.speak && (
-          <span className="text-slate-300 italic truncate max-w-[220px]">鈥?{step.speak}</span>
+          <span className="text-slate-300 italic truncate max-w-[220px]"> — {step.speak}</span>
         )}
       </div>
     );
@@ -99,53 +99,68 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
         className="w-full flex items-center gap-2 px-3 py-2 text-left"
         onClick={() => setExpanded(!expanded)}
       >
-        <span className="text-slate-500">#{index + 1}</span>
-        {statusIcons[step.status]}
-        <span className="text-slate-400 flex-1 truncate">{step.thought}</span>
-        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-800/50 text-slate-400 shrink-0">
-          {agentIcons[step.agentType || 'orchestrator']}
-          <span>{toolLabels[step.action.tool] || step.action.tool}</span>
-        </span>
-        {expanded ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
+        <div className="flex-shrink-0">
+          {statusIcons[step.status]}
+        </div>
+        <div className="flex-1 flex items-center justify-between min-w-0">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="font-bold text-slate-300 uppercase tracking-tighter text-[10px]">
+              {step.status}
+            </span>
+            <span className="text-slate-500">
+              {toolLabels[step.action.tool] || step.action.tool}
+            </span>
+          </div>
+          {expanded ? <ChevronDown className="w-3 h-3 text-slate-600" /> : <ChevronRight className="w-3 h-3 text-slate-600" />}
+        </div>
       </button>
 
       {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-white/5 pt-2">
-          <div className="text-slate-500">
-            <span className="text-slate-400 font-semibold">Action: </span>
-            <code className="text-blue-300">{step.action.tool}</code>
-            {step.action.params.instruction && (
-              <span className="text-slate-400"> 鈥?{step.action.params.instruction}</span>
-            )}
-          </div>
-
-          {/* Phase 10.2: Parallel group lane display */}
-          {step.parallelGroup && step.parallelGroup.length > 0 && (
-            <div className="border border-yellow-500/20 rounded p-2 space-y-1">
-              <div className="text-yellow-400 font-semibold text-[10px] mb-1">鈿?骞惰鎵ц闃熷垪</div>
-              {step.parallelGroup.map((task, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  {task.status === 'running' && <Loader2 className="w-2.5 h-2.5 text-yellow-400 animate-spin shrink-0" />}
-                  {task.status === 'done' && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 shrink-0" />}
-                  {task.status === 'error' && <AlertCircle className="w-2.5 h-2.5 text-red-400 shrink-0" />}
-                  <span className={`text-[10px] ${task.status === 'done' ? 'text-emerald-300' :
-                    task.status === 'error' ? 'text-red-300' : 'text-yellow-300'
-                    }`}>{task.label}</span>
+        <div className="px-3 pb-3 pt-1 border-t border-slate-800/50 space-y-2.5">
+          {step.action && (
+            <div className="bg-slate-900/50 p-2 rounded border border-slate-800 flex items-start gap-2">
+              <div className="mt-0.5 p-1 bg-blue-500/10 rounded">
+                <Cpu className="w-3 h-3 text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="text-[10px] text-slate-500 mb-1">ACTION 调用</div>
+                <div className="text-emerald-400 font-bold overflow-hidden text-ellipsis whitespace-nowrap">
+                  {step.action.tool}({Object.keys(step.action.params).length > 0 ? '...' : ''})
                 </div>
-              ))}
+                {Object.keys(step.action.params).length > 0 && (
+                  <pre className="text-[10px] text-slate-400 mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap leading-tight">
+                    {JSON.stringify(step.action.params, null, 2)}
+                  </pre>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step.observation && (
+            <div className="bg-slate-900/50 p-2 rounded border border-slate-800 flex items-start gap-2">
+              <div className="mt-0.5 p-1 bg-emerald-500/10 rounded">
+                <Database className="w-3 h-3 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] text-slate-500 mb-1">OBSERVATION 结果</div>
+                <div className="text-slate-300 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed scrollbar-thin scrollbar-thumb-slate-800">
+                  {step.observation}
+                </div>
+              </div>
             </div>
           )}
 
           {step.speak && (
-            <div className="text-slate-300 border-t border-white/5 pt-2 italic">
-              <span className="text-slate-500 font-semibold italic">Speak: </span>
-              <span>{step.speak}</span>
-            </div>
-          )}
-          {step.observation && (
-            <div className="text-slate-500 border-t border-white/5 pt-2">
-              <span className="text-slate-400 font-semibold">Observation: </span>
-              <span className="text-emerald-300">{step.observation.substring(0, 300)}{step.observation.length > 300 ? '...' : ''}</span>
+            <div className="bg-amber-500/5 p-2 rounded border border-amber-500/20 flex items-start gap-2">
+              <div className="mt-0.5 p-1 bg-amber-500/10 rounded">
+                <Bot className="w-3 h-3 text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] text-amber-500/60 mb-1 font-bold">SPEAK 旁白</div>
+                <div className="text-amber-200/90 italic leading-relaxed">
+                  {step.speak}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -154,15 +169,11 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
   );
 };
 
-
-// ---------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------
 export const KnowledgeChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'model',
-      text: '浣犲ソ锛佹垜鏄?*ExcelMind 瀹¤鎸囨尌瀹?*銆俓n\n鎴戠幇鍦ㄦ嫢鏈夋洿寮哄ぇ鐨勮兘鍔涒€斺€斾笉浠呰兘鍥炵瓟闂锛岃繕鑳?*鑷姩椹卞姩鍚庡彴涓撲笟浠ｇ悊**锛圫mart Excel & Smart Document锛夋潵甯綘绮惧噯鍒嗘瀽鏁版嵁锛屾棤闇€鎵嬪姩鍒囨崲宸ュ叿銆俓n\n璇蜂笂浼犳枃浠讹紝鐒跺悗鍛婅瘔鎴戜綘鐨勫璁′换鍔★紒',
+      text: '你好！我是**ExcelMind 审计指挥官**。\n\n我现在拥有更强大的能力——不仅能回答问题，还能**自动驱动后台专业代理**（Smart Excel & Smart Document）来帮你精准分析数据，无需手动切换工具。\n\n请上传文件，然后告诉我你的审计任务！',
       timestamp: Date.now()
     }
   ]);
@@ -212,13 +223,11 @@ export const KnowledgeChat: React.FC = () => {
     }
 
     // For now, pass the file content as context to a simple analysis loop
-    // In a full implementation, this would wire to runAgenticLoop
     const contextSummary = [
       `File: ${targetFile.name} (${targetFile.type})`,
       `Content preview: ${targetFile.content.substring(0, 2000)}`,
     ].join('\n');
 
-    // Use the existing KnowledgeBase chat as a headless worker
     const workerResult = await chatWithKnowledgeBase(
       instruction,
       [],
@@ -253,7 +262,7 @@ export const KnowledgeChat: React.FC = () => {
       let finalText = '';
 
       if (useOrchestrator && knowledgeFiles.length > 0) {
-        // 鈹€鈹€ Orchestrator Mode 鈹€鈹€
+        // ── Orchestrator Mode ──
         const orchestratorSteps: OrchestratorStep[] = [];
 
         finalText = await runOrchestrator(
@@ -284,10 +293,9 @@ export const KnowledgeChat: React.FC = () => {
           abortControllerRef.current.signal
         );
 
-        // Finalize message - if finalText is different from what we've accumulated via 'speak', use it
+        // Finalize message
         setMessages(prev => prev.map(m => {
           if (m.timestamp === streamingMsgId) {
-            // If the final result is basically the same as the last speak, don't double it
             const currentText = m.text.trim();
             const finalizedText = (finalText && finalText !== currentText)
               ? (currentText ? `${currentText}\n\n${finalText}` : finalText)
@@ -298,9 +306,9 @@ export const KnowledgeChat: React.FC = () => {
           return m;
         }));
       } else {
-        // 鈹€鈹€ Simple RAG mode (no files or orchestrator off) 鈹€鈹€
+        // ── Simple RAG mode (no files or orchestrator off) ──
         const combinedKnowledgeText = knowledgeFiles.map(file =>
-          `--- 鏂囦欢: ${file.name} (${file.type}) ---\n${file.content}`
+          `--- 文件: ${file.name} (${file.type}) ---\n${file.content}`
         ).join('\n\n');
 
         finalText = await chatWithKnowledgeBase(
@@ -316,7 +324,7 @@ export const KnowledgeChat: React.FC = () => {
         ));
       }
     } catch (err: any) {
-      const errText = err.name === 'AbortError' ? '宸插彇娑堣姹傘€? : `鍒嗘瀽鍑洪敊锛?{err.message}`;
+      const errText = err.name === 'AbortError' ? '已取消请求。' : `分析出错：${err.message}`;
       setMessages(prev => prev.map(m =>
         m.timestamp === streamingMsgId
           ? { ...m, text: errText, isStreaming: false }
@@ -366,7 +374,7 @@ export const KnowledgeChat: React.FC = () => {
       }
       return { content: textContent.trim(), type: fileType };
     } catch (err) {
-      throw new Error(`瑙ｆ瀽鏂囦欢澶辫触: ${file.name}`);
+      throw new Error(`解析文件失败: ${file.name}`);
     }
   };
 
@@ -374,15 +382,15 @@ export const KnowledgeChat: React.FC = () => {
     const files = e.target.files;
     if (!files) return;
     if (knowledgeFiles.length + files.length > 5) {
-      alert(`鏈€澶氬彧鑳戒笂浼?涓枃浠躲€俙); return;
+      alert(`最多只能上传5个文件。`); return;
     }
     const maxSize = 10 * 1024 * 1024;
     const existingFileNames = new Set(knowledgeFiles.map(f => f.name));
     const newFiles: KnowledgeFile[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.size > maxSize) { alert(`鏂囦欢 ${file.name} 澶у皬瓒呰繃10MB闄愬埗銆俙); continue; }
-      if (existingFileNames.has(file.name)) { alert(`鏂囦欢 "${file.name}" 宸茬粡涓婁紶杩囦簡銆俙); continue; }
+      if (file.size > maxSize) { alert(`文件 ${file.name} 大小超过10MB限制。`); continue; }
+      if (existingFileNames.has(file.name)) { alert(`文件 "${file.name}" 已经上传过了。`); continue; }
       try {
         const { content, type } = await processFileContent(file);
         if (content) {
@@ -392,7 +400,7 @@ export const KnowledgeChat: React.FC = () => {
           });
         }
       } catch (err: any) {
-        alert(`澶勭悊鏂囦欢 "${file.name}" 鏃跺嚭閿? ${err.message}`);
+        alert(`处理文件 "${file.name}" 时出错: ${err.message}`);
       }
     }
     if (newFiles.length > 0) setKnowledgeFiles(prev => [...prev, ...newFiles]);
@@ -404,7 +412,7 @@ export const KnowledgeChat: React.FC = () => {
   return (
     <div className="h-full flex bg-slate-950 text-slate-100">
 
-      {/* 鈹€鈹€ Chat Area 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */}
+      {/* ── Chat Area ─────────────────────────────────── */}
       <div className="flex-1 flex flex-col relative min-w-0">
 
         {/* Header */}
@@ -414,7 +422,7 @@ export const KnowledgeChat: React.FC = () => {
               <BrainCircuit className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">瀹¤鎸囨尌瀹?/h2>
+              <h2 className="text-base font-bold text-white">审计指挥官</h2>
               <p className="text-xs text-slate-500">Brain + Hands Mode Active</p>
             </div>
           </div>
@@ -422,25 +430,25 @@ export const KnowledgeChat: React.FC = () => {
             {/* Phase 11.2: Zen Mode Toggle */}
             <button
               onClick={() => setZenMode(!zenMode)}
-              title={zenMode ? '褰撳墠锛氱畝绾︽ā寮?(鐐瑰嚮鍒囨崲涓烘瀬瀹㈡ā寮?' : '褰撳墠锛氭瀬瀹㈡ā寮?(鐐瑰嚮鍒囨崲涓虹畝绾︽ā寮?'}
+              title={zenMode ? '当前：简约模式 (点击切换为极客模式)' : '当前：极客模式 (点击切换为简约模式)'}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${zenMode
                   ? 'bg-slate-800 border-slate-700 text-slate-400'
                   : 'bg-purple-500/10 border-purple-500/40 text-purple-400'
                 }`}
             >
               {zenMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-              {zenMode ? '绠€绾? : '鏋佸'}
+              {zenMode ? '简约' : '极客'}
             </button>
             <button
               onClick={() => setUseOrchestrator(!useOrchestrator)}
-              title={useOrchestrator ? '褰撳墠锛氭寚鎸ュ妯″紡' : '褰撳墠锛氱畝鍗曟ā寮?}
+              title={useOrchestrator ? '当前：指挥家模式' : '当前：简单模式'}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${useOrchestrator
                 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
                 : 'bg-slate-800 border-slate-700 text-slate-400'
                 }`}
             >
               <Sparkles className="w-3 h-3" />
-              {useOrchestrator ? '鎸囨尌瀹? : '绠€鍗?}
+              {useOrchestrator ? '指挥家' : '简单'}
             </button>
             <button
               onClick={() => setShowKB(!showKB)}
@@ -477,7 +485,7 @@ export const KnowledgeChat: React.FC = () => {
                     {msg.isStreaming && !msg.text ? (
                       <div className="flex gap-1.5 items-center text-slate-400">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>姝ｅ湪鍒嗘瀽涓?..</span>
+                        <span>正在分析中...</span>
                       </div>
                     ) : (
                       <ReactMarkdown>{msg.text}</ReactMarkdown>
@@ -498,14 +506,14 @@ export const KnowledgeChat: React.FC = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !loading && handleSendMessage()}
-              placeholder={useOrchestrator ? '鍛婄煡瀹¤浠诲姟锛屾寚鎸ュ畼灏嗚嚜鍔ㄩ┍鍔ㄤ笓涓氫唬鐞?..' : '璇㈤棶鍏充簬瀹¤瑙勮寖鎴栬储鍔℃暟鎹殑闂...'}
+              placeholder={useOrchestrator ? '告知审计任务，指挥官将自动驱动专业代理...' : '询问关于审计规范或财务数据的问题...'}
               className="flex-1 bg-transparent border-none outline-none px-2 text-slate-200 placeholder:text-slate-500"
             />
             {loading && (
               <button
                 onClick={() => abortControllerRef.current?.abort()}
                 className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                title="鍋滄"
+                title="停止"
               >
                 <AlertCircle className="w-4 h-4" />
               </button>
@@ -521,15 +529,15 @@ export const KnowledgeChat: React.FC = () => {
         </div>
       </div>{/* end Chat Area */}
 
-      {/* 鈹€鈹€ Knowledge Base Sidebar 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */}
+      {/* ── Knowledge Base Sidebar ─────────────────── */}
       {showKB && (
         <div className="w-72 border-l border-slate-800 bg-slate-900 flex flex-col shadow-xl z-20 flex-shrink-0">
           <div className="p-4 border-b border-slate-800">
             <h3 className="font-semibold text-slate-300 flex items-center gap-2 text-sm">
               <Database className="w-4 h-4 text-emerald-400" />
-              鐭ヨ瘑搴?&amp; 鏂囦欢
+              知识库 & 文件
             </h3>
-            <p className="text-xs text-slate-500 mt-1">涓婁紶鏂囦欢鍚庯紝鎸囨尌瀹樺皢鑷姩鎰熺煡骞跺湪鍒嗘瀽鏃惰皟鐢ㄣ€?/p>
+            <p className="text-xs text-slate-500 mt-1">上传文件后，指挥官将自动感知并在分析时调用。</p>
           </div>
 
           <div className="p-4 space-y-3 flex-1 overflow-y-auto">
@@ -542,18 +550,18 @@ export const KnowledgeChat: React.FC = () => {
                 className="hidden"
               />
               <Paperclip className="w-7 h-7 text-slate-600 mx-auto mb-2 group-hover:text-emerald-400 transition-colors" />
-              <span className="text-sm text-slate-400 font-medium">娣诲姞鏂囦欢</span>
-              <p className="text-[10px] text-slate-600 mt-1">Excel, PDF, Word, CSV, TXT (鏈€澶?涓?</p>
+              <span className="text-sm text-slate-400 font-medium">添加文件</span>
+              <p className="text-[10px] text-slate-600 mt-1">Excel, PDF, Word, CSV, TXT (最多5个)</p>
             </label>
 
             {knowledgeFiles.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
                   <span className="flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5" /> 鏂囦欢 ({knowledgeFiles.length}/5)
+                    <FileText className="w-3.5 h-3.5" /> 文件 ({knowledgeFiles.length}/5)
                   </span>
                   {knowledgeFiles.length > 1 && (
-                    <button onClick={clearAllFiles} className="text-red-400 hover:text-red-300 font-normal">娓呯┖</button>
+                    <button onClick={clearAllFiles} className="text-red-400 hover:text-red-300 font-normal">清空</button>
                   )}
                 </div>
 
@@ -580,7 +588,7 @@ export const KnowledgeChat: React.FC = () => {
                 ))}
 
                 <div className="text-[10px] text-slate-600 text-right pt-1">
-                  鎬昏 {knowledgeFiles.reduce((sum, f) => sum + f.content.length, 0).toLocaleString()} 瀛楃
+                  总计 {knowledgeFiles.reduce((sum, f) => sum + f.content.length, 0).toLocaleString()} 字符
                 </div>
               </div>
             )}
@@ -588,19 +596,19 @@ export const KnowledgeChat: React.FC = () => {
         </div>
       )}
 
-      {/* 鈹€鈹€ Phase 11.3: Deep Report Sidebar 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */}
+      {/* ── Phase 11.3: Deep Report Sidebar ─────────── */}
       {reportContent && (
         <div className="w-80 border-l border-indigo-800/40 bg-slate-900/95 flex flex-col shadow-2xl z-20 flex-shrink-0">
           <div className="p-4 border-b border-indigo-800/40 flex items-center justify-between">
             <h3 className="font-semibold text-indigo-300 flex items-center gap-2 text-sm">
               <NotebookPen className="w-4 h-4 text-indigo-400" />
-              鍒嗘瀽鎶ュ憡
+              分析报告
             </h3>
             <button
               onClick={() => setReportContent('')}
               className="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 rounded hover:bg-slate-800 transition-colors"
             >
-              娓呴櫎
+              清除
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4 text-sm text-slate-200 space-y-2">
