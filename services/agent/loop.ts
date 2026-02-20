@@ -238,7 +238,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
             }
 
             if (step.action.tool === 'execute_python') {
-                finalCode = step.action.params?.code || "";
+                finalCode = step.action.params?.code || step.action.params?.input || step.action.params?.instruction || "";
                 updateFilesFromCode(finalCode);
             }
 
@@ -298,7 +298,13 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
         }
     }
 
-    const result = { steps, explanation: finalExplanation, finalCode, trace: logger.getTrace() };
+    const result = {
+        steps,
+        explanation: finalExplanation,
+        finalCode,
+        trace: logger.getTrace(),
+        generatedFiles: currentFiles.map(f => f.fileName).filter(n => !initialContext.some((i: any) => i.fileName === n))
+    };
     logger.finish(result);
     return result;
 };

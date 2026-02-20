@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Terminal, RotateCcw, ChevronRight, Zap, Bot, ShieldQuestion, Check, Ban, ChevronLeft, MessageSquare, Send, Sparkles } from 'lucide-react';
-import { writeFileToSandbox, extractText, runPython, clearContext, loadDocWorker } from '../services/pyodideService';
+import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Terminal, RotateCcw, ChevronRight, Zap, Bot, ShieldQuestion, Check, Ban, ChevronLeft, MessageSquare, Send, Sparkles, Download } from 'lucide-react';
+import { writeFileToSandbox, extractText, runPython, clearContext, loadDocWorker, readFileFromSandbox } from '../services/pyodideService';
 import { runAgenticLoop } from '../services/agent/loop';
 import { useTraceLogger } from '../hooks/useTraceLogger';
 import { traceToMarkdown } from '../services/agent/traceUtils';
@@ -25,6 +25,7 @@ export const SmartDocument: React.FC = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [rightPanelOpen, setRightPanelOpen] = useState(false);
     const [isAutoMode, setIsAutoMode] = useState(false);
+    const [generatedDocs, setGeneratedDocs] = useState<string[]>([]);
 
     // Agent State
     const [logs, setLogs] = useState<ProcessingLog[]>([]);
@@ -56,6 +57,22 @@ export const SmartDocument: React.FC = () => {
             } finally {
                 setIsProcessing(false);
             }
+        }
+    };
+
+    const handleDownload = async (fileName: string) => {
+        try {
+            const bytes = await readFileFromSandbox(fileName);
+            const blob = new Blob([bytes], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+            addLog('System', 'success', `已开始下载: ${fileName}`);
+        } catch (e: any) {
+            addLog('System', 'error', `下载失败: ${e.message}`);
         }
     };
 
@@ -137,6 +154,7 @@ export const SmartDocument: React.FC = () => {
         setIsProcessing(true);
         setRightPanelOpen(true);
         setAgentSteps([]);
+        setGeneratedDocs([]);
         abortControllerRef.current = new AbortController();
         addLog('System', 'pending', '🚀 启动文档智能分析中枢...');
 
@@ -266,6 +284,11 @@ with pdfplumber.open(target) as pdf:
             setLastTrace(result.trace || null);
             addLog('System', 'success', `任务完成: ${result.explanation}`);
 
+            if (result.generatedFiles && result.generatedFiles.length > 0) {
+                setGeneratedDocs(result.generatedFiles);
+                addLog('System', 'success', `✨ 生成了 ${result.generatedFiles.length} 个新文件，请在左侧列表下载。`);
+            }
+
             // --- Phase 8.5: Auto-save Trace Log to Sandbox ---
             if (result.trace) {
                 try {
@@ -364,6 +387,31 @@ with pdfplumber.open(target) as pdf:
                             </div>
                         ))}
                     </div>
+
+                    {/* Generated Files Section (Phase 12) */}
+                    {generatedDocs.length > 0 && (
+                        <div className="mb-6 animate-in slide-in-from-left-2 duration-300">
+                            <div className="px-2 mb-2 flex items-center justify-between text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                                <span>生成文件 (Output)</span>
+                                <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full">{generatedDocs.length}</span>
+                            </div>
+                            {generatedDocs.map(fname => (
+                                <div key={fname} className="mx-1 p-2 rounded-lg bg-emerald-50/30 border border-emerald-100/50 hover:bg-emerald-50 transition-all flex items-center justify-between group">
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <File className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                                        <span className="text-xs text-slate-700 truncate font-medium" title={fname}>{fname}</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDownload(fname); }}
+                                        className="p-1 text-emerald-500 hover:bg-emerald-200 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                        title="下载到本地"
+                                    >
+                                        <Download className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Document Map Section (Dynamic) */}
                     {activeDoc && activeDoc.status === 'ready' && activeDoc.structure && activeDoc.structure.length > 0 && (

@@ -24,7 +24,7 @@ ${context}
 动作 (Action): ${JSON.stringify(proposedStep.action)}
 
 **审计规则 (一票否决)**:
-1. **参数缺失**: 如果工具是 \`execute_python\` 但没有 \`code\`，或 \`inspect_sheet\` 没有 \`fileName\`，必须驳回。**注意：\`finish\` 工具不受此限**。
+1. **参数缺失**: 如果工具是 \`execute_python\`，检查是否包含 \`code\`、\`input\` 或 \`instruction\` 任意一个即可。如果 \`inspect_sheet\` 没有 \`fileName\`，必须驳回。**注意：\`finish\` 工具不受此限**。
 2. **路径错误**: 代码中必须使用 \`/mnt/\` 开头的绝对路径。禁止使用相对路径。
 3. **逻辑偏差**: 代码逻辑是否与思维 (Thought) 中描述的目标一致。
 4. **保存缺失**: 如果任务要求产出结果，代码中必须包含保存动作 (如 \`files['out.xlsx'] = df\` 或 \`to_excel\`)。**注意：如果是单纯的查询/观察步骤，不需要保存，必须通过**。

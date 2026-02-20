@@ -72,6 +72,7 @@ export interface AIProcessResult {
   explanation: string;
   finalCode?: string;
   trace?: TraceSession;
+  generatedFiles?: string[];
 }
 
 // ============================================================

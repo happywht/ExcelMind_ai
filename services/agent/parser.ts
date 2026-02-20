@@ -14,7 +14,7 @@ export const fuzzyMapAction = (raw: any): any => {
 
     // 2. Nested pattern: { "tool_name": { "param_key": "val" } }
     if (!tool) {
-        const commonTools = ['execute_python', 'inspect_sheet', 'read_rows', 'finish'];
+        const commonTools = ['execute_python', 'inspect_sheet', 'read_rows', 'finish', 'generate_report', 'write_memo', 'read_memo', 'read_document', 'analyze_excel', 'parallel_dispatch', 'search_context', 'sync_context'];
         const foundKey = Object.keys(raw).find(k => commonTools.includes(k));
         if (foundKey) {
             tool = foundKey;
@@ -24,22 +24,30 @@ export const fuzzyMapAction = (raw: any): any => {
 
     if (tool) {
         // Recursive check: Sometimes parameters are nested again
-        if (params && typeof params === 'object' && !params.code && !params.fileName && !params.summary) {
+        if (params && typeof params === 'object' && !params.code && !params.fileName && !params.summary && !params.instruction && !params.query) {
             const nested = fuzzyMapAction(params);
             if (nested) return nested;
         }
 
+        const finalParams = typeof params === 'string' ? JSON.parse(params) : (params || {});
+
+        // --- Robustness: Auto-map aliases for execute_python ---
+        if (tool === 'execute_python') {
+            if (!finalParams.code && finalParams.input) finalParams.code = finalParams.input;
+            if (!finalParams.code && finalParams.instruction) finalParams.code = finalParams.instruction;
+        }
+
         return {
             tool: tool,
-            params: typeof params === 'string' ? JSON.parse(params) : (params || {})
+            params: finalParams
         };
     }
     return null;
 };
 
 // Main Processor
-export const extractActionFromResponse = (response: any, text: string): { thought: string; action: any } => {
-    let stepData: any = { thought: "", action: null };
+export const extractActionFromResponse = (response: any, text: string): { thought: string; speak?: string; action: any } => {
+    let stepData: any = { thought: "", speak: "", action: null };
     const resp = response as any;
 
     // 1. Scan ALL content blocks for information (Anthropic Style)
@@ -49,28 +57,33 @@ export const extractActionFromResponse = (response: any, text: string): { though
                 stepData.thought += block.text + "\n";
                 // Check for embedded JSON in this text block as a resilient source
                 try {
-                    const jsonMatch = block.text.match(/\{[\s\S]*\}/g);
-                    if (jsonMatch) {
-                        const embeddedJson = JSON.parse(jsonMatch[jsonMatch.length - 1]);
+                    const jsonMatches = block.text.match(/\{[\s\S]*?\}/g);
+                    if (jsonMatches) {
+                        // Iterate strictly backwards to find the LAST valid action
+                        for (let i = jsonMatches.length - 1; i >= 0; i--) {
+                            try {
+                                const embeddedJson = JSON.parse(jsonMatches[i]);
+                                // Fuzzy Search for Action inside JSON
+                                let candidateAction = null;
 
-                        // Fuzzy Search for Action inside JSON
-                        // Path A: Top level action object
-                        if (embeddedJson.action) {
-                            const mapped = fuzzyMapAction(embeddedJson.action);
-                            if (mapped) stepData.action = mapped;
-                        }
-                        // Path B: Native tool_calls array inside JSON
-                        if (!stepData.action && embeddedJson.tool_calls?.[0]) {
-                            const mapped = fuzzyMapAction(embeddedJson.tool_calls[0]);
-                            if (mapped) stepData.action = mapped;
-                        }
-                        // Path C: Flat structure (tool + params at top level)
-                        if (!stepData.action) {
-                            const mapped = fuzzyMapAction(embeddedJson);
-                            if (mapped) stepData.action = mapped;
-                        }
+                                if (embeddedJson.action) {
+                                    candidateAction = fuzzyMapAction(embeddedJson.action);
+                                    if (embeddedJson.speak) stepData.speak = embeddedJson.speak;
+                                } else if (embeddedJson.tool_calls?.[0]) {
+                                    candidateAction = fuzzyMapAction(embeddedJson.tool_calls[0]);
+                                } else {
+                                    candidateAction = fuzzyMapAction(embeddedJson);
+                                    if (embeddedJson.speak) stepData.speak = embeddedJson.speak;
+                                }
 
-                        if (embeddedJson.thought) stepData.thought = embeddedJson.thought;
+                                if (candidateAction) {
+                                    stepData.action = candidateAction;
+                                    if (embeddedJson.thought) stepData.thought = embeddedJson.thought;
+                                    if (embeddedJson.speak) stepData.speak = embeddedJson.speak;
+                                    break; // Stop after finding the last valid action
+                                }
+                            } catch (e) { /* Invalid JSON chunk, skip */ }
+                        }
                     }
                 } catch (e) { /* Ignore parsing errors for partial text blocks */ }
             }
@@ -81,13 +94,32 @@ export const extractActionFromResponse = (response: any, text: string): { though
         });
     }
 
-    // 2. Secondary Fallback: Detect native top-level tool_calls (specific to some API wrappers)
+    // 2. Fallback: Parse raw text if structured content didn't yield result (OpenAI/GLM style usually returns text)
+    if (!stepData.action && text) {
+        // Try cleaning markdown code blocks
+        const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || text.match(/({[\s\S]*})/);
+        if (jsonMatch) {
+            try {
+                const embeddedJson = JSON.parse(jsonMatch[1].trim());
+                if (embeddedJson.action) {
+                    stepData.action = fuzzyMapAction(embeddedJson.action);
+                    if (embeddedJson.speak) stepData.speak = embeddedJson.speak;
+                }
+                else stepData.action = fuzzyMapAction(embeddedJson);
+
+                if (embeddedJson.thought) stepData.thought = embeddedJson.thought;
+                if (embeddedJson.speak) stepData.speak = embeddedJson.speak;
+            } catch (e) { console.warn("Failed to parse fallback JSON block"); }
+        }
+    }
+
+    // 3. Secondary Fallback: Detect native top-level tool_calls (specific to some API wrappers)
     if (!stepData.action && resp.tool_calls && resp.tool_calls.length > 0) {
         console.log("[Resilience] Detected Top-Level Native Tool Calls");
         stepData.action = fuzzyMapAction(resp.tool_calls[0]);
     }
 
-    // --- 3. Strict Argument Guardian ---
+    // --- 4. Strict Argument Guardian ---
     // Fix cases where AI sends a tool name but forgets the actual code/params
     if (stepData.action && stepData.action.tool) {
         const tool = stepData.action.tool;
@@ -96,26 +128,20 @@ export const extractActionFromResponse = (response: any, text: string): { though
         if (tool === 'execute_python' && !p.code) {
             console.warn("[Resilience] execute_python missing code, attempting extraction from thought");
             // Try to extract code block from thought if present
-            const codeMatch = stepData.thought.match(/```python\n([\s\S]*?)```/);
+            const codeMatch = stepData.thought.match(/```python\n([\s\S]*?)```/) || stepData.thought.match(/```\n([\s\S]*?)```/);
             if (codeMatch) {
                 stepData.action.params = { ...p, code: codeMatch[1].trim() };
             } else {
                 console.error("[Resilience] Failed to find code for execute_python");
             }
         }
-
-        if (tool === 'inspect_sheet' && !p.fileName) {
-            // Will be handled in loop context with initialContext fallback if needed
-            // But for parser purity, we just flag it
-            console.warn("[Resilience] inspect_sheet missing fileName");
-        }
     }
 
-    // 3. Final Fallback: Search the entire text for finish keywords if still no action
+    // 5. Final Fallback: Search the entire text for finish keywords if still no action
     if (!stepData.action || !stepData.action.tool) {
         const fullText = (stepData.thought || text).toLowerCase();
         if (fullText.includes('finish') || fullText.includes('完成')) {
-            stepData.action = { tool: 'finish', params: {} };
+            stepData.action = { tool: 'finish', params: { summary: text } };
         }
     }
 

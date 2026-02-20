@@ -20,6 +20,7 @@
 import { OrchestratorAction, OrchestratorStep, ParallelSubTask } from '../../types';
 import { client } from './client';
 import { Memorandum, createMemo } from './memo';
+import { extractActionFromResponse } from './parser';
 
 export interface OrchestratorContext {
     excelFiles: Array<{ fileName: string; sheets: string[]; rowCount: number }>;
@@ -118,19 +119,17 @@ export const runOrchestrator = async (
 
         const rawText = (response.content?.[0] as any)?.text ?? '';
 
-        // 解析 SIAP v3 混合响应
-        let parsed: { thought: string; speak?: string; action: OrchestratorAction } | null = null;
-        try {
-            const jsonMatch = rawText.match(/```json\s*([\s\S]*?)```/) || rawText.match(/({[\s\S]*})/);
-            if (jsonMatch) parsed = JSON.parse(jsonMatch[1].trim());
-        } catch {
-            parsed = {
-                thought: 'Parse fallback.',
-                speak: rawText,
-                action: { tool: 'finish', params: { summary: rawText } }
-            };
-        }
-        if (!parsed) return rawText;
+        // 解析 SIAP v3 混合响应 (Unified Parser)
+        const parsedState = extractActionFromResponse(response, rawText);
+
+        // Map to local structure
+        const parsed = {
+            thought: parsedState.thought,
+            speak: parsedState.speak,
+            action: parsedState.action as OrchestratorAction
+        };
+
+        if (!parsed.action) return rawText;
 
         const step: OrchestratorStep = {
             thought: parsed.thought,

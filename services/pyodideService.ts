@@ -328,3 +328,35 @@ export const clearContext = async (): Promise<void> => {
         analysisWorker.postMessage({ type: 'CLEAR_CONTEXT', id });
     });
 };
+
+/**
+ * Read binary file from Analysis Worker (Base64)
+ */
+export const readFileFromSandbox = async (fileName: string): Promise<Uint8Array> => {
+    // We primarily read from Analysis Worker since that's where execute_python writes files
+    const code = `
+import base64
+import os
+path = f'/mnt/{fileName}'
+if not os.path.exists(path):
+    raise FileNotFoundError(f"File not found: {fileName}")
+with open(path, 'rb') as f:
+    base64.b64encode(f.read()).decode('utf-8')
+`;
+    // We use runPython to get the base64 string
+    // runPython returns { data, logs, result }
+    // result should be the base64 string
+    const { result } = await runPython(code, {});
+
+    if (!result || typeof result !== 'string') {
+        throw new Error(`Failed to read file ${fileName}: Invalid output`);
+    }
+
+    // Convert Base64 to Uint8Array
+    const binaryString = atob(result);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+};
