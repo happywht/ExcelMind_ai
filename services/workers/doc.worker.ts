@@ -74,9 +74,9 @@ ctx.onmessage = async (e: MessageEvent) => {
                                 result["text"] = text
                                 result["meta"]["engine"] = "pypdf"
                         
-                            return json.dumps({"success": True, "data": result})
+                            return json.dumps({"success": True, "data": result}, ensure_ascii=False)
                         except Exception as e:
-                            return json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()})
+                            return json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()}, ensure_ascii=False)
                 `);
 
                 ctx.postMessage({ type: 'INIT_SUCCESS' });

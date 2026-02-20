@@ -61,7 +61,7 @@ async function initPyodide() {
                 def write(self, s):
                     if s.strip():
                         import json
-                        ctx_post_message(json.dumps({'type': 'STDOUT', 'content': s, 'stream': self.type_name}))
+                        ctx_post_message(json.dumps({'type': 'STDOUT', 'content': s, 'stream': self.type_name}, ensure_ascii=False))
                     return len(s)
 
             # --- Data Reshaper for JS compatibility ---
@@ -69,16 +69,37 @@ async function initPyodide() {
                 import pandas as pd
                 import numpy as np
                 import json
+                import math
+
+                # Handle DataFrames and Series
                 if isinstance(obj, (pd.DataFrame, pd.Series)):
-                    return obj.to_dict(orient='records')
-                if isinstance(obj, (np.integer, np.floating)):
+                    return clean_output(obj.to_dict(orient='records'))
+
+                # Handle NumPy types and Python floats
+                if isinstance(obj, (float, np.floating)):
+                    if math.isnan(obj) or math.isinf(obj):
+                        return None
                     return float(obj)
+                
+                if isinstance(obj, (int, np.integer)):
+                    return int(obj)
+
                 if isinstance(obj, np.ndarray):
-                    return obj.tolist()
+                    return [clean_output(v) for v in obj.tolist()]
+
                 if isinstance(obj, dict):
-                    return {k: clean_output(v) for k, v in obj.items()}
+                    return {str(k): clean_output(v) for k, v in obj.items()}
+
                 if isinstance(obj, list):
                     return [clean_output(v) for v in obj]
+
+                # Fallback for complex objects that might have been processed by pandas
+                try:
+                    if pd.isna(obj):
+                        return None
+                except:
+                    pass
+
                 return obj
 
             # Register helper in globals for user access
@@ -231,7 +252,7 @@ finally:
             json.dumps({
                 "files": clean_output(files),
                 "result": clean_output(_last_output_capture) if '_last_output_capture' in locals() else "No result"
-            })
+            }, ensure_ascii=False, allow_nan=False)
         `);
 
         const parsed = JSON.parse(responseJson);
