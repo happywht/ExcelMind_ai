@@ -70,6 +70,7 @@ async function initPyodide() {
                 import numpy as np
                 import json
                 import math
+                import datetime
 
                 # Handle DataFrames and Series
                 if isinstance(obj, (pd.DataFrame, pd.Series)):
@@ -92,6 +93,10 @@ async function initPyodide() {
 
                 if isinstance(obj, list):
                     return [clean_output(v) for v in obj]
+
+                # Handle Datetime and Timestamps
+                if isinstance(obj, (pd.Timestamp, datetime.datetime, datetime.date)):
+                    return obj.isoformat()
 
                 # Fallback for complex objects that might have been processed by pandas
                 try:
