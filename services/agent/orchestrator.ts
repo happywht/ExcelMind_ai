@@ -148,7 +148,8 @@ export const runOrchestrator = async (
             step.status = 'finished';
             memo.clear(); // 任务完成，清理草稿本
             onStep(step);
-            return parsed.speak || params.summary || '任务已完成。';
+            // Phase 12: 兼容 generate_report 的 content 参数和 finish 的 summary 参数
+            return parsed.speak || params.summary || params.content || params.text || '任务已完成。';
         }
 
         // ── Phase 11.1: write_memo ────────────────────────────────

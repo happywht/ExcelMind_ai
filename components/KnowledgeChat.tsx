@@ -11,7 +11,7 @@ import { runOrchestrator, OrchestratorContext } from '../services/agent/orchestr
 import { runAgenticLoop } from '../services/agent/loop';
 import {
   loadAnalysisWorker, loadDocWorker, runPython,
-  writeFileToSandbox, extractText
+  writeFileToSandbox, extractText, resetSandbox, clearContext
 } from '../services/pyodideService';
 import ReactMarkdown from 'react-markdown';
 import * as XLSX from 'xlsx';
@@ -31,6 +31,7 @@ interface KnowledgeFile {
   type: string;
   size: number;
   uploadTime: Date;
+  rawBuffer?: ArrayBuffer; // Phase 12: 保留原始二进制供沙箱使用
 }
 
 // ---------------------------------------------------------------
@@ -67,15 +68,19 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
   };
 
   const toolLabels: Record<string, string> = {
-    analyze_excel: '分析 Excel',
-    read_document: '读取文档',
+    analyze_excel: '📊 分析 Excel',
+    read_document: '📄 读取文档',
+    read_document_page: '📖 读取页面',
+    search_document: '🔍 搜索文档',
     parallel_dispatch: '⚙️ 并行调度',
     sync_context: '🔄 同步上下文',
-    search_context: '搜索上下文',
+    search_context: '🔎 搜索上下文',
     write_memo: '📝 写备忘录',
     read_memo: '📖 读备忘录',
-    generate_report: '生成报告',
-    finish: '完成',
+    generate_report: '📄 生成报告',
+    generate_rich_text: '✍️ 富文本输出',
+    execute_python: '🐍 执行代码',
+    finish: '✅ 完成',
   };
 
   // Phase 11.2: Zen Mode — show minimal capsule only
@@ -133,7 +138,19 @@ const OrchestratorThoughtBubble: React.FC<{ step: OrchestratorStep; index: numbe
                 </div>
                 {Object.keys(step.action.params).length > 0 && (
                   <pre className="text-[10px] text-slate-400 mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap leading-tight">
-                    {JSON.stringify(step.action.params, null, 2)}
+                    {(() => {
+                      // Phase 12: 对超长内容做智能截断，防止极客模式气泡撑爆
+                      const raw = JSON.stringify(step.action.params, null, 2);
+                      if (raw.length > 500) {
+                        const keys = Object.keys(step.action.params);
+                        const preview = keys.map(k => {
+                          const v = String(step.action.params[k] || '');
+                          return `"${k}": ${v.length > 80 ? `"${v.substring(0, 80)}..." (${v.length}字)` : JSON.stringify(step.action.params[k])}`;
+                        }).join(',\n');
+                        return `{\n${preview}\n}`;
+                      }
+                      return raw;
+                    })()}
                   </pre>
                 )}
               </div>
@@ -226,6 +243,13 @@ export const KnowledgeChat: React.FC = () => {
     }
 
     try {
+      // Phase 12: 确保物理文件已注入沙箱（修复数据断层 Bug）
+      if (targetFile.rawBuffer) {
+        await Promise.all([loadAnalysisWorker(), loadDocWorker()]);
+        await writeFileToSandbox(targetFile.name, targetFile.rawBuffer);
+        console.log(`[KnowledgeChat] Injected ${targetFile.name} (${(targetFile.rawBuffer.byteLength / 1024).toFixed(1)}KB) into sandbox`);
+      }
+
       if (agentType === 'excel') {
         // ── Excel path: load worker, push file binary, run Python via AgenticLoop ──
         await loadAnalysisWorker();
@@ -248,29 +272,30 @@ export const KnowledgeChat: React.FC = () => {
         return result.explanation || result.finalCode || 'Excel analysis completed.';
 
       } else {
-        // ── Document path: extract text via DocEngine, then summarize with LLM ──
+        // ── Phase 12: Document path now uses the REAL dual-track Agent Loop ──
         await loadDocWorker();
 
-        // If text is already available in React state, use it directly (Phase 3 Memory Injection)
-        let docText = targetFile.content;
-        if (!docText || docText.length < 50) {
-          // Fallback: extract from sandbox binary
-          const extraction = await extractText(targetFile.name);
-          docText = extraction.text || '';
-        }
+        // Build document context with extracted text for Agent prompt injection
+        const docText = targetFile.content || '';
+        const initialCtx = [{
+          fileName: targetFile.name,
+          sheets: [],
+          textPreview: docText.substring(0, 5000),
+        }];
 
-        // Feed the extracted text + instruction to LLM for analysis
-        const contextSummary = [
-          `File: ${targetFile.name} (${targetFile.type})`,
-          `Full extracted text (${docText.length} chars):\n${docText.substring(0, 4000)}`,
-        ].join('\n');
-
-        const workerResult = await chatWithKnowledgeBase(
+        // Use runAgenticLoop in 'document' mode: leverages Phase 11's generate_report etc.
+        const result = await runAgenticLoop(
           instruction,
-          [],
-          contextSummary
+          initialCtx,
+          () => { }, // onStep: silent in sub-worker mode
+          undefined, // executeTool: use default from loop.ts
+          false,     // isPrivacyEnabled
+          undefined, // onApprovalRequired
+          undefined, // signal
+          'document'
         );
-        return workerResult;
+
+        return result.explanation || result.finalCode || 'Document analysis completed.';
       }
     } catch (e: any) {
       console.error(`[ExecuteWorker] ${agentType} failed:`, e);
@@ -325,9 +350,9 @@ export const KnowledgeChat: React.FC = () => {
               return m;
             }));
 
-            // Phase 11.3: If finish/generate_report, write to report panel
-            if ((step.action.tool === 'finish' || step.action.tool === 'generate_report') && step.action.params?.summary) {
-              setReportContent(step.action.params.summary);
+            // Phase 12: If finish/generate_report, write to report panel (兼容 summary 和 content)
+            if ((step.action.tool === 'finish' || step.action.tool === 'generate_report') && (step.action.params?.summary || step.action.params?.content)) {
+              setReportContent(step.action.params.summary || step.action.params.content);
             }
           },
           executeWorker,
@@ -348,9 +373,14 @@ export const KnowledgeChat: React.FC = () => {
         }));
       } else {
         // ── Simple RAG mode (no files or orchestrator off) ──
-        const combinedKnowledgeText = knowledgeFiles.map(file =>
-          `--- 文件: ${file.name} (${file.type}) ---\n${file.content}`
-        ).join('\n\n');
+        // Phase 12: OOM 防护 - 每个文件最多取前 3000 字
+        const MAX_CHARS_PER_FILE = 3000;
+        const combinedKnowledgeText = knowledgeFiles.map(file => {
+          const truncated = file.content.length > MAX_CHARS_PER_FILE
+            ? file.content.substring(0, MAX_CHARS_PER_FILE) + `...[截断，全文共${file.content.length}字]`
+            : file.content;
+          return `--- 文件: ${file.name} (${file.type}) ---\n${truncated}`;
+        }).join('\n\n');
 
         finalText = await chatWithKnowledgeBase(
           userMsg.text,
@@ -434,10 +464,13 @@ export const KnowledgeChat: React.FC = () => {
       if (existingFileNames.has(file.name)) { alert(`文件 "${file.name}" 已经上传过了。`); continue; }
       try {
         const { content, type } = await processFileContent(file);
+        // Phase 12: 保留原始二进制，供后续沙箱注入使用
+        const rawBuffer = await file.arrayBuffer();
         if (content) {
           newFiles.push({
             id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
-            name: file.name, content, type, size: file.size, uploadTime: new Date()
+            name: file.name, content, type, size: file.size, uploadTime: new Date(),
+            rawBuffer,
           });
         }
       } catch (err: any) {
