@@ -34,6 +34,18 @@ ctx.onmessage = async (e: MessageEvent) => {
                 // Note: No pandas, scipy, matplotlib = FAST INIT
                 await micropip.install(['python-docx', 'pypdf']);
 
+                console.log('[DocWorker] Securing environment...');
+                // Security: Remove access to JS network API if present
+                await pyodide.runPythonAsync(`
+                    import sys
+                    if 'js' in sys.modules:
+                        import js
+                        if hasattr(js, 'fetch'):
+                            del js.fetch
+                    if 'pyodide.http' in sys.modules:
+                        del sys.modules['pyodide.http']
+                `);
+
                 // Define extraction logic
                 await pyodide.runPythonAsync(`
                     import json
@@ -104,7 +116,9 @@ ctx.onmessage = async (e: MessageEvent) => {
                 if (!pyodide) return;
                 const { fileName } = e.data;
                 try {
-                    const resultJson = pyodide.runPython(`process_extraction('${fileName}')`);
+                    // SECURE execution: Avoid string concatenation vulnerability
+                    pyodide.globals.set('__target_doc', fileName);
+                    const resultJson = pyodide.runPython(`process_extraction(__target_doc)`);
                     const res = JSON.parse(resultJson);
                     if (res.success) {
                         ctx.postMessage({ type: 'RESPONSE', success: true, data: res.data, id });

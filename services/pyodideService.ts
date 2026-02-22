@@ -2,8 +2,8 @@
  * Pyodide Service (Phase 13 Facade)
  * Delegating work to specialized engines and managing synchronization.
  */
-import { loadAnalysisWorker, runPython, getAnalysisWorker } from './engines/AnalysisEngine';
-import { loadDocWorker, extractText as engineExtractText, getDocWorker } from './engines/DocEngine';
+import { loadAnalysisWorker, runPython, getAnalysisWorker, terminateAnalysisWorker } from './engines/AnalysisEngine';
+import { loadDocWorker, extractText as engineExtractText, getDocWorker, terminateDocWorker } from './engines/DocEngine';
 import { PendingRequest } from '../types';
 
 const logger = {
@@ -12,7 +12,17 @@ const logger = {
 };
 
 // --- Singleton Re-exports for Phase 7 Legacy compatibility ---
-export { loadAnalysisWorker, loadDocWorker, runPython };
+export { loadAnalysisWorker, loadDocWorker, runPython, terminateAnalysisWorker, terminateDocWorker };
+
+/**
+ * Super API to Terminate ALL Engines (Used on Project Switch / Final Cleanup)
+ */
+export const terminateAllEngines = (): void => {
+    logger.info('Terminating ALL Python/Doc Engines globally...');
+    try { terminateAnalysisWorker(); } catch (e) { console.error('Error terminating AnalysisEngine', e); }
+    try { terminateDocWorker(); } catch (e) { console.error('Error terminating DocEngine', e); }
+    logger.info('Engines fully disposed.');
+};
 
 /**
  * Sync UI state with Analysis Worker files

@@ -50,11 +50,9 @@ export const runAgenticLoop = async (
    - **禁止路径**: \`/mnt/data/\` 或其他子目录。
 2. **高级协同**: 你可以访问 \`shared_context['docs']\` 来获取之前文档分析的结果。如果需要跨文档分析，请优先检查此变量。
 3. **数据读取机制**: 
-   - 绝大多数情况，请直接使用 \`pd.read_excel('/mnt/文件名.xlsx')\`。这是最稳妥的方法。
-   - \`files\` 全局字典是内存中的数据备份。如果你需要直接操作它，请注意：它是 \`{ "文件名": { "Sheet1": [rows], "Sheet2": [rows] } }\` 的嵌套结构。
-3. **数据写回要求**:
-   - 处理完数据后，**必须**将结果存回 \`files\` 变量以同步给 UI。
-   - **示例**: \`files['输出文件.xlsx'] = final_df\` 或 \`files['结果.xlsx'] = { "汇总": df1, "明细": df2 }\`。
+   - 请直接使用 \`pd.read_excel('/mnt/文件名.xlsx')\` 或 \`pd.read_csv('/mnt/文件名.csv')\`。这是最稳妥的方法。
+4. **数据同步机制**:
+   - 处理完数据后，只要将生成的结果保存到 \`/mnt/\` 目录下（例如 \`df.to_excel('/mnt/结果.xlsx')\`），系统会自动捕获并同步给 UI 展示。你不需要手动管理复杂的内存状态。
 
 **当前可用工具**:
 1. \`inspect_sheet(fileName, sheetName)\`: 获取特定表的列头和前 5 行样本（用于确定数据含义）。
@@ -70,11 +68,10 @@ export const runAgenticLoop = async (
 **常用代码模版 (Cheatsheet)**:
 - **读取表**: \`df = pd.read_excel('/mnt/文件名.xlsx', sheet_name='Sheet1')\`
 - **多表关联**: \`result = pd.merge(df_order, df_product, on='ID', how='left')\`
-- **保存并同步**: \`files['结果.xlsx'] = result\` (必须这一步，UI 才能看到结果)
+- **保存并同步**: \`result.to_excel('/mnt/分析结果.xlsx', index=False)\` (必须保存到 /mnt/，UI 才能看到结果)
 - **验证数据**: \`print(f"处理完成，结果行数: {len(result)}"); print(result.head())\`
 
 **禁止行为**:
-- 禁止使用 \`files['filename'].parse()\`，因为 \`files\` 里的数据是原始字典，不是 ExcelFile 对象。
 - 禁止在未观察列名的情况下盲目合并。
 - **严禁使用 \`globals().clear()\`**，这会破坏沙箱环境导致后续步骤崩溃。
 
@@ -96,28 +93,26 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 
 **核心环境规范**:
 1. **文件挂载**: 所有文档已挂载在 \`/mnt/\` 目录下（如 \`/mnt/report.docx\`）。
-2. **协同存储**: 所有提取的关键信息（尤其是表格）会自动存入 \`shared_context['docs'][文件名]\`。如果用户要求后续进行数据分析，请告知用户数据已就绪，可切换到 Smart Excel 模块进行处理。
+2. **协同存储**: 如果有提取到的结构化信息，可以在代码里打印或者保存为 excel 供另一模块使用。
 3. **工具库**:
    - **Word**: 使用 \`python-docx\` (import docx)。支持读取段落、样式。
-   - **PDF**: 使用 \`pdfplumber\` (首选) 或 \`pypdf\`。\`pdfplumber\` 具有极高的文字与表格提取精度。
+   - **PDF**: 只能使用 \`pypdf\` (\`from pypdf import PdfReader\`)。**注意: 环境内未预装 pdfplumber，请绝对不要 import pdfplumber！**
    - **NLP/Regex**: 使用 standard python libs 进行文本分析。
 
 **当前可用工具**:
 1. \`execute_python(code)\`: 运行 Python 代码进行深度分析。
 2. \`read_document_page(fileName, page_number)\`: 读取 PDF 的特定页内容。
-3. \`search_document(fileName, keyword)\`: 在文档中搜索关键字并返回上下文。
+3. \`search_document(fileName, keyword)\`: 在文档中极速搜索关键字并返回上下文。
 4. \`finish()\`: 完成任务。
 
 **常用代码模版**:
-- **高精度读取 PDF (pdfplumber)**:
+- **安全读取 PDF (pypdf)**:
   \`\`\`python
-  import pdfplumber
-  with pdfplumber.open('/mnt/report.pdf') as pdf:
-      page = pdf.pages[0]
-      text = page.extract_text()
-      tables = page.extract_tables()
-      print(f"Page 1 Text: {text[:200]}")
-      print(f"Detected Tables: {len(tables)}")
+  from pypdf import PdfReader
+  reader = PdfReader('/mnt/report.pdf')
+  page = reader.pages[0]
+  text = page.extract_text()
+  print(f"Page 1 Text: {text[:200]}")
   \`\`\`
 - **识别 Word 结构**:
   \`\`\`python
@@ -167,7 +162,7 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
         }
         try {
             const response = await client.messages.create({
-                model: process.env.ZHIPU_MODEL || "glm-4",
+                model: process.env.ZHIPU_MODEL || "glm-4.7",
                 max_tokens: 4096,
                 messages: messages
             });
@@ -266,9 +261,8 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
                     // Log Observation
                     logger.logObservation(turn, observation);
 
-                    // Dynamic Context Injection
-                    const vfsInventory = initialContext.map((f: any) => `- /mnt/${f.fileName}`).join('\n');
-                    const contextInjection = `\n\n[Current Sandbox State]:\nFiles available in /mnt/:\n${vfsInventory}\n\n[Reminder]: 必须输出合法 JSON，禁止输出 JSON 之外的任何文字。`;
+                    // Dynamic Context Injection (Simplified to avoid bloat)
+                    const contextInjection = `\n\n[Reminder]: 必须输出合法 JSON，禁止输出 JSON 之外的任何文字。`;
 
                     step.observation = observation;
                     messages.push({

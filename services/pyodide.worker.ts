@@ -129,6 +129,13 @@ async function initPyodide() {
                 'scipy', 'matplotlib', 
                 'python-docx', 'pypdf'
             ])
+            # Security: Remove access to JS network API if present
+            if 'js' in sys.modules:
+                import js
+                if hasattr(js, 'fetch'):
+                    del js.fetch
+            if 'pyodide.http' in sys.modules:
+                del sys.modules['pyodide.http']
             print("Sandbox Arsenal Fully Loaded: Excel + Doc Intelligence")
         `);
         console.log('[Worker] Essential engines and background arsenal ready.');
@@ -240,12 +247,13 @@ finally:
                              if f not in files:
                                  # For newly created files from Python, we need to read them into memory
                                  # so they appear in the UI file list.
+                                 # ANTI-OOM: Only load top 50 rows for preview to UI
                                  if f.endswith('.csv'):
-                                     files[f] = pd.read_csv(fpath).to_dict(orient='records')
+                                     files[f] = pd.read_csv(fpath, nrows=50).to_dict(orient='records')
                                  else:
-                                     # Load all sheets for the UI
+                                     # Load all sheets for the UI, but limited rows
                                      excel_file = pd.ExcelFile(fpath)
-                                     files[f] = {s: excel_file.parse(s).to_dict(orient='records') for s in excel_file.sheet_names}
+                                     files[f] = {s: pd.read_excel(fpath, sheet_name=s, nrows=50).to_dict(orient='records') for s in excel_file.sheet_names}
                          except Exception as e:
                              print(f"Sync Warning: Failed to read back {f}: {e}")
 

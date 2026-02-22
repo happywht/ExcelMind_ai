@@ -70,3 +70,18 @@ export const extractText = async (fileName: string): Promise<any> => {
 };
 
 export const getDocWorker = () => docWorker;
+
+export const terminateDocWorker = (): void => {
+    if (docWorker) {
+        logger.info('Terminating Document Intelligence Worker to free memory...');
+        docWorker.terminate();
+        docWorker = null;
+        isLoading = false;
+        loadPromise = null;
+    }
+    // Reject all pending requests
+    for (const [id, pending] of pendingRequests.entries()) {
+        pending.reject(new Error('Doc Worker was terminated'));
+        pendingRequests.delete(id);
+    }
+};

@@ -96,3 +96,18 @@ export const runPython = async (
 };
 
 export const getAnalysisWorker = () => analysisWorker;
+
+export const terminateAnalysisWorker = (): void => {
+    if (analysisWorker) {
+        logger.info('Terminating Analysis Web Worker to free memory...');
+        analysisWorker.terminate();
+        analysisWorker = null;
+        isLoading = false;
+        loadPromise = null;
+    }
+    // Reject all pending requests
+    for (const [id, pending] of pendingRequests.entries()) {
+        pending.reject(new Error('Analysis Worker was terminated'));
+        pendingRequests.delete(id);
+    }
+};

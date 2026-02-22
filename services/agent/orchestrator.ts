@@ -111,7 +111,7 @@ export const runOrchestrator = async (
         if (signal?.aborted) throw new Error('Aborted');
 
         const response = await client.messages.create({
-            model: 'glm-4-flash',
+            model: process.env.ZHIPU_MODEL || 'glm-4.7',
             max_tokens: 1536,
             system: ORCHESTRATOR_SYSTEM_PROMPT(context, memo),
             messages: history.map(h => ({ role: h.role, content: h.content })),

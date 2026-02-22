@@ -63,7 +63,7 @@ export const SmartDocument: React.FC = () => {
     const handleDownload = async (fileName: string) => {
         try {
             const bytes = await readFileFromSandbox(fileName);
-            const blob = new Blob([bytes], { type: 'application/octet-stream' });
+            const blob = new Blob([new Uint8Array(bytes)], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -199,42 +199,52 @@ export const SmartDocument: React.FC = () => {
                     }
                     case 'read_document_page': {
                         const { fileName, page_number } = params;
-                        const code = `
-import pdfplumber
-with pdfplumber.open('/mnt/${fileName}') as pdf:
-    # pdfplumber is 0-indexed in code usually, but we accept 1-based page_number?
-    # Let's assume 1-based from Agent
-    page = pdf.pages[${page_number} - 1]
-    res = page.extract_text()
+                        if (fileName.toLowerCase().endsWith('.pdf')) {
+                            // Escape filename carefully to avoid string injection
+                            const safeFileName = fileName.replace(/'/g, "\\'");
+                            const code = `
+from pypdf import PdfReader
+try:
+    reader = PdfReader('/mnt/${safeFileName}')
+    if 0 <= ${page_number} - 1 < len(reader.pages):
+        page = reader.pages[${page_number} - 1]
+        res = page.extract_text()
+    else:
+        res = "Page out of range."
+except Exception as e:
+    res = f"Error: {e}"
 res
 `;
-                        const { result } = await runPython(code, {});
-                        return String(result || "No text on this page.");
+                            const { result } = await runPython(code, {});
+                            return String(result || "No text on this page.");
+                        } else {
+                            return "Pagination reading is only available for PDFs. For Word docs, please use standard Python IO or extract all text at once.";
+                        }
                     }
                     case 'search_document': {
                         const { fileName, keyword } = params;
-                        const code = `
-import re
-target = '/mnt/${fileName}'
-# Simple search in the already extracted text if available in globals or re-read
-with open(target, 'rb') as f:
-    # This might be slow for large PDFs if we re-read. 
-    # For now, let's use a smarter search if we have the full text in JS and pass it?
-    # Actually, let's just do a simple search for this demo.
-    pass
-
-# For now, let's use the text in memory if possible or re-extract
-import pdfplumber
-results = []
-with pdfplumber.open(target) as pdf:
-    for i, page in enumerate(pdf.pages):
-        text = page.extract_text() or ""
-        if "${keyword}".lower() in text.lower():
-            results.append(f"Page {i+1}: ... {text[:200]} ...")
-"\\n".join(results[:10]) # Limit to 10 findings
-`;
-                        const { result } = await runPython(code, {});
-                        return String(result || "No matches found.");
+                        // Fast Phase 3 memory injection: Search directly in React's parsed state!
+                        const targetDoc = documents.find(d => d.name === fileName);
+                        if (targetDoc && targetDoc.text) {
+                            addLog('System (Memory)', 'success', `⚡ 触发内存极速检索: 寻找 "${keyword}"...`);
+                            const text = targetDoc.text;
+                            const regex = new RegExp(keyword, 'gi');
+                            let match;
+                            const results: string[] = [];
+                            while ((match = regex.exec(text)) !== null) {
+                                const start = Math.max(0, match.index - 60);
+                                const end = Math.min(text.length, match.index + keyword.length + 60);
+                                const snippet = text.substring(start, end).replace(/\\n/g, ' ').trim();
+                                results.push(`... ${snippet} ...`);
+                                if (results.length >= 8) break; // Limit findings to prevent context bloat
+                            }
+                            if (results.length > 0) {
+                                return `Found matches in ${fileName}:\n` + results.join('\n');
+                            }
+                            return `No matches found for "${keyword}" in ${fileName}.`;
+                        } else {
+                            return `Document ${fileName} not found in memory or empty. Please use execute_python to read it manually from /mnt/.`;
+                        }
                     }
                     case 'finish':
                         return "Task Completed.";

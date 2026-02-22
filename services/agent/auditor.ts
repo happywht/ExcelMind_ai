@@ -26,15 +26,13 @@ ${context}
 **审计规则 (一票否决)**:
 1. **参数缺失**: 如果工具是 \`execute_python\`，检查是否包含 \`code\`、\`input\` 或 \`instruction\` 任意一个即可。如果 \`inspect_sheet\` 没有 \`fileName\`，必须驳回。**注意：\`finish\` 工具不受此限**。
 2. **路径错误**: 代码中必须使用 \`/mnt/\` 开头的绝对路径。禁止使用相对路径。
-3. **逻辑偏差**: 代码逻辑是否与思维 (Thought) 中描述的目标一致。
-4. **保存缺失**: 如果任务要求产出结果，代码中必须包含保存动作 (如 \`files['out.xlsx'] = df\` 或 \`to_excel\`)。**注意：如果是单纯的查询/观察步骤，不需要保存，必须通过**。
-5. **结束校验**: 如果工具是 \`finish\`，检查思维或对话历史中是否提到已完成处理及保存。如果有，**必须通过**。不要因为 \`finish\` 动作本身不含代码而驳回。
+3. **安全拦截**: 如果代码包含可能导致无限循环 (如没有终止条件的 \`while True\`) 或者恶意系统调用 (试图越权访问非 \`/mnt\` 文件)，必须驳回。
+4. **结束校验**: 如果工具是 \`finish\`，检查思维或对话历史中是否提到已完成处理。如果有，**必须通过**。不要因为 \`finish\` 动作本身不含代码而驳回。
 
 **环境提示**: 
-- \`files\` 是一个预定义的全局字典，用于同步内存数据，AI 可以直接引用它。
 - 审计员无法直接读取外部文件，但在上下文中可以查看已加载的文件名。请确保代码引用的是存在的文件。
 - \`clean_output\` 已在沙箱中预定义，用于处理输出。
-- 执行代码必须处理数据结果（即有文件保存或明确的 DataFrame 修改）。
+- 如果是数据修改任务，检查代码是否有 \`to_excel\` 或 \`to_csv\` 等将结果写入 \`/mnt/\` 的动作。
 - 如果审批通过，请回复: "APPROVED"
 - 如果发现问题，请回复: "REJECT: [具体理由]"
 
@@ -76,8 +74,8 @@ ${context}
 
         // Normalize and Extract using Regex for robustness against markdown/formatting
         // Search for APPROVED or REJECT: [reason] in a case-insensitive way
-        const isApproved = /^\s*(\**)*APPROVED(\**)*\s*$/i.test(result) || result.toUpperCase().includes("APPROVED");
-        const rejectMatch = result.match(/REJECT:\s*([\s\S]+)/i);
+        const isApproved = /^\s*(\**)*APPROVED(\**)*\s*$/i.test(result) || (result.toUpperCase().includes("APPROVED") && !result.toUpperCase().includes("REJECT"));
+        const rejectMatch = result.match(/REJECT(?:ION)?:\s*([\s\S]+)/i);
 
         if (isApproved && !rejectMatch) {
             return { approved: true };
@@ -88,8 +86,7 @@ ${context}
         }
     } catch (e) {
         console.error("[Auditor] Audit failed due to network/API error:", e);
-        // Fail-open for network errors to avoid blocking user flow unnecessarily? 
-        // Or fail-closed for safety? Using fail-open as per original design.
-        return { approved: true };
+        // Fail-Closed for safety
+        return { approved: false, reason: "系统内部审计服务暂不可用，为确保安全，已拦截操作。" };
     }
 }
