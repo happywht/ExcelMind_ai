@@ -216,7 +216,8 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
             // --- Execution Layer ---
 
             if (step.action.tool === 'finish') {
-                finalExplanation = step.thought;
+                const p = step.action.params || {};
+                finalExplanation = p.message || p.summary || p.content || p.text || step.thought;
                 break;
             }
 
