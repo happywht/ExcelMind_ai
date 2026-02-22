@@ -33,6 +33,7 @@ interface KnowledgeFile {
   size: number;
   uploadTime: Date;
   rawBuffer?: ArrayBuffer; // Phase 12: 保留原始二进制供沙箱使用
+  rawSheets?: { [sheetName: string]: any[] }; // Phase 14: 为底层工具保留结构化真实数据
 }
 
 // ---------------------------------------------------------------
@@ -220,7 +221,12 @@ export const KnowledgeChat: React.FC = () => {
 
     knowledgeFiles.forEach(f => {
       if (f.type === 'excel') {
-        excelFiles.push({ fileName: f.name, sheets: ['Sheet1'], rowCount: 0 });
+        const sheets = f.rawSheets ? Object.keys(f.rawSheets) : ['Sheet1'];
+        let totalRows = 0;
+        if (f.rawSheets) {
+          Object.values(f.rawSheets).forEach(arr => totalRows += (arr as any[]).length);
+        }
+        excelFiles.push({ fileName: f.name, sheets, rowCount: totalRows });
       } else {
         documentFiles.push(f.name);
       }
@@ -255,7 +261,7 @@ export const KnowledgeChat: React.FC = () => {
       let capturedReport = '';
       const executor = createToolExecutor({
         // Minimal context for CLI mode
-        currentFiles: agentType === 'excel' ? [{ fileName: targetFile.name, sheets: { 'Sheet1': [] } }] : [],
+        currentFiles: agentType === 'excel' ? [{ fileName: targetFile.name, sheets: targetFile.rawSheets || {} }] : [],
         documents: agentType === 'document' ? [{ name: targetFile.name, text: targetFile.content }] : [],
         addLog: (module, status, message) => console.log(`[WorkerExecutor][${module}] ${status}: ${message}`),
         setAgentSteps: () => { }, // sub-steps inner logging is muted
@@ -270,7 +276,7 @@ export const KnowledgeChat: React.FC = () => {
         await loadAnalysisWorker();
 
         // Build a lightweight context for the loop
-        const initialCtx = [{ fileName: targetFile.name, sheets: ['Sheet1'] }];
+        const initialCtx = [{ fileName: targetFile.name, sheets: targetFile.rawSheets ? Object.keys(targetFile.rawSheets) : ['Sheet1'] }];
 
         // Run the real agentic loop with sandbox execution
         const result = await runAgenticLoop(
@@ -424,20 +430,24 @@ export const KnowledgeChat: React.FC = () => {
     }
   };
 
-  const processFileContent = async (file: File): Promise<{ content: string; type: string }> => {
+  const processFileContent = async (file: File): Promise<{ content: string; type: string; rawSheets?: { [sheetName: string]: any[] } }> => {
     const extension = file.name.split('.').pop()?.toLowerCase();
     let textContent = '';
     let fileType = 'text';
+    let rawSheets: { [sheetName: string]: any[] } | undefined = undefined;
     try {
       if (['xlsx', 'xls', 'csv'].includes(extension || '')) {
         fileType = 'excel';
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'array' });
         let fileContent = '';
+        rawSheets = {};
         workbook.SheetNames.forEach(sheetName => {
           const sheet = workbook.Sheets[sheetName];
           const csv = XLSX.utils.sheet_to_csv(sheet);
           if (csv.trim()) fileContent += `\n[Sheet: ${sheetName}]\n${csv}\n`;
+          // Phase 14: Generate structured JSON for executeTool context
+          rawSheets![sheetName] = XLSX.utils.sheet_to_json(sheet, { defval: null });
         });
         textContent = fileContent;
       } else if (extension === 'docx') {
@@ -480,7 +490,7 @@ export const KnowledgeChat: React.FC = () => {
       if (file.size > maxSize) { alert(`文件 ${file.name} 大小超过10MB限制。`); continue; }
       if (existingFileNames.has(file.name)) { alert(`文件 "${file.name}" 已经上传过了。`); continue; }
       try {
-        const { content, type } = await processFileContent(file);
+        const { content, type, rawSheets } = await processFileContent(file);
         // Phase 12: 保留原始二进制，供后续沙箱注入使用
         const rawBuffer = await file.arrayBuffer();
         if (content) {
@@ -488,6 +498,7 @@ export const KnowledgeChat: React.FC = () => {
             id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
             name: file.name, content, type, size: file.size, uploadTime: new Date(),
             rawBuffer,
+            rawSheets,
           });
         }
       } catch (err: any) {
