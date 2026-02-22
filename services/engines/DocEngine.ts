@@ -24,7 +24,7 @@ export const loadDocWorker = async (onInit?: () => void): Promise<void> => {
             logger.info('Initializing Document Intelligence Worker...');
             docWorker = new Worker(new URL('../workers/doc.worker.ts', import.meta.url));
 
-            return new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve, reject) => {
                 if (!docWorker) return reject(new Error('Doc Worker creation failed'));
 
                 docWorker.onmessage = (e) => {
@@ -53,6 +53,12 @@ export const loadDocWorker = async (onInit?: () => void): Promise<void> => {
                 docWorker.onerror = (err) => reject(err instanceof Error ? err : new Error(String(err)));
                 docWorker.postMessage({ type: 'INIT_REQUEST' });
             });
+        } catch (error) {
+            if (docWorker) {
+                docWorker.terminate();
+                docWorker = null;
+            }
+            throw error;
         } finally {
             isLoading = false;
         }

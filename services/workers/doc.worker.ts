@@ -37,59 +37,59 @@ ctx.onmessage = async (e: MessageEvent) => {
                 console.log('[DocWorker] Securing environment...');
                 // Security: Remove access to JS network API if present
                 await pyodide.runPythonAsync(`
-                    import sys
-                    if 'js' in sys.modules:
-                        import js
-                        if hasattr(js, 'fetch'):
-                            del js.fetch
-                    if 'pyodide.http' in sys.modules:
-                        del sys.modules['pyodide.http']
-                `);
+import sys
+if 'js' in sys.modules:
+    import js
+    if hasattr(js, 'fetch'):
+        del js.fetch
+if 'pyodide.http' in sys.modules:
+    del sys.modules['pyodide.http']
+`);
 
                 // Define extraction logic
                 await pyodide.runPythonAsync(`
-                    import json
-                    import traceback
-                    import os
-                    from pypdf import PdfReader
-                    import docx
+import json
+import traceback
+import os
+from pypdf import PdfReader
+import docx
 
-                    def extract_doc_structure(fpath):
-                        structure = []
-                        doc = docx.Document(fpath)
-                        for para in doc.paragraphs:
-                            if para.style.name.startswith('Heading'):
-                                level = int(para.style.name.replace('Heading ', ''))
-                                structure.append({'text': para.text, 'level': level})
-                        return structure
+def extract_doc_structure(fpath):
+    structure = []
+    doc = docx.Document(fpath)
+    for para in doc.paragraphs:
+        if para.style.name.startswith('Heading'):
+            level = int(para.style.name.replace('Heading ', ''))
+            structure.append({'text': para.text, 'level': level})
+    return structure
 
-                    def process_extraction(fname):
-                        result = {"text": "", "tables": [], "structure": [], "meta": {"engine": "default"}}
-                        fpath = f'/mnt/{fname}'
-                        
-                        try:
-                            if fname.endswith('.docx'):
-                                doc = docx.Document(fpath)
-                                full_text = []
-                                for para in doc.paragraphs:
-                                    full_text.append(para.text)
-                                result["text"] = '\\n'.join(full_text)
-                                result["structure"] = extract_doc_structure(fpath)
-                                result["meta"]["engine"] = "python-docx"
-                                result["tables"] = [] # python-docx table extraction to be added if needed
+def process_extraction(fname):
+    result = {"text": "", "tables": [], "structure": [], "meta": {"engine": "default"}}
+    fpath = f'/mnt/{fname}'
+    
+    try:
+        if fname.endswith('.docx'):
+            doc = docx.Document(fpath)
+            full_text = []
+            for para in doc.paragraphs:
+                full_text.append(para.text)
+            result["text"] = "\\n".join(full_text)
+            result["structure"] = extract_doc_structure(fpath)
+            result["meta"]["engine"] = "python-docx"
+            result["tables"] = [] # python-docx table extraction to be added if needed
 
-                            elif fname.endswith('.pdf'):
-                                reader = PdfReader(fpath)
-                                text = ""
-                                for page in reader.pages:
-                                    text += page.extract_text() + "\\n"
-                                result["text"] = text
-                                result["meta"]["engine"] = "pypdf"
-                        
-                            return json.dumps({"success": True, "data": result}, ensure_ascii=False)
-                        except Exception as e:
-                            return json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()}, ensure_ascii=False)
-                `);
+        elif fname.endswith('.pdf'):
+            reader = PdfReader(fpath)
+            text = ""
+            for page in reader.pages:
+                text += page.extract_text() + "\\n"
+            result["text"] = text
+            result["meta"]["engine"] = "pypdf"
+    
+        return json.dumps({"success": True, "data": result}, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e), "trace": traceback.format_exc()}, ensure_ascii=False)
+`);
 
                 ctx.postMessage({ type: 'INIT_SUCCESS' });
             } catch (error: any) {

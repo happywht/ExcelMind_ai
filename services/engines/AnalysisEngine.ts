@@ -25,7 +25,7 @@ export const loadAnalysisWorker = async (onInit?: () => void): Promise<void> => 
             logger.info('Initializing Analysis Web Worker...');
             analysisWorker = new Worker(new URL('../pyodide.worker.ts', import.meta.url));
 
-            return new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve, reject) => {
                 if (!analysisWorker) return reject(new Error('Analysis Worker creation failed'));
 
                 analysisWorker.onmessage = (e) => {
@@ -83,6 +83,12 @@ export const loadAnalysisWorker = async (onInit?: () => void): Promise<void> => 
                 analysisWorker.onerror = (err) => reject(err instanceof Error ? err : new Error(String(err)));
                 analysisWorker.postMessage({ type: 'INIT_REQUEST' });
             });
+        } catch (error) {
+            if (analysisWorker) {
+                analysisWorker.terminate();
+                analysisWorker = null;
+            }
+            throw error;
         } finally {
             isLoading = false;
         }
