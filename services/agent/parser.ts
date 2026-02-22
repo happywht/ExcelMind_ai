@@ -25,7 +25,7 @@ export const fuzzyMapAction = (raw: any): any => {
 
     // 2. Nested pattern: { "tool_name": { "param_key": "val" } }
     if (!tool) {
-        const commonTools = ['execute_python', 'inspect_sheet', 'read_rows', 'finish', 'generate_report', 'write_memo', 'read_memo', 'read_document', 'analyze_excel', 'parallel_dispatch', 'search_context', 'sync_context'];
+        const commonTools = ['execute_python', 'inspect_sheet', 'read_rows', 'finish', 'generate_report', 'generate_rich_text', 'write_memo', 'read_memo', 'read_document', 'read_document_page', 'search_document', 'analyze_excel', 'parallel_dispatch', 'search_context', 'sync_context'];
         const foundKey = Object.keys(raw).find(k => commonTools.includes(k));
         if (foundKey) {
             tool = foundKey;

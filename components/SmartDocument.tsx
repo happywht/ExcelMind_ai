@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Terminal, RotateCcw, ChevronRight, Zap, Bot, ShieldQuestion, Check, Ban, ChevronLeft, MessageSquare, Send, Sparkles, Download } from 'lucide-react';
+import { Upload, FileText, File, Loader2, Play, Trash2, Eye, PanelRight, Terminal, RotateCcw, ChevronRight, Zap, Bot, ShieldQuestion, Check, Ban, ChevronLeft, MessageSquare, Send, Sparkles, Download, Copy, ClipboardCheck, FileOutput } from 'lucide-react';
 import { writeFileToSandbox, extractText, runPython, clearContext, loadDocWorker, readFileFromSandbox } from '../services/pyodideService';
 import { runAgenticLoop } from '../services/agent/loop';
 import { useTraceLogger } from '../hooks/useTraceLogger';
@@ -26,6 +26,8 @@ export const SmartDocument: React.FC = () => {
     const [rightPanelOpen, setRightPanelOpen] = useState(false);
     const [isAutoMode, setIsAutoMode] = useState(false);
     const [generatedDocs, setGeneratedDocs] = useState<string[]>([]);
+    const [aiReportContent, setAiReportContent] = useState<string>(''); // Phase 11: Direct text output from AI
+    const [isCopied, setIsCopied] = useState(false);
 
     // Agent State
     const [logs, setLogs] = useState<ProcessingLog[]>([]);
@@ -155,6 +157,8 @@ export const SmartDocument: React.FC = () => {
         setRightPanelOpen(true);
         setAgentSteps([]);
         setGeneratedDocs([]);
+        setAiReportContent(''); // Reset AI report on new run
+        setIsCopied(false);
         abortControllerRef.current = new AbortController();
         addLog('System', 'pending', '🚀 启动文档智能分析中枢...');
 
@@ -164,7 +168,7 @@ export const SmartDocument: React.FC = () => {
                 fileName: doc.name,
                 type: doc.type,
                 status: doc.status,
-                textPreview: (doc.text || "").substring(0, 1000) + "...",
+                textPreview: (doc.text || "").substring(0, 5000) + (doc.text && doc.text.length > 5000 ? "...[全文共" + doc.text.length + "字]" : ""),
                 tableCount: (doc.tables || []).length,
                 structure: doc.structure || []
             }));
@@ -258,6 +262,13 @@ res
                         } else {
                             return `Document ${fileName} not found in memory or empty. Please use execute_python to read it manually from /mnt/.`;
                         }
+                    }
+                    case 'generate_report': {
+                        // Phase 11: Direct text output - the core of the dual-track architecture
+                        const reportContent = params.content || params.text || params.summary || params.markdown || '';
+                        setAiReportContent(reportContent);
+                        addLog('AI Report', 'success', `📄 AI 生成了富文本报告 (${reportContent.length} chars)`);
+                        return `Report generated successfully (${reportContent.length} chars). You can now call 'finish' to complete the task.`;
                     }
                     case 'finish':
                         return "Task Completed.";
@@ -518,6 +529,42 @@ res
                                         </div>
                                         <div className="whitespace-pre-wrap text-slate-700 leading-relaxed font-serif text-justify selection:bg-blue-100 selection:text-blue-900">
                                             {activeDoc.text || <span className="italic text-slate-400">无文本内容提取</span>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Phase 11: AI Report Rich Text Rendering Area */}
+                                {aiReportContent && (
+                                    <div className="mt-8 animate-in slide-in-from-bottom-4 duration-500">
+                                        <div className="border-t-2 border-emerald-200 pt-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="bg-emerald-100 p-1.5 rounded-lg">
+                                                        <FileOutput className="w-4 h-4 text-emerald-600" />
+                                                    </div>
+                                                    <span className="text-sm font-bold text-emerald-700 tracking-tight">AI 分析报告</span>
+                                                    <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold">GENERATED</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(aiReportContent);
+                                                        setIsCopied(true);
+                                                        setTimeout(() => setIsCopied(false), 2000);
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isCopied
+                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                        : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
+                                                        }`}
+                                                    title="复制报告内容"
+                                                >
+                                                    {isCopied ? <><ClipboardCheck className="w-3.5 h-3.5" /> 已复制</> : <><Copy className="w-3.5 h-3.5" /> 一键复制</>}
+                                                </button>
+                                            </div>
+                                            <div className="bg-emerald-50/30 border border-emerald-100 rounded-xl p-8 prose prose-slate prose-emerald max-w-none">
+                                                <div className="whitespace-pre-wrap text-slate-700 leading-relaxed">
+                                                    {aiReportContent}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
