@@ -2,7 +2,7 @@
  * Pyodide Service (Phase 13 Facade)
  * Delegating work to specialized engines and managing synchronization.
  */
-import { loadAnalysisWorker, runPython, getAnalysisWorker, terminateAnalysisWorker } from './engines/AnalysisEngine';
+import { loadAnalysisWorker, runPython, getAnalysisWorker, terminateAnalysisWorker, readBinaryFile } from './engines/AnalysisEngine';
 import { loadDocWorker, extractText as engineExtractText, getDocWorker, terminateDocWorker } from './engines/DocEngine';
 import { PendingRequest } from '../types';
 
@@ -115,20 +115,5 @@ export const clearContext = async (): Promise<void> => {
 };
 
 export const readFileFromSandbox = async (fileName: string): Promise<Uint8Array> => {
-    const code = `
-import base64
-import os
-path = '/mnt/${fileName}'
-if not os.path.exists(path):
-    raise FileNotFoundError(f"File not found: {fileName}")
-with open(path, 'rb') as f:
-    base64.b64encode(f.read()).decode('utf-8')
-`;
-    const { result } = await runPython(code, {});
-    const binaryString = atob(result as string);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
+    return readBinaryFile(fileName);
 };

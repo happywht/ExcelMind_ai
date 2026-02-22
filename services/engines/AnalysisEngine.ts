@@ -39,8 +39,16 @@ export const loadAnalysisWorker = async (onInit?: () => void): Promise<void> => 
                         case 'RESPONSE': {
                             const pending = pendingRequests.get(id);
                             if (pending) {
-                                if (success) pending.resolve({ data, logs: pending.accumulatedLogs, result });
-                                else pending.reject(new Error(error + (pending.accumulatedLogs ? `\nLogs:\n${pending.accumulatedLogs}` : '')));
+                                if (success) {
+                                    // Intelligent Dispatch: Binary vs. Structured
+                                    if (data instanceof Uint8Array) {
+                                        pending.resolve(data);
+                                    } else {
+                                        pending.resolve({ data, logs: pending.accumulatedLogs, result });
+                                    }
+                                } else {
+                                    pending.reject(new Error(error + (pending.accumulatedLogs ? `\nLogs:\n${pending.accumulatedLogs}` : '')));
+                                }
                                 pendingRequests.delete(id);
                             }
                             break;
@@ -92,6 +100,15 @@ export const runPython = async (
         const id = Math.random().toString(36).substring(7);
         pendingRequests.set(id, { resolve, reject, onLog, accumulatedLogs: "" });
         analysisWorker!.postMessage({ type: 'RUN_REQUEST', code, datasets, id });
+    });
+};
+
+export const readBinaryFile = async (fileName: string): Promise<Uint8Array> => {
+    await loadAnalysisWorker();
+    return new Promise((resolve, reject) => {
+        const id = Math.random().toString(36).substring(7);
+        pendingRequests.set(id, { resolve, reject, accumulatedLogs: "" });
+        analysisWorker!.postMessage({ type: 'READ_BINARY_FILE', fileName, id });
     });
 };
 

@@ -377,6 +377,24 @@ ctx.onmessage = (e: MessageEvent) => {
             })();
             break;
 
+        case 'READ_BINARY_FILE':
+            (async () => {
+                if (!pyodide) return;
+                const { fileName, id } = e.data;
+                try {
+                    const path = `/mnt/${fileName}`;
+                    if (!pyodide.FS.analyzePath(path).exists) {
+                        throw new Error(`File not found: ${fileName}`);
+                    }
+                    const data = pyodide.FS.readFile(path);
+                    // Use Transferable for maximum efficiency
+                    ctx.postMessage({ type: 'RESPONSE', success: true, data, id }, [data.buffer]);
+                } catch (err: any) {
+                    console.error('[Worker] Read Binary Failed:', err);
+                    ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
+                }
+            })();
+            break;
         case 'CLEAR_CONTEXT':
             (async () => {
                 if (!pyodide) return;

@@ -111,6 +111,24 @@ ctx.onmessage = async (e: MessageEvent) => {
             })();
             break;
 
+        case 'READ_BINARY_FILE':
+            (async () => {
+                if (!pyodide) return;
+                const { fileName, id } = e.data;
+                try {
+                    const path = `/mnt/${fileName}`;
+                    if (!pyodide.FS.analyzePath(path).exists) {
+                        throw new Error(`File not found: ${fileName}`);
+                    }
+                    const data = pyodide.FS.readFile(path);
+                    ctx.postMessage({ type: 'RESPONSE', success: true, data, id }, [data.buffer]);
+                } catch (err: any) {
+                    console.error('[DocWorker] Read Binary Failed:', err);
+                    ctx.postMessage({ type: 'RESPONSE', success: false, error: err.message, id });
+                }
+            })();
+            break;
+
         case 'EXTRACT_TEXT_REQUEST':
             (async () => {
                 if (!pyodide) return;

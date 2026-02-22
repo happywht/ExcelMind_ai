@@ -65,7 +65,13 @@ export const SmartDocument: React.FC = () => {
     const handleDownload = async (fileName: string) => {
         try {
             const bytes = await readFileFromSandbox(fileName);
-            const blob = new Blob([new Uint8Array(bytes)], { type: 'application/octet-stream' });
+            let mimeType = 'application/octet-stream';
+            if (fileName.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            if (fileName.endsWith('.pdf')) mimeType = 'application/pdf';
+            if (fileName.endsWith('.xlsx')) mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            if (fileName.endsWith('.csv')) mimeType = 'text/csv';
+
+            const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
