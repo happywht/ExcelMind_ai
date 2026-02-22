@@ -6,7 +6,18 @@
 
 // Helper: Normalize tool call structure
 export const fuzzyMapAction = (raw: any): any => {
-    if (!raw || typeof raw !== 'object') return null;
+    if (!raw) return null;
+
+    // Phase 5: Handle GLM-4.7 returning action as a string (e.g., "action": "execute_python") and code block outside JSON
+    if (typeof raw === 'string') {
+        const toolPattern = /^[a-zA-Z_0-9]+$/;
+        if (toolPattern.test(raw)) {
+            return { tool: raw, params: {} };
+        }
+        return null;
+    }
+
+    if (typeof raw !== 'object') return null;
 
     // 1. Standard patterns (tool/tool_name/name + params/arguments/input)
     let tool = raw.tool || raw.tool_name || raw.name || raw.function?.name || raw.tool_use?.name;
@@ -57,13 +68,14 @@ export const extractActionFromResponse = (response: any, text: string): { though
                 stepData.thought += block.text + "\n";
                 // Check for embedded JSON in this text block as a resilient source
                 try {
+                    // Phase 10: Priority matching - sort candidates by length DESC to find the most complete JSON first
                     const jsonMatches = block.text.match(/\{[\s\S]*?\}/g);
                     if (jsonMatches) {
-                        // Iterate strictly backwards to find the LAST valid action
-                        for (let i = jsonMatches.length - 1; i >= 0; i--) {
+                        // Sort longer (more complete) JSON first to avoid matching inner sub-objects
+                        const sorted = [...jsonMatches].sort((a, b) => b.length - a.length);
+                        for (const jsonStr of sorted) {
                             try {
-                                const embeddedJson = JSON.parse(jsonMatches[i]);
-                                // Fuzzy Search for Action inside JSON
+                                const embeddedJson = JSON.parse(jsonStr);
                                 let candidateAction = null;
 
                                 if (embeddedJson.action) {
@@ -80,7 +92,7 @@ export const extractActionFromResponse = (response: any, text: string): { though
                                     stepData.action = candidateAction;
                                     if (embeddedJson.thought) stepData.thought = embeddedJson.thought;
                                     if (embeddedJson.speak) stepData.speak = embeddedJson.speak;
-                                    break; // Stop after finding the last valid action
+                                    break;
                                 }
                             } catch (e) { /* Invalid JSON chunk, skip */ }
                         }
@@ -126,13 +138,13 @@ export const extractActionFromResponse = (response: any, text: string): { though
         const p = stepData.action.params || {};
 
         if (tool === 'execute_python' && !p.code) {
-            console.warn("[Resilience] execute_python missing code, attempting extraction from thought");
-            // Try to extract code block from thought if present
-            const codeMatch = stepData.thought.match(/```python\n([\s\S]*?)```/) || stepData.thought.match(/```\n([\s\S]*?)```/);
+            console.warn("[Resilience] execute_python missing code, attempting extraction from full text response");
+            // Try to extract code block from full text instead of just thought, because LLM often places it OUTSIDE the JSON
+            const codeMatch = text.match(/```python\n([\s\S]*?)```/) || text.match(/```\n([\s\S]*?)```/);
             if (codeMatch) {
                 stepData.action.params = { ...p, code: codeMatch[1].trim() };
             } else {
-                console.error("[Resilience] Failed to find code for execute_python");
+                console.error("[Resilience] Failed to find code for execute_python in full text");
             }
         }
     }

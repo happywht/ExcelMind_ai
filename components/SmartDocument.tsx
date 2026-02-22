@@ -189,6 +189,19 @@ export const SmartDocument: React.FC = () => {
                             });
                         });
 
+                        // Phase 5: Detect newly generated files from sandbox output
+                        if (newData && typeof newData === 'object') {
+                            const uploadedNames = new Set(documents.map(d => d.name));
+                            const newFileNames = Object.keys(newData).filter(fn => !uploadedNames.has(fn));
+                            if (newFileNames.length > 0) {
+                                setGeneratedDocs(prev => {
+                                    const combined = new Set([...prev, ...newFileNames]);
+                                    return Array.from(combined);
+                                });
+                                addLog('System', 'success', `沙箱检测到新生成文件: ${newFileNames.join(', ')}`);
+                            }
+                        }
+
                         let observation = "Execution successful.";
                         if (logs) observation += `\nLogs:\n${logs}`;
                         if (result !== null && result !== undefined) {

@@ -173,8 +173,28 @@ export const SmartExcel: React.FC = () => {
             const file = currentFiles.find(f => f.fileName === fileName);
             if (!file) throw new Error(`找不到文件: ${fileName}`);
             const data = file.sheets[sheetName] || [];
-            // Return headers and a larger sample (5 rows) for better context
-            return `Headers: ${Object.keys(data[0] || {}).join(', ')}\nSample (Top 5 rows): ${JSON.stringify(data.slice(0, 5))}`;
+            if (data.length === 0) return `Sheet "${sheetName}" in "${fileName}" is empty.`;
+
+            // Phase 9: Smart Header Detection
+            const headers = Object.keys(data[0] || {});
+            const unnamedCount = headers.filter(h => /^Unnamed/.test(h)).length;
+            const totalCols = headers.length;
+
+            let headerWarning = '';
+            if (totalCols > 0 && unnamedCount / totalCols > 0.3) {
+              headerWarning = `\n⚠️ [Header Warning]: ${unnamedCount}/${totalCols} columns are "Unnamed", which strongly suggests Row 1 is NOT the real header. When using pd.read_excel, try skiprows=N (e.g., skiprows=1 or skiprows=2) to locate the actual column names. Always inspect the raw rows below first.`;
+            }
+
+            // Show raw first 5 rows as-is for AI to judge
+            const rawRows = data.slice(0, 5);
+            const rawDisplay = rawRows.map((row: any, i: number) =>
+              `  Row ${i}: ${JSON.stringify(row)}`
+            ).join('\n');
+
+            return `File: "${fileName}" | Sheet: "${sheetName}" | Total Rows: ${data.length}
+Detected Headers: [${headers.join(', ')}]${headerWarning}
+Raw Sample (first 5 rows as parsed):
+${rawDisplay}`;
           }
           case 'read_rows': {
             const { fileName, sheetName, start, end } = params;

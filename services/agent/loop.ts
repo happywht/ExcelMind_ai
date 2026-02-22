@@ -39,41 +39,30 @@ export const runAgenticLoop = async (
 你正在运行在 **Seamless Sandbox v2.2** 架构下。
 
 **输出规范 (极度重要)**:
-- 你必须回复任务的执行结果。
-- **推荐格式**: 以 JSON 格式输出，包含 \`thought\` (你的思考) 和 \`action\` (工具调用)。
-- **必须包含参数**: 工具调用必须带有参数。例如 \`execute_python\` 必须包含 \`code\`，\`inspect_sheet\` 必须包含 \`fileName\`。
-- **目标**: 每一轮回复必须推导出一个明确的下一步操作。禁止输出空的工具调用。
+- 你必须按照以下 JSON 格式进行回复，包含 \`thought\` (思考) 和 \`action\` (工具调用)。
+- **输出范例**:
+  \`\`\`json
+  {
+    "thought": "我需要先查看表的结构...",
+    "action": {
+      "tool": "inspect_sheet",
+      "params": { "fileName": "data.xlsx", "sheetName": "Sheet1" }
+    }
+  }
+  \`\`\`
+- **关于代码执行**: 调用 \`execute_python\` 时，你可以将代码放入 JSON 的 \`params.code\` 中，**也可以**为了可读性激在 JSON 之外单独输出一个 \`python\` 代码块。我们的解析器会自动关联。
+- **必须包含参数**: 工具调用必须带有参数。目标是每一轮回复必须推导出一个明确的下一步操作。
 
 **核心环境规范**:
-1. **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 根目录下。
-   - **正确路径**: \`/mnt/文件名.xlsx\`
-   - **禁止路径**: \`/mnt/data/\` 或其他子目录。
-2. **高级协同**: 你可以访问 \`shared_context['docs']\` 来获取之前文档分析的结果。如果需要跨文档分析，请优先检查此变量。
-3. **数据读取机制**: 
-   - 请直接使用 \`pd.read_excel('/mnt/文件名.xlsx')\` 或 \`pd.read_csv('/mnt/文件名.csv')\`。这是最稳妥的方法。
-4. **数据同步机制**:
-   - 处理完数据后，只要将生成的结果保存到 \`/mnt/\` 目录下（例如 \`df.to_excel('/mnt/结果.xlsx')\`），系统会自动捕获并同步给 UI 展示。你不需要手动管理复杂的内存状态。
+1. **虚拟文件系统 (VFS)**: 所有上传文件已挂载在 \`/mnt/\` 根目录下。路径严谨：\`/mnt/文件名.xlsx\`。
+2. **数据同步**: 处理完数据后，保存到 \`/mnt/\` (如 \`df.to_excel('/mnt/结果.xlsx')\`)，系统会自动同步给 UI。
+3. **优先 Python**: 对于合并 (Merge/Join) 等复杂操作，直接在 \`execute_python\` 中使用 \`pd.merge()\`。
 
 **当前可用工具**:
-1. \`inspect_sheet(fileName, sheetName)\`: 获取特定表的列头和前 5 行样本（用于确定数据含义）。
-2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行范围的数据（用于精确核对）。
-3. \`execute_python(code)\`: 运行 Python 代码。这是处理大型数据集、合并表、计算指标的唯一高效方式。
-4. \`finish()\`: 完成任务后调用。
-
-**处理策略**:
-- **优先 Python**: 对于合并 (Merge/Join) 操作，直接在 \`execute_python\` 中使用 \`pd.merge()\`。不要分步读取成千上万行。
-- **验证为王**: 在 \`finish\` 之前，请务必 \`print()\` 打印最终结果的 \`.head()\`、行数或关键总和，以便在日志中自我验证。
-- **路径严谨**: 始终使用 \`/mnt/\` 前缀读取文件。
-
-**常用代码模版 (Cheatsheet)**:
-- **读取表**: \`df = pd.read_excel('/mnt/文件名.xlsx', sheet_name='Sheet1')\`
-- **多表关联**: \`result = pd.merge(df_order, df_product, on='ID', how='left')\`
-- **保存并同步**: \`result.to_excel('/mnt/分析结果.xlsx', index=False)\` (必须保存到 /mnt/，UI 才能看到结果)
-- **验证数据**: \`print(f"处理完成，结果行数: {len(result)}"); print(result.head())\`
-
-**禁止行为**:
-- 禁止在未观察列名的情况下盲目合并。
-- **严禁使用 \`globals().clear()\`**，这会破坏沙箱环境导致后续步骤崩溃。
+1. \`inspect_sheet(fileName, sheetName)\`: 获取表头、样本行和 header 诊断信息。如果检测到 Unnamed 列名过多，说明第一行可能不是真正的列名，需要在 pandas 读取时使用 \`skiprows\` 参数。
+2. \`read_rows(fileName, sheetName, start, end)\`: 获取特定行数据。
+3. \`execute_python(code)\`: 运行高效 Python 代码（推荐使用 pandas）。
+4. \`finish(message)\`: 任务完成。
 
 用户任务: "${maskedUserPrompt}"
 
@@ -87,41 +76,32 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
 你正在运行在 **Seamless Sandbox v2.2** 架构下。
 
 **输出规范**:
-- 你必须回复任务的执行结果。
-- **推荐格式**: JSON \`thought\` + \`action\`。
-- **目标**: 通过 Python 脚本读取、提取、分析文档内容，最终回答用户问题或生成报告。
+- 你必须按照以下 JSON 格式进行回复，包含 \`thought\` 和 \`action\`。
+- **输出范例**:
+  \`\`\`json
+  {
+    "thought": "我计划读取 PDF 的第一页内容...",
+    "action": {
+      "tool": "execute_python",
+      "params": { "code": "..." }
+    }
+  }
+  \`\`\`
+- **关于代码排版**: 为了避免复杂的 JSON 转义，你可以在 JSON 下方使用标准的 \` \` \`python ... \` \` \` 代码块来书写 Python 脚本。系统解析器将自动关联。
+- **目标**: 通过 Python 脚本分析内容，最终回答用户问题或生成报告。
 
 **核心环境规范**:
-1. **文件挂载**: 所有文档已挂载在 \`/mnt/\` 目录下（如 \`/mnt/report.docx\`）。
-2. **协同存储**: 如果有提取到的结构化信息，可以在代码里打印或者保存为 excel 供另一模块使用。
-3. **工具库**:
-   - **Word**: 使用 \`python-docx\` (import docx)。支持读取段落、样式。
-   - **PDF**: 只能使用 \`pypdf\` (\`from pypdf import PdfReader\`)。**注意: 环境内未预装 pdfplumber，请绝对不要 import pdfplumber！**
-   - **NLP/Regex**: 使用 standard python libs 进行文本分析。
+1. **文件挂载**: 所有文档已挂载在 \`/mnt/\`。
+2. **工具库**:
+   - **Word**: 使用 \`python-docx\` (import docx)。
+   - **PDF**: 使用 \`pypdf\` (\`from pypdf import PdfReader\`)。**注意: 环境内未预装 pdfplumber，请绝对不要使用！**
+3. **输出闭环**: 如果要生成结果文档，必须保存到 \`/mnt/\` 目录下。
 
 **当前可用工具**:
-1. \`execute_python(code)\`: 运行 Python 代码进行深度分析。
-2. \`read_document_page(fileName, page_number)\`: 读取 PDF 的特定页内容。
-3. \`search_document(fileName, keyword)\`: 在文档中极速搜索关键字并返回上下文。
-4. \`finish()\`: 完成任务。
-
-**常用代码模版**:
-- **安全读取 PDF (pypdf)**:
-  \`\`\`python
-  from pypdf import PdfReader
-  reader = PdfReader('/mnt/report.pdf')
-  page = reader.pages[0]
-  text = page.extract_text()
-  print(f"Page 1 Text: {text[:200]}")
-  \`\`\`
-- **识别 Word 结构**:
-  \`\`\`python
-  import docx
-  doc = docx.Document('/mnt/contract.docx')
-  for p in doc.paragraphs:
-      if 'Heading' in p.style.name:
-          print(f"Structure: {p.style.name} -> {p.text}")
-  \`\`\`
+1. \`execute_python(code)\`: 运行 Python 代码进行分析（推荐）。
+2. \`read_document_page(fileName, page_number)\`: 读取 PDF 特定页。
+3. \`search_document(fileName, keyword)\`: 在文档中极速搜索。
+4. \`finish(message)\`: 完成任务并给出最终回答。
 
 用户任务: "${maskedUserPrompt}"
 
@@ -143,12 +123,13 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
     // Dynamic Context: Track files created during this loop session
     let currentFiles = Array.isArray(initialContext) ? [...initialContext] : [];
     const updateFilesFromCode = (code: string) => {
-        // Improved Regex: Capture all assignments to files['...'] and to_excel('/mnt/...')
-        const fileMatches = code.matchAll(/(?:files\s*\[\s*['"]|to_excel\s*\(\s*['"]\/mnt\/|to_csv\s*\(\s*['"]\/mnt\/|to_json\s*\(\s*['"]\/mnt\/)([^'"]+)/g);
+        // Phase 10: Removed legacy files['...'] regex (files dict is deprecated, /mnt/ is the only sync channel)
+        // Only track explicit /mnt/ write operations to predict newly generated files
+        const fileMatches = code.matchAll(/(?:to_excel\s*\(\s*['"]\/mnt\/|to_csv\s*\(\s*['"]\/mnt\/|to_json\s*\(\s*['"]\/mnt\/|open\s*\(\s*['"]\/mnt\/)([^'"]+)/g);
         for (const match of fileMatches) {
             const name = match[1];
             if (name && !currentFiles.some(f => f.fileName === name)) {
-                console.log("[Loop Context] Adding newly detected file:", name);
+                console.log("[Loop Context] Adding newly detected file from /mnt/ write:", name);
                 currentFiles.push({ fileName: name, sheets: ["Generated"] });
             }
         }
@@ -261,13 +242,19 @@ ${JSON.stringify(maskedInitialContext, null, 2)}
                     // Log Observation
                     logger.logObservation(turn, observation);
 
-                    // Dynamic Context Injection (Simplified to avoid bloat)
-                    const contextInjection = `\n\n[Reminder]: 必须输出合法 JSON，禁止输出 JSON 之外的任何文字。`;
+                    // Phase 5: Sandbox State Feedback – append current file inventory so AI stays aware
+                    const sandboxFileNames = currentFiles.map((f: any) => f.fileName);
+                    const stateUpdate = sandboxFileNames.length > 0
+                        ? `\n[System Update]: Sandbox files now contain: [${sandboxFileNames.join(', ')}]`
+                        : '';
+
+                    // Dynamic Context Injection (Phase 9: Relaxed to not conflict with code-block-outside-JSON rule)
+                    const contextInjection = `\n\n[Reminder]: 确保每轮输出包含明确的 JSON action 和 thought。`;
 
                     step.observation = observation;
                     messages.push({
                         role: "user",
-                        content: `Observation from ${step.action.tool}:\n${isPrivacyEnabled ? globalMasker.mask(observation) : observation}${contextInjection}`
+                        content: `Observation from ${step.action.tool}:\n${isPrivacyEnabled ? globalMasker.mask(observation) : observation}${stateUpdate}${contextInjection}`
                     });
 
                     continue;

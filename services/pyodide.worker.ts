@@ -233,29 +233,26 @@ finally:
             import json
             import os
             
-            # Detect new or changed files in /mnt
+            # Detect new or changed files in /mnt (Phase 5: Universal sync, no whitelist)
             if os.path.exists('/mnt'):
                 for f in os.listdir('/mnt'):
                     fpath = os.path.join('/mnt', f)
-                    # Only sync if it's an excel/csv file and NOT already accurately in 'files'
-                    # Or just sync everything for consistency in this tier
-                    if f.endswith(('.xlsx', '.xls', '.csv')):
-                         try:
-                             # We use lazy sync: if 'inspect_sheet' is called later, it will use mocked_read_excel
-                             # which already points to the disk if /mnt/ is used.
-                             # But for the UI to show the file in the sidebar, we need it in the 'files' dict.
-                             if f not in files:
-                                 # For newly created files from Python, we need to read them into memory
-                                 # so they appear in the UI file list.
-                                 # ANTI-OOM: Only load top 50 rows for preview to UI
-                                 if f.endswith('.csv'):
-                                     files[f] = pd.read_csv(fpath, nrows=50).to_dict(orient='records')
-                                 else:
-                                     # Load all sheets for the UI, but limited rows
-                                     excel_file = pd.ExcelFile(fpath)
-                                     files[f] = {s: pd.read_excel(fpath, sheet_name=s, nrows=50).to_dict(orient='records') for s in excel_file.sheet_names}
-                         except Exception as e:
-                             print(f"Sync Warning: Failed to read back {f}: {e}")
+                    if not os.path.isfile(fpath):
+                        continue
+                    try:
+                        if f not in files:
+                            if f.endswith('.csv'):
+                                # ANTI-OOM: Only load top 50 rows for preview to UI
+                                files[f] = pd.read_csv(fpath, nrows=50).to_dict(orient='records')
+                            elif f.endswith(('.xlsx', '.xls')):
+                                excel_file = pd.ExcelFile(fpath)
+                                files[f] = {s: pd.read_excel(fpath, sheet_name=s, nrows=50).to_dict(orient='records') for s in excel_file.sheet_names}
+                            else:
+                                # Phase 5: Non-tabular files (docx, pdf, etc.) → placeholder for UI visibility
+                                file_size = os.path.getsize(fpath)
+                                files[f] = {"__binary_placeholder": True, "type": f.rsplit('.', 1)[-1] if '.' in f else "unknown", "size_bytes": file_size}
+                    except Exception as e:
+                        print(f"Sync Warning: Failed to read back {f}: {e}")
 
             json.dumps({
                 "files": clean_output(files),
@@ -355,9 +352,18 @@ ctx.onmessage = (e: MessageEvent) => {
                 if (!pyodide) return;
                 const { fileName, data, id } = e.data;
                 try {
-                    // Ensure /mnt exists
-                    pyodide.FS.mkdir('/mnt');
-                } catch (e) { /* ignore if exists */ }
+                    // Phase 5: Ensure /mnt and any parent directories exist recursively
+                    const parts = `/mnt/${fileName}`.split('/');
+                    parts.pop(); // Remove the actual file name
+                    let currPath = '';
+                    for (const part of parts) {
+                        if (part === '') continue;
+                        currPath += '/' + part;
+                        try {
+                            pyodide.FS.mkdir(currPath);
+                        } catch (err) { /* ignore if directory already exists */ }
+                    }
+                } catch (e) { console.warn("Failed to create dirs for", fileName, e); }
 
                 try {
                     const view = new Uint8Array(data);

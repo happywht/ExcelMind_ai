@@ -118,7 +118,7 @@ export const readFileFromSandbox = async (fileName: string): Promise<Uint8Array>
     const code = `
 import base64
 import os
-path = f'/mnt/{fileName}'
+path = '/mnt/${fileName}'
 if not os.path.exists(path):
     raise FileNotFoundError(f"File not found: {fileName}")
 with open(path, 'rb') as f:
