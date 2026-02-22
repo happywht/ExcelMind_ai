@@ -189,19 +189,28 @@ export const runOrchestrator = async (
             }));
             onStep(step);
 
-            const taskPromises = tasks.map(async (task, i) => {
+            // Phase 4: Self-Healing Retry for sub-tasks
+            const executeWithRetry = async (task: ParallelSubTask, index: number): Promise<{ agentType: string; res: string }> => {
                 const agentType = task.core === 'doc' ? 'document' : 'excel';
-                try {
-                    const res = await executeWorker(agentType, task.params?.instruction || userRequest, task.params?.fileName);
-                    if (step.parallelGroup) step.parallelGroup[i].status = 'done';
-                    return { agentType, res };
-                } catch (e: any) {
-                    if (step.parallelGroup) step.parallelGroup[i].status = 'error';
-                    return { agentType, res: `Error: ${e.message}` };
+                const MAX_RETRIES = 1; // One retry attempt
+                for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                    try {
+                        const res = await executeWorker(agentType, task.params?.instruction || userRequest, task.params?.fileName);
+                        if (step.parallelGroup) step.parallelGroup[index].status = 'done';
+                        return { agentType, res };
+                    } catch (e: any) {
+                        if (attempt < MAX_RETRIES) {
+                            console.warn(`[Orchestrator] Sub-task ${agentType} failed (attempt ${attempt + 1}), retrying...`, e.message);
+                            continue;
+                        }
+                        if (step.parallelGroup) step.parallelGroup[index].status = 'error';
+                        return { agentType, res: `SYSTEM_ERROR: Worker "${agentType}" failed after retry. Error: ${e.message}. Please adjust your approach or use a different tool.` };
+                    }
                 }
-            });
+                return { agentType, res: 'Unexpected execution path.' };
+            };
 
-            const results = await Promise.allSettled(taskPromises);
+            const results = await Promise.allSettled(tasks.map((task, i) => executeWithRetry(task, i)));
             const obs = results.map(r => r.status === 'fulfilled'
                 ? `[${r.value.agentType}]: ${r.value.res}`
                 : `[ERROR]: ${r.reason}`
@@ -210,8 +219,11 @@ export const runOrchestrator = async (
             step.observation = obs;
             step.status = 'observing';
             onStep(step);
-            history.push({ role: 'assistant', content: rawText });
-            history.push({ role: 'user', content: `PARALLEL_RESULT:\n${obs}` });
+
+            // Phase 4: History Slimming - push compressed summary instead of raw JSON
+            const slimSummary = `[Parallel] Dispatched ${tasks.length} tasks. Tools: ${tasks.map(t => t.tool).join(', ')}.`;
+            history.push({ role: 'assistant', content: slimSummary });
+            history.push({ role: 'user', content: `PARALLEL_RESULT:\n${obs.substring(0, 1200)}` });
             continue;
         }
 
@@ -256,8 +268,11 @@ export const runOrchestrator = async (
         step.observation = observation;
         step.status = 'observing';
         onStep(step);
-        history.push({ role: 'assistant', content: rawText });
-        history.push({ role: 'user', content: `OBSERVATION: ${observation}` });
+
+        // Phase 4: History Slimming - compress assistant output to save context window
+        const slimAssistant = `Thought: ${parsed.thought.substring(0, 80)}. Action: ${tool}(${params.fileName || params.instruction?.substring(0, 40) || '...'}).`;
+        history.push({ role: 'assistant', content: slimAssistant });
+        history.push({ role: 'user', content: `OBSERVATION: ${observation.substring(0, 800)}` });
     }
 
     memo.clear();

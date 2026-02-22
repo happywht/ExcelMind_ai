@@ -9,6 +9,10 @@ import { ChatMessage, OrchestratorStep, ExcelData } from '../types';
 import { chatWithKnowledgeBase } from '../services/zhipuService';
 import { runOrchestrator, OrchestratorContext } from '../services/agent/orchestrator';
 import { runAgenticLoop } from '../services/agent/loop';
+import {
+  loadAnalysisWorker, loadDocWorker, runPython,
+  writeFileToSandbox, extractText
+} from '../services/pyodideService';
 import ReactMarkdown from 'react-markdown';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
@@ -207,34 +211,71 @@ export const KnowledgeChat: React.FC = () => {
     return { excelFiles, documentFiles };
   }, [knowledgeFiles]);
 
-  // Worker executor: invokes the relevant agent loop
+  // Worker executor: invokes the REAL sandbox engines (Phase 4 Bridge)
   const executeWorker = useCallback(async (
     agentType: 'excel' | 'document',
     instruction: string,
     fileName?: string
   ): Promise<string> => {
-    // Find the relevant file content or metadata
     const targetFile = fileName
       ? knowledgeFiles.find(f => f.name === fileName)
-      : knowledgeFiles[0];
+      : knowledgeFiles.find(f => agentType === 'excel' ? f.type === 'excel' : f.type !== 'excel') || knowledgeFiles[0];
 
     if (!targetFile) {
       return 'No file available for this task. Please upload a file first.';
     }
 
-    // For now, pass the file content as context to a simple analysis loop
-    const contextSummary = [
-      `File: ${targetFile.name} (${targetFile.type})`,
-      `Content preview: ${targetFile.content.substring(0, 2000)}`,
-    ].join('\n');
+    try {
+      if (agentType === 'excel') {
+        // ── Excel path: load worker, push file binary, run Python via AgenticLoop ──
+        await loadAnalysisWorker();
 
-    const workerResult = await chatWithKnowledgeBase(
-      instruction,
-      [],
-      contextSummary
-    );
+        // Build a lightweight context for the loop
+        const initialCtx = [{ fileName: targetFile.name, sheets: ['Sheet1'] }];
 
-    return workerResult;
+        // Run the real agentic loop with sandbox execution
+        const result = await runAgenticLoop(
+          instruction,
+          initialCtx,
+          () => { }, // onStep: silent in sub-worker mode
+          undefined, // executeTool: use default from loop.ts
+          false,     // isPrivacyEnabled
+          undefined, // onApprovalRequired
+          undefined, // signal
+          'excel'
+        );
+
+        return result.explanation || result.finalCode || 'Excel analysis completed.';
+
+      } else {
+        // ── Document path: extract text via DocEngine, then summarize with LLM ──
+        await loadDocWorker();
+
+        // If text is already available in React state, use it directly (Phase 3 Memory Injection)
+        let docText = targetFile.content;
+        if (!docText || docText.length < 50) {
+          // Fallback: extract from sandbox binary
+          const extraction = await extractText(targetFile.name);
+          docText = extraction.text || '';
+        }
+
+        // Feed the extracted text + instruction to LLM for analysis
+        const contextSummary = [
+          `File: ${targetFile.name} (${targetFile.type})`,
+          `Full extracted text (${docText.length} chars):\n${docText.substring(0, 4000)}`,
+        ].join('\n');
+
+        const workerResult = await chatWithKnowledgeBase(
+          instruction,
+          [],
+          contextSummary
+        );
+        return workerResult;
+      }
+    } catch (e: any) {
+      console.error(`[ExecuteWorker] ${agentType} failed:`, e);
+      return `Worker execution failed: ${e.message}. Please try with a simpler instruction.`;
+    }
   }, [knowledgeFiles]);
 
   const handleSendMessage = async () => {
@@ -432,8 +473,8 @@ export const KnowledgeChat: React.FC = () => {
               onClick={() => setZenMode(!zenMode)}
               title={zenMode ? '当前：简约模式 (点击切换为极客模式)' : '当前：极客模式 (点击切换为简约模式)'}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${zenMode
-                  ? 'bg-slate-800 border-slate-700 text-slate-400'
-                  : 'bg-purple-500/10 border-purple-500/40 text-purple-400'
+                ? 'bg-slate-800 border-slate-700 text-slate-400'
+                : 'bg-purple-500/10 border-purple-500/40 text-purple-400'
                 }`}
             >
               {zenMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
