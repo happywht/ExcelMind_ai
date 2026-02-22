@@ -5,6 +5,7 @@ import { runAgenticLoop } from '../services/agent/loop';
 import { useTraceLogger } from '../hooks/useTraceLogger';
 import { traceToMarkdown } from '../services/agent/traceUtils';
 import { AgenticStep, ProcessingLog } from '../types';
+import { createToolExecutor } from '../services/agent/executor';
 
 interface DocumentFile {
     id: string;
@@ -179,109 +180,14 @@ export const SmartDocument: React.FC = () => {
                 structure: doc.structure || []
             }));
 
-            // 2. Define Tool Executor
-            const executeTool = async (tool: string, params: any): Promise<string> => {
-                console.log(`[AI Tool] Executing ${tool}`, params);
-                addLog('AI Tool', 'pending', `执行工具 ${tool}: ${JSON.stringify(params)}`);
-
-                switch (tool) {
-                    case 'execute_python': {
-                        addLog('Sandbox', 'pending', '正在沙箱中执行 Python 代码...');
-                        const { data: newData, logs, result } = await runPython(params.code, {}, (streamedLog) => {
-                            setAgentSteps(prev => {
-                                const next = [...prev];
-                                if (next.length > 0) {
-                                    const last = { ...next[next.length - 1] };
-                                    last.logs = (last.logs || "") + streamedLog;
-                                    next[next.length - 1] = last;
-                                }
-                                return next;
-                            });
-                        });
-
-                        // Phase 5: Detect newly generated files from sandbox output
-                        if (newData && typeof newData === 'object') {
-                            const uploadedNames = new Set(documents.map(d => d.name));
-                            const newFileNames = Object.keys(newData).filter(fn => !uploadedNames.has(fn));
-                            if (newFileNames.length > 0) {
-                                setGeneratedDocs(prev => {
-                                    const combined = new Set([...prev, ...newFileNames]);
-                                    return Array.from(combined);
-                                });
-                                addLog('System', 'success', `沙箱检测到新生成文件: ${newFileNames.join(', ')}`);
-                            }
-                        }
-
-                        let observation = "Execution successful.";
-                        if (logs) observation += `\nLogs:\n${logs}`;
-                        if (result !== null && result !== undefined) {
-                            const resultStr = typeof result === 'object' ? JSON.stringify(result).slice(0, 1000) : String(result);
-                            observation += `\nResult of last expression:\n${resultStr}`;
-                        }
-                        return observation;
-                    }
-                    case 'read_document_page': {
-                        const { fileName, page_number } = params;
-                        if (fileName.toLowerCase().endsWith('.pdf')) {
-                            // Escape filename carefully to avoid string injection
-                            const safeFileName = fileName.replace(/'/g, "\\'");
-                            const code = `
-from pypdf import PdfReader
-try:
-    reader = PdfReader('/mnt/${safeFileName}')
-    if 0 <= ${page_number} - 1 < len(reader.pages):
-        page = reader.pages[${page_number} - 1]
-        res = page.extract_text()
-    else:
-        res = "Page out of range."
-except Exception as e:
-    res = f"Error: {e}"
-res
-`;
-                            const { result } = await runPython(code, {});
-                            return String(result || "No text on this page.");
-                        } else {
-                            return "Pagination reading is only available for PDFs. For Word docs, please use standard Python IO or extract all text at once.";
-                        }
-                    }
-                    case 'search_document': {
-                        const { fileName, keyword } = params;
-                        // Fast Phase 3 memory injection: Search directly in React's parsed state!
-                        const targetDoc = documents.find(d => d.name === fileName);
-                        if (targetDoc && targetDoc.text) {
-                            addLog('System (Memory)', 'success', `⚡ 触发内存极速检索: 寻找 "${keyword}"...`);
-                            const text = targetDoc.text;
-                            const regex = new RegExp(keyword, 'gi');
-                            let match;
-                            const results: string[] = [];
-                            while ((match = regex.exec(text)) !== null) {
-                                const start = Math.max(0, match.index - 60);
-                                const end = Math.min(text.length, match.index + keyword.length + 60);
-                                const snippet = text.substring(start, end).replace(/\\n/g, ' ').trim();
-                                results.push(`... ${snippet} ...`);
-                                if (results.length >= 8) break; // Limit findings to prevent context bloat
-                            }
-                            if (results.length > 0) {
-                                return `Found matches in ${fileName}:\n` + results.join('\n');
-                            }
-                            return `No matches found for "${keyword}" in ${fileName}.`;
-                        } else {
-                            return `Document ${fileName} not found in memory or empty. Please use execute_python to read it manually from /mnt/.`;
-                        }
-                    }
-                    case 'generate_report': {
-                        // Phase 11: Direct text output - the core of the dual-track architecture
-                        const reportContent = params.content || params.text || params.summary || params.markdown || '';
-                        setAiReportContent(reportContent);
-                        addLog('AI Report', 'success', `📄 AI 生成了富文本报告 (${reportContent.length} chars)`);
-                        return `Report generated successfully (${reportContent.length} chars). You can now call 'finish' to complete the task.`;
-                    }
-                    case 'finish':
-                        return "Task Completed.";
-                    default:
-                        return "Unknown tool.";
-                }
-            };
+            // 2. Define Tool Executor (Phase 13 Shared Facade)
+            const executeTool = createToolExecutor({
+                documents,
+                setGeneratedDocs,
+                addLog,
+                setAgentSteps,
+                setAiReportContent,
+            });
 
             // 3. Start Agent Loop
             const onStep = (step: AgenticStep) => {

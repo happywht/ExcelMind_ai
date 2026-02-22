@@ -9,6 +9,7 @@ import { ChatMessage, OrchestratorStep, ExcelData } from '../types';
 import { chatWithKnowledgeBase } from '../services/zhipuService';
 import { runOrchestrator, OrchestratorContext } from '../services/agent/orchestrator';
 import { runAgenticLoop } from '../services/agent/loop';
+import { createToolExecutor } from '../services/agent/executor';
 import {
   loadAnalysisWorker, loadDocWorker, runPython,
   writeFileToSandbox, extractText, resetSandbox, clearContext
@@ -250,6 +251,16 @@ export const KnowledgeChat: React.FC = () => {
         console.log(`[KnowledgeChat] Injected ${targetFile.name} (${(targetFile.rawBuffer.byteLength / 1024).toFixed(1)}KB) into sandbox`);
       }
 
+      // Phase 13: 挂载统一执行器，彻底修复指挥官只能"想"不能"做"的截断 Bug
+      const executor = createToolExecutor({
+        // Minimal context for CLI mode
+        currentFiles: agentType === 'excel' ? [{ fileName: targetFile.name, sheets: { 'Sheet1': [] } }] : [],
+        documents: agentType === 'document' ? [{ name: targetFile.name, text: targetFile.content }] : [],
+        addLog: (module, status, message) => console.log(`[WorkerExecutor][${module}] ${status}: ${message}`),
+        setAgentSteps: () => { }, // sub-steps inner logging is muted
+        setAiReportContent: () => { }
+      });
+
       if (agentType === 'excel') {
         // ── Excel path: load worker, push file binary, run Python via AgenticLoop ──
         await loadAnalysisWorker();
@@ -262,7 +273,7 @@ export const KnowledgeChat: React.FC = () => {
           instruction,
           initialCtx,
           () => { }, // onStep: silent in sub-worker mode
-          undefined, // executeTool: use default from loop.ts
+          executor,  // Phase 13: The shared executor replaces 'undefined'
           false,     // isPrivacyEnabled
           undefined, // onApprovalRequired
           undefined, // signal
@@ -288,7 +299,7 @@ export const KnowledgeChat: React.FC = () => {
           instruction,
           initialCtx,
           () => { }, // onStep: silent in sub-worker mode
-          undefined, // executeTool: use default from loop.ts
+          executor,  // Phase 13: Provide the executor here too
           false,     // isPrivacyEnabled
           undefined, // onApprovalRequired
           undefined, // signal

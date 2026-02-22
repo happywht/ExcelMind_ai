@@ -3,6 +3,7 @@ import { Upload, FileDown, Play, Loader2, FileSpreadsheet, Layers, Trash2, Code,
 import { readExcelFile, exportMultipleSheetsToExcel, exportToExcel } from '../services/excelService';
 import { runAgenticLoop } from '../services/zhipuService';
 import { auditExportService } from '../services/excelExportService';
+import { createToolExecutor } from '../services/agent/executor';
 import { ClipboardList } from 'lucide-react';
 import { runPython } from '../services/pyodideService';
 import { ExcelData, ProcessingLog, AgenticStep, TraceSession } from '../types';
@@ -161,138 +162,28 @@ export const SmartExcel: React.FC = () => {
         })
       }));
 
-      // 2. Define Tool Executor
-      const executeTool = async (tool: string, params: any): Promise<string> => {
-        console.log(`[AI Tool] Executing ${tool}`, params);
-        addLog('AI Tool', 'pending', `执行工具 ${tool}: ${JSON.stringify(params)}`);
+      // 2. Define Tool Executor (Phase 13 Shared Facade)
+      const executeTool = createToolExecutor({
+        currentFiles: filesDataRef.current,
+        isSandboxDirty,
+        setFilesData: (updater) => {
+          setFilesData((prev) => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            filesDataRef.current = next;
 
-        const currentFiles = filesDataRef.current;
-        switch (tool) {
-          case 'inspect_sheet': {
-            const { fileName, sheetName } = params;
-            const file = currentFiles.find(f => f.fileName === fileName);
-            if (!file) throw new Error(`找不到文件: ${fileName}`);
-            const data = file.sheets[sheetName] || [];
-            if (data.length === 0) return `Sheet "${sheetName}" in "${fileName}" is empty.`;
-
-            // Phase 9: Smart Header Detection
-            const headers = Object.keys(data[0] || {});
-            const unnamedCount = headers.filter(h => /^Unnamed/.test(h)).length;
-            const totalCols = headers.length;
-
-            let headerWarning = '';
-            if (totalCols > 0 && unnamedCount / totalCols > 0.3) {
-              headerWarning = `\n⚠️ [Header Warning]: ${unnamedCount}/${totalCols} columns are "Unnamed", which strongly suggests Row 1 is NOT the real header. When using pd.read_excel, try skiprows=N (e.g., skiprows=1 or skiprows=2) to locate the actual column names. Always inspect the raw rows below first.`;
+            // Auto-select new files
+            const currentIds = new Set(prev.map(f => f.id));
+            const newIds = next.filter(f => !currentIds.has(f.id)).map(f => f.id);
+            if (newIds.length > 0) {
+              setSelectedFileIds(sel => new Set([...sel, ...newIds]));
+              if (!activeFileId) setActiveFileId(newIds[0]);
             }
-
-            // Show raw first 5 rows as-is for AI to judge
-            const rawRows = data.slice(0, 5);
-            const rawDisplay = rawRows.map((row: any, i: number) =>
-              `  Row ${i}: ${JSON.stringify(row)}`
-            ).join('\n');
-
-            return `File: "${fileName}" | Sheet: "${sheetName}" | Total Rows: ${data.length}
-Detected Headers: [${headers.join(', ')}]${headerWarning}
-Raw Sample (first 5 rows as parsed):
-${rawDisplay}`;
-          }
-          case 'read_rows': {
-            const { fileName, sheetName, start, end } = params;
-            const file = currentFiles.find(f => f.fileName === fileName);
-            if (!file) throw new Error(`找不到文件: ${fileName}`);
-            const data = file.sheets[sheetName] || [];
-            // Slice rows (start index included, end index included)
-            const slice = data.slice(start || 0, (end !== undefined ? end : 10) + 1);
-            return `Rows ${start || 0} to ${end || 10}:\n${JSON.stringify(slice, null, 2)}`;
-          }
-          case 'execute_python': {
-            addLog('Sandbox', 'pending', '正在沙箱中执行 Python 代码...');
-            console.log('[Sandbox] Running Python code:', params.code);
-
-            const currentDataMap = isSandboxDirty.current
-              ? Object.fromEntries(currentFiles.map(f => [f.fileName, f.sheets]))
-              : {};
-
-            const { data: newData, logs, result } = await runPython(params.code, currentDataMap, (streamedLog) => {
-              setAgentSteps(prev => {
-                const next = [...prev];
-                if (next.length > 0) {
-                  const last = { ...next[next.length - 1] };
-                  last.logs = (last.logs || "") + streamedLog;
-                  next[next.length - 1] = last;
-                }
-                return next;
-              });
-            });
-
-            // Reset dirty flag after successful sync
-            if (isSandboxDirty.current) isSandboxDirty.current = false;
-
-            setFilesData(prev => {
-              const updated = [...prev];
-              const newFileIds = new Set<string>(); // To track new files added by Python
-              Object.entries(newData).forEach(([fn, sheets]) => {
-                const sheetObj = typeof sheets === 'object' && !Array.isArray(sheets) ? sheets : { 'Result': sheets };
-
-                // Calculate metadata for the new sheets
-                const metadata: { [sheet: string]: { rowCount: number; columnCount: number; comments: any } } = {};
-                Object.entries(sheetObj).forEach(([sname, sdata]: [string, any]) => {
-                  const rows = Array.isArray(sdata) ? sdata : [];
-                  metadata[sname] = {
-                    rowCount: rows.length,
-                    columnCount: rows.length > 0 ? Object.keys(rows[0]).length : 0,
-                    comments: {}
-                  };
-                });
-
-                const existingFileIdx = updated.findIndex(x => x.fileName === fn);
-                if (existingFileIdx !== -1) {
-                  updated[existingFileIdx] = {
-                    ...updated[existingFileIdx],
-                    sheets: sheetObj,
-                    metadata: { ...(updated[existingFileIdx].metadata || {}), ...metadata },
-                    currentSheetName: Object.keys(sheetObj)[0]
-                  };
-                } else {
-                  const newFileId = fn + '-' + Date.now();
-                  updated.push({
-                    id: newFileId,
-                    fileName: fn,
-                    sheets: sheetObj,
-                    metadata: metadata,
-                    currentSheetName: Object.keys(sheetObj)[0]
-                  });
-                  newFileIds.add(newFileId);
-                }
-              });
-              filesDataRef.current = updated;
-
-              // Select newly added files and set active if none is active
-              setSelectedFileIds(prevSelected => {
-                const newSelection = new Set(prevSelected);
-                newFileIds.forEach(id => newSelection.add(id));
-                return newSelection;
-              });
-              if (!activeFileId && updated.length > 0) {
-                setActiveFileId(updated[0].id);
-              }
-              return updated;
-            });
-
-            setLastGeneratedCode(params.code);
-
-            // Return detailed feedback to AI
-            let observation = "Execution successful.";
-            if (logs) observation += `\nLogs:\n${logs}`;
-            if (result !== null && result !== undefined) {
-              const resultStr = typeof result === 'object' ? JSON.stringify(result).slice(0, 1000) : String(result);
-              observation += `\nResult of last expression:\n${resultStr}`;
-            }
-            return observation;
-          }
-          default: return "Tool executed.";
-        }
-      };
+            return next;
+          });
+        },
+        addLog,
+        setAgentSteps,
+      });
       // 3. Start Agent Loop (Continuous)
       const onStep = (step: AgenticStep) => {
         setAgentSteps(prev => [...prev, step]);
