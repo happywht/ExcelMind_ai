@@ -382,15 +382,10 @@ export const KnowledgeChat: React.FC = () => {
           abortControllerRef.current.signal
         );
 
-        // Finalize message
+        // Finalize message without redundant text appending since step.speak covered it
         setMessages(prev => prev.map(m => {
           if (m.timestamp === streamingMsgId) {
-            const currentText = m.text.trim();
-            const finalizedText = (finalText && finalText !== currentText)
-              ? (currentText ? `${currentText}\n\n${finalText}` : finalText)
-              : currentText;
-
-            return { ...m, text: finalizedText, isStreaming: false, orchestrationSteps: [...orchestratorSteps] };
+            return { ...m, isStreaming: false, orchestrationSteps: [...orchestratorSteps] };
           }
           return m;
         }));
