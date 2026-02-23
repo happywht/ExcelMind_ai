@@ -3,7 +3,7 @@ import {
   Send, Book, Paperclip, Bot, User, Trash2, FileText,
   Cpu, Search, BarChart3, Loader2, ChevronDown, ChevronRight,
   Sparkles, AlertCircle, CheckCircle2, BrainCircuit, Database, Zap, RefreshCw,
-  EyeOff, Eye, NotebookPen
+  EyeOff, Eye, NotebookPen, Download, FolderOutput
 } from 'lucide-react';
 import { ChatMessage, OrchestratorStep, ExcelData } from '../types';
 import { chatWithKnowledgeBase } from '../services/zhipuService';
@@ -12,7 +12,7 @@ import { runAgenticLoop } from '../services/agent/loop';
 import { createToolExecutor } from '../services/agent/executor';
 import {
   loadAnalysisWorker, loadDocWorker, runPython,
-  writeFileToSandbox, extractText, resetSandbox, clearContext
+  writeFileToSandbox, extractText, resetSandbox, clearContext, readFileFromSandbox
 } from '../services/pyodideService';
 import ReactMarkdown from 'react-markdown';
 import * as XLSX from 'xlsx';
@@ -208,6 +208,7 @@ export const KnowledgeChat: React.FC = () => {
   const [liveSteps, setLiveSteps] = useState<OrchestratorStep[]>([]);
   const [zenMode, setZenMode] = useState(true); // Phase 11.2: true = Zen (simple capsules)
   const [reportContent, setReportContent] = useState(''); // Phase 11.3: Deep Report
+  const [generatedFiles, setGeneratedFiles] = useState<string[]>([]); // Phase 16: Generated files awareness
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -268,6 +269,13 @@ export const KnowledgeChat: React.FC = () => {
         setAiReportContent: (content) => {
           capturedReport = content;
           setReportContent(content);
+        },
+        // Phase 16: Wire generated files detection into Orchestrator context
+        setGeneratedDocs: (updater) => {
+          setGeneratedFiles(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            return Array.from(new Set(next));
+          });
         }
       });
 
@@ -687,6 +695,49 @@ export const KnowledgeChat: React.FC = () => {
                 <div className="text-[10px] text-slate-600 text-right pt-1">
                   总计 {knowledgeFiles.reduce((sum, f) => sum + f.content.length, 0).toLocaleString()} 字符
                 </div>
+              </div>
+            )}
+
+            {/* Phase 16: Generated Files Download Panel */}
+            {generatedFiles.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-700/50">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-400">
+                  <FolderOutput className="w-3.5 h-3.5" />
+                  AI 生成的文件 ({generatedFiles.length})
+                </div>
+                {generatedFiles.map((fn) => (
+                  <button
+                    key={fn}
+                    onClick={async () => {
+                      try {
+                        const bytes = await readFileFromSandbox(fn);
+                        let mimeType = 'application/octet-stream';
+                        if (fn.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                        if (fn.endsWith('.pdf')) mimeType = 'application/pdf';
+                        if (fn.endsWith('.xlsx')) mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                        if (fn.endsWith('.csv')) mimeType = 'text/csv';
+                        const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fn;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch (e: any) {
+                        console.error(`[KnowledgeChat] Download failed: ${e.message}`);
+                      }
+                    }}
+                    className="w-full flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 rounded-lg p-2.5 text-left transition-colors group"
+                  >
+                    <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400 flex-shrink-0">
+                      <Download className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-amber-200 truncate">{fn}</div>
+                      <div className="text-[10px] text-amber-500/60">点击下载</div>
+                    </div>
+                  </button>
+                ))}
               </div>
             )}
           </div>
