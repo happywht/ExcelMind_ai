@@ -470,7 +470,7 @@ export const KnowledgeChat: React.FC = () => {
       } else {
         textContent = await file.text();
       }
-      return { content: textContent.trim(), type: fileType };
+      return { content: textContent.trim(), type: fileType, rawSheets };
     } catch (err) {
       throw new Error(`解析文件失败: ${file.name}`);
     }
