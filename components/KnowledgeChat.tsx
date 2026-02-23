@@ -243,7 +243,7 @@ export const KnowledgeChat: React.FC = () => {
   ): Promise<string> => {
     const targetFile = fileName
       ? knowledgeFiles.find(f => f.name === fileName)
-      : knowledgeFiles.find(f => agentType === 'excel' ? f.type === 'excel' : f.type !== 'excel') || knowledgeFiles[0];
+      : knowledgeFiles.find(f => agentType === 'excel' ? f.type === 'excel' : f.type !== 'excel');
 
     if (!targetFile) {
       return 'No file available for this task. Please upload a file first.';
@@ -301,7 +301,7 @@ export const KnowledgeChat: React.FC = () => {
         const initialCtx = [{
           fileName: targetFile.name,
           sheets: [],
-          textPreview: docText.substring(0, 5000),
+          textPreview: docText.substring(0, 2000),
         }];
 
         // Use runAgenticLoop in 'document' mode: leverages Phase 11's generate_report etc.
